@@ -1,0 +1,42 @@
+.sidebyside {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 50px;
+}
+
+.wrapper {
+  position: relative;
+  box-sizing: border-box;
+  background: linear-gradient(
+    135deg,
+    var(--mantine-color-violet-6) 0%,
+    var(--mantine-color-pink-6) 100%
+  );
+  padding: 80px 0;
+}
+
+.inner {
+  position: relative;
+  width: 100%;
+}
+
+.title {
+  color: var(--mantine-color-white);
+}
+
+.description {
+  color: var(--mantine-color-white);
+}
+
+.contactButton {
+  color: var(--mantine-color-white);
+  border-color: var(--mantine-color-white);
+}
+
+.contactButton:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--mantine-color-white);
+  border-color: var(--mantine-color-white);
+}

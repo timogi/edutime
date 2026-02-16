@@ -1,0 +1,241 @@
+.wrapper {
+  min-height: calc(100dvh - 60px);
+  margin: 0 auto;
+  max-width: 1200px;
+  width: 100%;
+  padding: 0 var(--mantine-spacing-md) var(--mantine-spacing-xl) var(--mantine-spacing-md);
+}
+
+@media (min-width: 768px) {
+  .wrapper {
+    padding: 0 var(--mantine-spacing-lg) var(--mantine-spacing-xl) var(--mantine-spacing-lg);
+  }
+}
+
+.card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardContent {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--mantine-spacing-md);
+}
+
+.title {
+  font-size: var(--mantine-font-size-xl);
+  font-weight: 600;
+}
+
+.section {
+  margin-bottom: var(--mantine-spacing-lg);
+}
+
+.sectionTitle {
+  font-size: var(--mantine-font-size-lg);
+  font-weight: 600;
+  margin-bottom: var(--mantine-spacing-sm);
+}
+
+.sectionDescription {
+  color: var(--mantine-color-dimmed);
+  margin-bottom: var(--mantine-spacing-md);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--mantine-spacing-md);
+}
+
+.card {
+  height: 100%;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--mantine-spacing-sm);
+}
+
+.cardTitle {
+  font-weight: 600;
+}
+
+.cardDescription {
+  color: var(--mantine-color-dimmed);
+  font-size: var(--mantine-font-size-sm);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+}
+
+.formRow {
+  display: flex;
+  gap: var(--mantine-spacing-sm);
+  align-items: flex-end;
+}
+
+.formRowInput {
+  flex: 1;
+}
+
+.table {
+  margin-top: var(--mantine-spacing-md);
+}
+
+.tableHeader {
+  font-weight: 600;
+}
+
+.tableCell {
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+}
+
+.tableActions {
+  display: flex;
+  gap: var(--mantine-spacing-xs);
+}
+
+.actionButton {
+  padding: var(--mantine-spacing-xs);
+}
+
+.colorPreview {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--mantine-color-gray-3);
+}
+
+.targetInput {
+  max-width: 100px;
+}
+
+.targetUnit {
+  color: var(--mantine-color-dimmed);
+  font-size: var(--mantine-font-size-sm);
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  background-color: light-dark(var(--mantine-color-white), var(--mantine-color-dark-6));
+  transition: box-shadow 150ms ease;
+  z-index: 1;
+}
+
+.header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-bottom: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-3));
+}
+
+.scrolled {
+  box-shadow: var(--mantine-shadow-sm);
+}
+
+.columnStyles th:nth-of-type(1) {
+  width: 40%;
+}
+
+.columnStyles th:nth-of-type(2) {
+  width: 40%;
+}
+
+.columnStyles th:nth-of-type(3) {
+  width: 10%;
+}
+
+.columnStyles th:nth-of-type(4) {
+  width: 10%;
+}
+
+.flexRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mantine-spacing-sm);
+}
+
+.flexItem {
+  flex: 1 1 48%;
+}
+
+.workHoursCard {
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.workHoursCard:hover {
+  transform: scale(1.02);
+}
+
+.inputsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--mantine-spacing-md);
+  align-items: start;
+  width: 100%;
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .inputsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.conditionalCell {
+  /* Each conditional cell automatically takes up one grid cell */
+}
+
+.employmentCardContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+  width: 100%;
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .employmentCardContent {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--mantine-spacing-md);
+    align-items: start;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .inputsGrid {
+    grid-column: 1;
+    min-width: 0; /* Prevent grid overflow */
+  }
+
+  .cantonPickerWrapper {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0; /* Prevent grid overflow */
+  }
+
+  .saveButtonWrapper {
+    grid-column: 1 / -1;
+  }
+}

@@ -1,0 +1,159 @@
+.deviceMockup {
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
+  perspective: 1000px;
+}
+
+.deviceFrame {
+  position: relative;
+  width: 100%;
+  padding-bottom: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 30px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  transform: rotateY(8deg) rotateX(3deg);
+  transition: transform 0.3s ease;
+}
+
+.deviceFrame:hover {
+  transform: rotateY(2deg) rotateX(1deg);
+}
+
+.deviceFrame::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 6px;
+  background-color: rgba(0, 0, 0, 0.4);
+  border-radius: 3px;
+  z-index: 10;
+}
+
+.deviceScreen {
+  position: absolute;
+  top: 20px;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  background-color: var(--mantine-color-body);
+  border-radius: 25px;
+  overflow: hidden;
+  padding: 10px;
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+}
+
+.demoCard {
+  height: 100%;
+  background-color: var(--mantine-color-body);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardStack {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.datePicker {
+  padding: 8px;
+  background-color: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+  border-radius: var(--mantine-radius-sm);
+  flex-shrink: 0;
+}
+
+.demoButton {
+  flex: 1;
+  font-size: 11px;
+  padding: 6px 8px;
+}
+
+.tableContainer {
+  flex: 1;
+  overflow: visible;
+  margin: 4px 0 0 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.tableContainer table {
+  font-size: 10px;
+  margin-bottom: 0;
+}
+
+.tableContainer tbody {
+  margin: 0;
+  padding: 0;
+}
+
+.tableContainer tr:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.total {
+  padding-top: 0;
+  margin-top: -1px;
+  border-top: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-4));
+  flex-shrink: 0;
+}
+
+.actionButtons {
+  margin-top: auto;
+  flex-shrink: 0;
+  padding-top: 8px;
+}
+
+/* Alternative: Laptop Mockup */
+.deviceMockup.laptop {
+  max-width: 600px;
+}
+
+.deviceMockup.laptop .deviceFrame {
+  padding-bottom: 60%;
+  border-radius: 12px 12px 0 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.deviceMockup.laptop .deviceFrame::before {
+  display: none;
+}
+
+.deviceMockup.laptop .deviceFrame::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  height: 8px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 0 0 4px 4px;
+}
+
+.deviceMockup.laptop .deviceScreen {
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  border-radius: 8px;
+}
+
+@media (max-width: 768px) {
+  .deviceMockup {
+    max-width: 280px;
+  }
+
+  .deviceFrame {
+    padding-bottom: 110%;
+  }
+}

@@ -1,0 +1,68 @@
+.header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.optionsGrid {
+  width: 100%;
+  margin-top: 2rem;
+  display: grid;
+  gap: var(--mantine-spacing-lg);
+}
+
+/* Default: single column on mobile */
+.optionsGrid {
+  grid-template-columns: 1fr;
+}
+
+/* Two cards: side by side on larger screens */
+@media (min-width: 768px) {
+  .optionsGrid.twoCards {
+    grid-template-columns: repeat(2, minmax(280px, 400px));
+    justify-content: center;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* Single card: centered */
+  .optionsGrid.oneCard {
+    grid-template-columns: minmax(280px, 400px);
+    justify-content: center;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+.optionCard {
+  height: 100%;
+  width: 100%;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.optionCard:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--mantine-shadow-md);
+}
+
+.iconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--mantine-color-violet-0);
+  margin-bottom: 1rem;
+}
+
+.icon {
+  color: var(--mantine-color-violet-6);
+}
+
+.accountCard {
+  margin-top: 2rem;
+}

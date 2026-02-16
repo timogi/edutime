@@ -1,0 +1,10 @@
+.menuControl {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border: 0;
+  border-left: 1px solid light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
+}
+
+.button {
+  /* Add any button styles if needed */
+}

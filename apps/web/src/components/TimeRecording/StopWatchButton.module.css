@@ -1,0 +1,14 @@
+.smallText {
+  font-size: var(--mantine-font-size-xs);
+}
+
+.normalText {
+  font-size: var(--mantine-font-size-sm);
+}
+
+.timerText {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  font-size: 0.85em;
+}

@@ -1,0 +1,41 @@
+.wrapper {
+  min-height: calc(100dvh - 60px);
+  margin: 0 auto;
+  max-width: 1200px;
+  width: 100%;
+  padding: 0 var(--mantine-spacing-md) var(--mantine-spacing-xl) var(--mantine-spacing-md);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--mantine-spacing-md);
+}
+
+@media (min-width: 768px) {
+  .wrapper {
+    padding: 0 var(--mantine-spacing-lg) var(--mantine-spacing-xl) var(--mantine-spacing-lg);
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--mantine-spacing-lg);
+    align-items: stretch;
+  }
+}
+
+.card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardContent {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+}
+
+.timetable {
+  max-height: 50%;
+  overflow: auto;
+}
+
+.fullWidthCard {
+  grid-column: 1 / -1;
+}

@@ -1,0 +1,201 @@
+---
+alwaysApply: true
+description: "Always use proper theming patterns. Use ThemedText and ThemedView components, useColorScheme hook, and Colors constants. Never hardcode colors. Support both light and dark modes consistently."
+---
+
+# Theming Rules for EduTime Native
+
+## 🚫 Never Do This
+```typescript
+// ❌ Hardcoded colors
+<Text style={{ color: '#000000' }}>Text</Text>
+<View style={{ backgroundColor: 'white' }}>Content</View>
+
+// ❌ Single theme only
+<Text style={{ color: 'black' }}>Always black</Text>
+
+// ❌ Inconsistent color usage
+<Text style={{ color: '#11181C' }}>Text</Text>  // Light theme color
+<Text style={{ color: '#ECEDEE' }}>Text</Text> // Dark theme color
+```
+
+## ✅ Always Do This
+```typescript
+// ✅ Use themed components
+import { ThemedText, ThemedView } from '@/components/ThemedText';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { Colors } from '@/constants/Colors';
+
+// For themed components
+<ThemedText>Automatically themed text</ThemedText>
+<ThemedView>Automatically themed view</ThemedView>
+
+// For custom styling
+const colorScheme = useColorScheme();
+const theme = Colors[colorScheme ?? 'light'];
+
+<Text style={{ color: theme.text }}>Themed text</Text>
+<View style={{ backgroundColor: theme.background }}>Themed view</View>
+```
+
+## 📁 Files to Always Touch for Theming
+
+### 1. **Core Theming Files**
+- `constants/Colors.ts` - Color definitions for light/dark modes
+- `hooks/useColorScheme.ts` - Color scheme detection
+- `hooks/useThemeColor.ts` - Theme color utility
+- `components/ThemedText.tsx` - Themed text component
+- `components/ThemedView.tsx` - Themed view component
+
+### 2. **Component Files** (When adding new UI elements)
+- `app/**/*.tsx` - All app screens
+- `components/**/*.tsx` - All components
+- `components/RecordForm/**/*.tsx` - Form components
+- `components/settings/**/*.tsx` - Settings components
+
+## 🎨 Color System Structure
+
+### Use the established color palette:
+```typescript
+// Primary colors (purple theme)
+Colors.light.primary[0-9]  // Light to dark purple
+Colors.dark.primary[0-9]   // Same purple in dark mode
+
+// Gray scale
+Colors.light.gray[0-9]     // Light to dark gray
+Colors.dark.gray[0-9]      // Same gray in dark mode
+
+// Semantic colors
+Colors.light.text          // Primary text color
+Colors.light.background    // Background color
+Colors.light.tint          // Accent color
+```
+
+### Color Usage Patterns:
+- **Primary**: `theme.primary[5]` for main actions
+- **Text**: `theme.text` for primary text
+- **Background**: `theme.background` for main backgrounds
+- **Gray**: `theme.gray[3]` for borders, `theme.gray[6]` for secondary text
+
+## 🔧 Implementation Patterns
+
+### 1. **Themed Components Pattern**
+```typescript
+import { ThemedText, ThemedView } from '@/components/ThemedText';
+
+// Use for most text and views
+<ThemedView style={styles.container}>
+  <ThemedText type="title">Title</ThemedText>
+  <ThemedText type="default">Regular text</ThemedText>
+</ThemedView>
+```
+
+### 2. **Custom Theming Pattern**
+```typescript
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { Colors } from '@/constants/Colors';
+
+export default function MyComponent() {
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme ?? 'light'];
+  
+  return (
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <Text style={[styles.text, { color: theme.text }]}>Content</Text>
+    </View>
+  );
+}
+```
+
+### 3. **Gluestack UI Theming**
+```typescript
+// Use Gluestack UI components with proper theming
+import { Button, ButtonText, VStack } from '@gluestack-ui/themed';
+
+// Gluestack components automatically handle theming
+<Button>
+  <ButtonText>Button</ButtonText>
+</Button>
+```
+
+## 🎯 Common Theming Patterns
+
+### Already established in your codebase:
+- **Text Colors**: Use `theme.text` for primary text
+- **Backgrounds**: Use `theme.background` for main backgrounds
+- **Primary Actions**: Use `theme.primary[5]` for buttons
+- **Borders**: Use `theme.gray[3]` for subtle borders
+- **Secondary Text**: Use `theme.gray[6]` for muted text
+
+### Examples from your existing code:
+```typescript
+// From RecordList.tsx
+backgroundColor: colorScheme === 'light' ? 'white' : '#1A1B1E'
+
+// From StopWatchButton.tsx
+const theme = Colors[colorScheme ?? "light"];
+
+// From index.tsx
+accentColor={Colors[colorScheme ?? 'light'].primary[6]}
+```
+
+## ⚠️ Critical Rules
+
+1. **Never hardcode colors** - Always use theme system
+2. **Support both modes** - Light and dark mode compatibility
+3. **Use semantic colors** - `theme.text`, `theme.background`, etc.
+4. **Consistent patterns** - Follow established color usage
+5. **Test both themes** - Verify light and dark mode appearance
+
+## 🔍 Files That Need Theming Attention
+
+Based on your codebase, these files commonly need theming updates:
+- `app/(app)/index.tsx` - Main timesheet screen
+- `app/(app)/settings.tsx` - Settings screen
+- `app/(auth)/login.tsx` - Login screen
+- `components/RecordForm/RecordForm.tsx` - Record form
+- `components/StopWatchButton.tsx` - Timer button
+- `components/RecordList.tsx` - Record list
+- `components/settings/*.tsx` - All settings components
+
+## 🚀 Quick Checklist
+
+When adding new UI elements:
+- [ ] Use `ThemedText` and `ThemedView` when possible
+- [ ] Import `useColorScheme` and `Colors` for custom styling
+- [ ] Test in both light and dark modes
+- [ ] Use semantic color names (`theme.text`, `theme.background`)
+- [ ] Follow established color patterns
+- [ ] Avoid hardcoded color values
+
+## 🎨 Color Reference
+
+### Light Mode Colors:
+- **Text**: `#11181C` (dark gray)
+- **Background**: `#fff` (white)
+- **Primary**: `#845ef7` (purple)
+- **Gray Scale**: `#f8f9fa` to `#212529`
+
+### Dark Mode Colors:
+- **Text**: `#ECEDEE` (light gray)
+- **Background**: `#151718` (dark)
+- **Primary**: `#845ef7` (same purple)
+- **Gray Scale**: Same as light mode
+
+### Usage Examples:
+```typescript
+// Primary text
+color: theme.text
+
+// Background
+backgroundColor: theme.background
+
+// Primary button
+backgroundColor: theme.primary[5]
+
+// Border
+borderColor: theme.gray[3]
+
+// Secondary text
+color: theme.gray[6]
+```

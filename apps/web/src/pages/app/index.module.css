@@ -1,0 +1,12 @@
+.wrapper {
+  background-color: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-8));
+  min-height: 100vh;
+  margin: 0;
+}
+
+.contentCentered {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}

@@ -1,0 +1,67 @@
+.wrapper {
+  position: relative;
+  box-sizing: border-box;
+  background-color: var(--mantine-color-body);
+  align-items: center;
+  justify-content: center;
+  display: flex;
+}
+
+.inner {
+  padding-top: 50px;
+  padding-bottom: 50px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.title {
+  font-family: var(--mantine-font-family);
+  font-size: 42px;
+  font-weight: 900;
+  line-height: 1.1;
+  margin: 0;
+  padding: 0;
+  color: var(--mantine-color-text);
+}
+
+.description {
+  margin-top: var(--mantine-spacing-xl);
+  font-size: 18px;
+  color: var(--mantine-color-text);
+}
+
+.content {
+  margin-top: var(--mantine-spacing-xl);
+  width: 100%;
+  max-width: 800px;
+}
+
+.section {
+  margin-bottom: var(--mantine-spacing-xl);
+}
+
+.sectionTitle {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: var(--mantine-spacing-md);
+  color: var(--mantine-color-text);
+}
+
+.sectionContent {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--mantine-color-text);
+}
+
+.list {
+  margin-top: var(--mantine-spacing-sm);
+  padding-left: var(--mantine-spacing-lg);
+}
+
+.listItem {
+  margin-bottom: var(--mantine-spacing-xs);
+  color: var(--mantine-color-text);
+}

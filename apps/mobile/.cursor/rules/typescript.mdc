@@ -1,0 +1,285 @@
+---
+alwaysApply: true
+description: "Always use TypeScript best practices. Define proper interfaces, use strict typing, avoid 'any' types, and maintain type safety throughout the codebase."
+---
+
+# TypeScript Rules for EduTime Native
+
+## 🚫 Never Do This
+```typescript
+// ❌ Using 'any' type
+const data: any = fetchData();
+const handlePress = (event: any) => {};
+
+// ❌ Missing type definitions
+function processUser(user) {
+  return user.name;
+}
+
+// ❌ Loose typing
+const styles = {
+  container: { flex: 1 }
+};
+
+// ❌ Untyped props
+interface ComponentProps {
+  onPress: () => void;
+  data: any; // ❌ Too loose
+}
+```
+
+## ✅ Always Do This
+```typescript
+// ✅ Proper type definitions
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+const data: User[] = fetchData();
+
+// ✅ Typed event handlers
+const handlePress = (event: GestureResponderEvent) => {};
+
+// ✅ Typed styles
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  }
+});
+
+// ✅ Specific prop types
+interface ComponentProps {
+  onPress: () => void;
+  data: User | null;
+  isLoading?: boolean;
+}
+```
+
+## 📁 Files to Always Touch for TypeScript
+
+### 1. **Type Definition Files**
+- `lib/types.ts` - Custom type definitions
+- `database.types.ts` - Generated Supabase types
+- `components/**/*.tsx` - Component prop interfaces
+- `hooks/**/*.ts` - Hook return types
+
+### 2. **Component Files** (When adding new features)
+- `app/**/*.tsx` - Screen prop types
+- `components/**/*.tsx` - Component interfaces
+- `contexts/**/*.tsx` - Context type definitions
+
+## 🏗️ TypeScript Patterns
+
+### 1. **Database Types First**
+```typescript
+// ✅ ALWAYS use database types when available
+import { Database } from '@/database.types';
+
+// Use generated Supabase types
+type TimeRecord = Database['public']['Tables']['records']['Row'];
+type CreateTimeRecord = Database['public']['Tables']['records']['Insert'];
+type UpdateTimeRecord = Database['public']['Tables']['records']['Update'];
+
+// ✅ Only create custom types when database types don't exist
+interface CustomComponentProps {
+  onPress: () => void;
+  isLoading?: boolean;
+}
+
+// ✅ Use type aliases for unions and primitives
+type Theme = 'light' | 'dark';
+type ButtonVariant = 'solid' | 'outline' | 'link';
+```
+
+### 2. **Component Props with Database Types**
+```typescript
+// ✅ Use database types in component props
+import { Database } from '@/database.types';
+
+type TimeRecord = Database['public']['Tables']['records']['Row'];
+type CreateTimeRecord = Database['public']['Tables']['records']['Insert'];
+
+interface RecordFormProps {
+  record?: TimeRecord; // Use database Row type
+  onSave: (record: CreateTimeRecord) => void; // Use database Insert type
+  onCancel: () => void;
+  isLoading?: boolean;
+}
+
+export const RecordForm: React.FC<RecordFormProps> = ({
+  record,
+  onSave,
+  onCancel,
+  isLoading = false
+}) => {
+  // Component implementation
+};
+```
+
+### 3. **Hook Return Types with Database Types**
+```typescript
+// ✅ Use database types in hook returns
+import { Database } from '@/database.types';
+
+type User = Database['public']['Tables']['users']['Row'];
+
+interface UseUserReturn {
+  user: User | null; // Use database Row type
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+}
+
+export const useUser = (): UseUserReturn => {
+  // Hook implementation
+};
+```
+
+### 4. **API Response Types with Database Types**
+```typescript
+// ✅ Use database types in API responses
+import { Database } from '@/database.types';
+
+type TimeRecord = Database['public']['Tables']['records']['Row'];
+
+interface ApiResponse<T> {
+  data: T;
+  error: string | null;
+  loading: boolean;
+}
+
+interface RecordsResponse {
+  records: TimeRecord[]; // Use database Row type
+  total: number;
+  hasMore: boolean;
+}
+```
+
+## 🎯 Common TypeScript Patterns
+
+### 1. **Generic Types**
+```typescript
+// ✅ Use generics for reusable types
+interface ApiHook<T> {
+  data: T | null;
+  loading: boolean;
+  error: string | null;
+  refetch: () => void;
+}
+
+// Usage
+const { data: records, loading } = useApi<TimeRecord[]>('/records');
+```
+
+### 2. **Utility Types with Database Types**
+```typescript
+// ✅ Use utility types with database types
+import { Database } from '@/database.types';
+
+type TimeRecord = Database['public']['Tables']['records']['Row'];
+type CreateTimeRecord = Database['public']['Tables']['records']['Insert'];
+type UpdateTimeRecord = Database['public']['Tables']['records']['Update'];
+
+// ✅ Use database Insert/Update types instead of utility types
+type CreateRecord = CreateTimeRecord; // Use database Insert type
+type UpdateRecord = UpdateTimeRecord; // Use database Update type
+
+// ✅ Only use utility types for custom transformations
+type RecordFormData = Pick<TimeRecord, 'date' | 'duration' | 'description'>;
+```
+
+### 3. **Enum Alternatives**
+```typescript
+// ✅ Use const assertions instead of enums
+const THEME = {
+  LIGHT: 'light',
+  DARK: 'dark'
+} as const;
+
+type Theme = typeof THEME[keyof typeof THEME];
+```
+
+## 🔧 Implementation Guidelines
+
+### 1. **Strict Type Checking**
+```typescript
+// ✅ Enable strict mode in tsconfig.json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true
+  }
+}
+```
+
+### 2. **Type Guards**
+```typescript
+// ✅ Use type guards for runtime type checking
+function isTimeRecord(obj: any): obj is TimeRecord {
+  return obj && 
+    typeof obj.id === 'number' &&
+    typeof obj.date === 'string' &&
+    typeof obj.duration === 'number';
+}
+```
+
+### 3. **Error Handling Types**
+```typescript
+// ✅ Type error states
+interface ErrorState {
+  message: string;
+  code?: string;
+  field?: string;
+}
+
+type Result<T> = 
+  | { success: true; data: T }
+  | { success: false; error: ErrorState };
+```
+
+## ⚠️ Critical Rules
+
+1. **Database types first** - Always use `Database['public']['Tables']['table']['Row']` when available
+2. **Never use 'any'** - Use proper types or 'unknown'
+3. **Use database Insert/Update types** - Don't create custom types for CRUD operations
+4. **Define custom interfaces only when needed** - For component props, UI state, etc.
+5. **Use strict mode** - Enable all strict TypeScript options
+6. **Type all props** - Every component should have typed props
+7. **Type all hooks** - Define return types for custom hooks
+8. **Use generics** - For reusable type patterns
+
+## 🔍 Files That Need TypeScript Attention
+
+Based on your codebase, these files commonly need type improvements:
+- `components/RecordForm/RecordForm.tsx` - Form prop types
+- `components/RecordList.tsx` - List item types
+- `hooks/useRecordsQuery.ts` - Hook return types
+- `contexts/UserContext.tsx` - Context type definitions
+- `lib/database/*.ts` - Database function types
+
+## 🚀 Quick Checklist
+
+When adding new code:
+- [ ] **Check database types first** - Use `Database['public']['Tables']['table']['Row']` when available
+- [ ] **Use database Insert/Update types** - For CRUD operations
+- [ ] **Define custom interfaces only when needed** - For component props, UI state
+- [ ] Type all component props
+- [ ] Type all function parameters and returns
+- [ ] Use generics for reusable patterns
+- [ ] Avoid 'any' type
+- [ ] Use utility types for custom transformations only
+- [ ] Add type guards for runtime checks
+- [ ] Enable strict TypeScript options
+
+## 📊 TypeScript Quality Score
+
+**Current Status: 8/10**
+- ✅ Good use of interfaces in most places
+- ✅ Proper component prop typing
+- ✅ Good database type integration
+- ⚠️ Some 'any' types that could be improved
+- ⚠️ Missing some hook return types
+- ⚠️ Could benefit from more utility types

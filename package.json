@@ -1,0 +1,24 @@
+{
+  "name": "edutime",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "postinstall": "patch-package",
+    "dev:web": "npm run dev -w @edutime/web",
+    "dev:mobile": "npm run start -w @edutime/mobile",
+    "build:web": "npm run build -w @edutime/web",
+    "build:shared": "npm run build -w @edutime/shared",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "tsc --noEmit --workspaces"
+  },
+  "devDependencies": {
+    "patch-package": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

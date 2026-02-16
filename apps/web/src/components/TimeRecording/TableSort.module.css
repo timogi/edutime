@@ -1,0 +1,194 @@
+.th {
+  padding: 0;
+}
+
+.control {
+  width: 100%;
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-md);
+  color: var(--mantine-color-text);
+}
+
+.control:hover {
+  background-color: var(--mantine-color-gray-0);
+}
+
+[data-mantine-color-scheme='dark'] .control:hover {
+  background-color: var(--mantine-color-dark-6);
+}
+
+.icon {
+  width: 21px;
+  height: 21px;
+  border-radius: 21px;
+}
+
+.tableCard {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.scrollArea {
+  flex: 1 1 0;
+  min-height: 200px;
+  max-height: calc(100vh - 350px);
+  height: 100%;
+  width: 100%;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  background-color: var(--mantine-color-white);
+  transition: box-shadow 150ms ease;
+  z-index: 1;
+}
+
+[data-mantine-color-scheme='dark'] .header {
+  background-color: var(--mantine-color-dark-7);
+}
+
+.header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-bottom: 1px solid var(--mantine-color-gray-2);
+}
+
+[data-mantine-color-scheme='dark'] .header::after {
+  border-bottom-color: var(--mantine-color-dark-3);
+}
+
+.scrolled {
+  box-shadow: var(--mantine-shadow-sm);
+}
+
+.smallText {
+  font-size: var(--mantine-font-size-xs);
+  color: var(--mantine-color-text);
+}
+
+.normalText {
+  font-size: var(--mantine-font-size-sm);
+  color: var(--mantine-color-text);
+}
+
+.flexContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Responsive table adjustments */
+@media (max-width: 768px) {
+  .scrollArea {
+    min-height: 180px;
+    max-height: calc(100vh - 400px);
+  }
+
+  .control {
+    padding: var(--mantine-spacing-xs);
+  }
+
+  .smallText {
+    font-size: 10px;
+  }
+
+  .normalText {
+    font-size: 10px;
+  }
+}
+
+.categoryCell {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+}
+
+.descriptionText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+@media (max-width: 768px) {
+  .descriptionText {
+    max-width: 100px;
+  }
+}
+
+.clickableRow {
+  cursor: pointer;
+}
+
+.clickableRow:hover {
+  background-color: var(--mantine-color-gray-0);
+}
+
+[data-mantine-color-scheme='dark'] .clickableRow:hover {
+  background-color: var(--mantine-color-dark-6);
+}
+
+/* Striped rows for dark mode (light mode uses Mantine's default striped prop) */
+[data-mantine-color-scheme='dark'] .tableCard :global(.mantine-Table-tbody tr:nth-of-type(even)) {
+  background-color: var(--mantine-color-dark-8);
+}
+
+/* Enhanced hover effect for both modes - darker than striped background */
+.tableCard :global(.mantine-Table-tbody tr:hover) {
+  background-color: var(--mantine-color-gray-1) !important;
+}
+
+[data-mantine-color-scheme='dark'] .tableCard :global(.mantine-Table-tbody tr:hover) {
+  background-color: var(--mantine-color-dark-5) !important;
+}
+
+.tableContainer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  border-radius: var(--mantine-radius-md);
+  overflow: hidden;
+}
+
+.noRecordsOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--mantine-color-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border-radius: var(--mantine-radius-md);
+}
+
+[data-mantine-color-scheme='dark'] .noRecordsOverlay {
+  background: var(--mantine-color-dark-7);
+}
+
+.noRecordsText {
+  font-size: var(--mantine-font-size-md);
+  font-weight: 500;
+  color: var(--mantine-color-gray-6);
+}
+
+[data-mantine-color-scheme='dark'] .noRecordsText {
+  color: var(--mantine-color-gray-4);
+}
+
+@media (max-width: 768px) {
+  .noRecordsText {
+    font-size: var(--mantine-font-size-sm);
+  }
+}

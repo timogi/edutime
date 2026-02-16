@@ -1,0 +1,25 @@
+.wrapper {
+  padding: 80px 0;
+  background: var(--mantine-color-body);
+}
+
+.inner {
+  position: relative;
+}
+
+.card {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--mantine-shadow-md);
+}
+
+@media (max-width: 768px) {
+  .wrapper {
+    padding: 60px 0;
+  }
+}

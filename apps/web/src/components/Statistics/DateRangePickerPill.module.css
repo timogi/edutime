@@ -1,0 +1,87 @@
+.dateRangePickerCard {
+  display: inline-flex;
+  margin: 0 auto;
+  overflow: hidden;
+  min-height: 42px;
+  height: 42px;
+}
+
+.dateRangePickerGroup {
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
+}
+
+.dateRangePickerArrow {
+  border-radius: 0 !important;
+  min-width: 44px;
+  padding: 0;
+  aspect-ratio: 1;
+}
+
+.dateRangePickerGroup > .dateRangePickerArrow:first-child {
+  border-top-left-radius: var(--mantine-radius-xl) !important;
+  border-bottom-left-radius: var(--mantine-radius-xl) !important;
+}
+
+.dateRangePickerGroup > .dateRangePickerArrow:last-child {
+  border-top-right-radius: var(--mantine-radius-xl) !important;
+  border-bottom-right-radius: var(--mantine-radius-xl) !important;
+}
+
+.dateRangePickerInput {
+  flex: 1;
+  min-width: 150px;
+}
+
+.dateRangePickerInput button,
+.dateRangePickerInput input {
+  border-left: none !important;
+  border-right: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  text-align: center !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.dateRangePickerInput button:focus,
+.dateRangePickerInput input:focus,
+.dateRangePickerInput:focus-within button,
+.dateRangePickerInput:focus-within input {
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.dateRangePickerInput button:focus-visible,
+.dateRangePickerInput input:focus-visible {
+  box-shadow: none !important;
+  outline: 2px solid var(--mantine-color-violet-6) !important;
+  outline-offset: -2px !important;
+}
+
+.dateRangePickerInput:focus-within {
+  box-shadow: none !important;
+}
+
+.dateRangePickerInput button:hover,
+.dateRangePickerInput input:hover {
+  background-color: var(--mantine-color-gray-0) !important;
+}
+
+[data-mantine-color-scheme='dark'] .dateRangePickerInput button:hover,
+[data-mantine-color-scheme='dark'] .dateRangePickerInput input:hover {
+  background-color: var(--mantine-color-dark-6) !important;
+}
+
+.dateSeparator {
+  padding: 0 var(--mantine-spacing-xs);
+  color: var(--mantine-color-dimmed);
+  display: flex;
+  align-items: center;
+  font-size: var(--mantine-font-size-md);
+}

@@ -1,0 +1,63 @@
+.dropzone {
+  border-width: 1px;
+  padding-bottom: 50px;
+}
+
+.control {
+  position: absolute;
+  width: 250px;
+  left: calc(50% - 125px);
+  bottom: -20px;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  background-color: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
+  transition: box-shadow 150ms ease;
+}
+
+.header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-bottom: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-3));
+}
+
+.scrolled {
+  box-shadow: var(--mantine-shadow-sm);
+}
+
+.table {
+  width: 100%;
+}
+
+.columnStyles th:nth-of-type(1) {
+  width: 5%;
+}
+
+.columnStyles th:nth-of-type(2) {
+  width: 20%;
+}
+
+.columnStyles th:nth-of-type(3) {
+  width: 15%;
+}
+
+.columnStyles th:nth-of-type(4) {
+  width: 25%;
+}
+
+.columnStyles th:nth-of-type(5) {
+  width: 35%;
+}
+
+.smallText {
+  font-size: var(--mantine-font-size-xs);
+}
+
+.normalText {
+  font-size: var(--mantine-font-size-md);
+}

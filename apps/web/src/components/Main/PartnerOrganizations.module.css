@@ -1,0 +1,98 @@
+.wrapper {
+  padding: 80px 0;
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-8));
+}
+
+.inner {
+  position: relative;
+}
+
+.partnerCard {
+  padding: 2rem;
+  background: transparent;
+  border-radius: var(--mantine-radius-md);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  min-width: 200px;
+  transition: transform 0.2s ease;
+}
+
+.partnerCard:hover {
+  transform: translateY(-4px);
+}
+
+.logo {
+  max-width: 250px;
+  max-height: 100px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  filter: brightness(1);
+}
+
+/* Spezielle Behandlung für Bildung Bern (schwarzer Hintergrund) */
+.partnerCardBlack {
+  padding: 2rem;
+  background: transparent;
+  border-radius: var(--mantine-radius-md);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  min-width: 200px;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.partnerCardBlack:hover {
+  transform: translateY(-4px);
+}
+
+/* Spezielle Behandlung für Bildung Aargau (weißer Hintergrund) */
+.partnerCardWhite {
+  padding: 2rem;
+  background: transparent;
+  border-radius: var(--mantine-radius-md);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  min-width: 200px;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.partnerCardWhite:hover {
+  transform: translateY(-4px);
+}
+
+/* Spezielle Behandlung für Bildung St. Gallen (weißer Hintergrund im Dark Mode) */
+.partnerCardStGallen {
+  padding: 2rem;
+  background: transparent;
+  border-radius: var(--mantine-radius-md);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  min-width: 200px;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+[data-mantine-color-scheme='dark'] .partnerCardStGallen {
+  background: var(--mantine-color-white);
+}
+
+.partnerCardStGallen:hover {
+  transform: translateY(-4px);
+}

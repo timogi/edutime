@@ -1,0 +1,38 @@
+.link {
+  text-decoration: none;
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-gray-5));
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 24px;
+  transition: color 100ms ease;
+}
+
+.link:hover {
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-gray-4));
+}
+
+.inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--mantine-spacing-xl);
+  padding-bottom: var(--mantine-spacing-xl);
+  background-color: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
+}
+
+@media (max-width: 575px) {
+  .inner {
+    flex-direction: column;
+  }
+}
+
+.links {
+  display: flex;
+  gap: var(--mantine-spacing-md);
+}
+
+@media (max-width: 575px) {
+  .links {
+    margin-top: var(--mantine-spacing-md);
+  }
+}

@@ -1,0 +1,164 @@
+.wrapper {
+  height: calc(100dvh - 60px); /* HEADER_HEIGHT */
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-8));
+  padding: var(--mantine-spacing-sm);
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  width: 100%;
+  min-height: 0;
+}
+
+.mainCard {
+  background: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
+  border-radius: var(--mantine-radius-lg);
+  box-shadow: light-dark(var(--mantine-shadow-lg), var(--mantine-shadow-xl));
+  border: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-4));
+  width: 100%;
+  max-width: var(--mantine-breakpoint-xl);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.cardContent {
+  padding: var(--mantine-spacing-md);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+  min-height: 0;
+}
+
+.datePickerCard {
+  display: inline-flex;
+  margin: 0 auto;
+  overflow: hidden;
+  min-height: 42px;
+  height: 42px;
+}
+
+.datePickerGroup {
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
+}
+
+.datePickerArrow {
+  border-radius: 0 !important;
+  min-width: 44px;
+  padding: 0;
+  aspect-ratio: 1;
+}
+
+.datePickerGroup > .datePickerArrow:first-child {
+  border-top-left-radius: var(--mantine-radius-xl) !important;
+  border-bottom-left-radius: var(--mantine-radius-xl) !important;
+}
+
+.datePickerGroup > .datePickerArrow:last-child {
+  border-top-right-radius: var(--mantine-radius-xl) !important;
+  border-bottom-right-radius: var(--mantine-radius-xl) !important;
+}
+
+.datePickerInput {
+  flex: 1;
+  min-width: 200px;
+}
+
+.datePickerInput button,
+.datePickerInput input {
+  border-left: none !important;
+  border-right: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  text-align: center !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.datePickerInput button:focus,
+.datePickerInput input:focus,
+.datePickerInput:focus-within button,
+.datePickerInput:focus-within input {
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.datePickerInput button:focus-visible,
+.datePickerInput input:focus-visible {
+  box-shadow: none !important;
+  outline: 2px solid var(--mantine-color-violet-6) !important;
+  outline-offset: -2px !important;
+}
+
+/* Verhindere, dass der Wrapper beim Focus die Höhe ändert */
+.datePickerInput:focus-within {
+  box-shadow: none !important;
+}
+
+.datePickerInput button:hover,
+.datePickerInput input:hover {
+  background-color: var(--mantine-color-gray-0) !important;
+}
+
+[data-mantine-color-scheme='dark'] .datePickerInput button:hover,
+[data-mantine-color-scheme='dark'] .datePickerInput input:hover {
+  background-color: var(--mantine-color-dark-6) !important;
+}
+
+.tableContainer {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--mantine-radius-md);
+  border: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-4));
+}
+
+.actionButtons {
+  display: flex;
+  gap: var(--mantine-spacing-sm);
+  justify-content: flex-end;
+  margin-top: var(--mantine-spacing-xs);
+}
+
+.smallText {
+  font-size: var(--mantine-font-size-xs);
+}
+
+.normalText {
+  font-size: var(--mantine-font-size-md);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .mainCard {
+    margin: var(--mantine-spacing-xs);
+    max-width: calc(100vw - var(--mantine-spacing-md));
+  }
+
+  .cardContent {
+    padding: var(--mantine-spacing-sm);
+    gap: var(--mantine-spacing-sm);
+  }
+
+  .actionButtons {
+    justify-content: space-between;
+    margin-top: var(--mantine-spacing-xs);
+  }
+}

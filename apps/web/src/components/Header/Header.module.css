@@ -1,0 +1,22 @@
+.header {
+  height: 60px;
+  padding: var(--mantine-spacing-md);
+  border-bottom: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logoGroup {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  min-width: fit-content;
+}
+
+.rightGroup {
+  display: flex;
+  align-items: center;
+}

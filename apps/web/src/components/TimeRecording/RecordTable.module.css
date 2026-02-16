@@ -1,0 +1,57 @@
+.scrollArea {
+  flex-grow: 1;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  background-color: light-dark(var(--mantine-color-white), var(--mantine-color-dark-6));
+  transition: box-shadow 150ms ease;
+  z-index: 1;
+}
+
+.header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-bottom: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-3));
+}
+
+.scrolled {
+  box-shadow: var(--mantine-shadow-sm);
+}
+
+.columnStyles th:nth-of-type(1) {
+  width: 5%;
+}
+
+.columnStyles th:nth-of-type(2) {
+  width: 5%;
+}
+
+.columnStyles th:nth-of-type(3) {
+  width: 5%;
+}
+
+.columnStyles th:nth-of-type(4) {
+  width: 30%;
+}
+
+.columnStyles th:nth-of-type(5) {
+  width: 55%;
+}
+
+.smallText {
+  font-size: var(--mantine-font-size-xs);
+}
+
+.normalText {
+  font-size: var(--mantine-font-size-sm);
+}
+
+.flexContainer {
+  display: flex;
+  flex-direction: column;
+}

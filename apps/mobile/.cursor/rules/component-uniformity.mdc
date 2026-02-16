@@ -1,0 +1,302 @@
+---
+alwaysApply: true
+description: "Always create reusable, consistent UI components. Build generic components for common patterns (buttons, text, inputs, cards) and reuse them throughout the app. Follow established design system patterns and avoid duplicating styles."
+---
+
+# Component Uniformity Rules for EduTime Native
+
+## 🚫 Never Do This
+```typescript
+// ❌ Duplicating button styles across components
+const styles = StyleSheet.create({
+  button: {
+    backgroundColor: '#845ef7',
+    padding: 16,
+    borderRadius: 8,
+    // ... repeated in every component
+  }
+});
+
+// ❌ Inconsistent text styling
+<Text style={{ fontSize: 16, fontWeight: 'bold' }}>Title</Text>
+<Text style={{ fontSize: 18, fontWeight: '600' }}>Another Title</Text>
+
+// ❌ Hardcoded spacing and colors
+<View style={{ padding: 20, backgroundColor: 'white', borderRadius: 12 }}>
+```
+
+## ✅ Always Do This
+```typescript
+// ✅ Use reusable components
+import { ButtonWithLoading } from '@/components/ui/ButtonWithLoading';
+import { ThemedText } from '@/components/ThemedText';
+import { Card } from '@gluestack-ui/themed';
+
+// ✅ Use design system constants
+import { TextStyles, Spacing, BorderRadius, Colors } from '@/constants/Styles';
+
+<ButtonWithLoading variant="solid" size="md" onPress={handlePress}>
+  Save Changes
+</ButtonWithLoading>
+
+<ThemedText type="title">Consistent Title</ThemedText>
+<ThemedText type="default">Consistent Body Text</ThemedText>
+```
+
+## 📁 Files to Always Touch for Component Uniformity
+
+### 1. **Design System Files**
+- `constants/Styles.ts` - Central design system constants
+- `constants/Colors.ts` - Color definitions
+- `components/ThemedText.tsx` - Themed text component
+- `components/ThemedView.tsx` - Themed view component
+
+### 2. **Reusable UI Components**
+- `components/ui/ButtonWithLoading.tsx` - Loading button component
+- `components/ui/IconSymbol.tsx` - Icon component
+- `components/ui/TabBarBackground.tsx` - Tab styling
+
+### 3. **Component Files** (When building new features)
+- `components/**/*.tsx` - All components should use design system
+- `app/**/*.tsx` - All screens should use reusable components
+
+## 🏗️ Component Architecture Patterns
+
+### 1. **Design System First**
+```typescript
+// ✅ Import design system constants
+import { TextStyles, Spacing, BorderRadius, Colors } from '@/constants/Styles';
+import { useColorScheme } from '@/hooks/useColorScheme';
+
+export default function MyComponent() {
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme ?? 'light'];
+  
+  return (
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <Text style={[TextStyles.title, { color: theme.text }]}>Title</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+  }
+});
+```
+
+### 2. **Reusable Component Pattern**
+```typescript
+// ✅ Create generic, reusable components
+interface PrimaryButtonProps {
+  onPress: () => void;
+  title: string;
+  isLoading?: boolean;
+  disabled?: boolean;
+  icon?: string;
+}
+
+export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
+  onPress,
+  title,
+  isLoading = false,
+  disabled = false,
+  icon
+}) => {
+  return (
+    <ButtonWithLoading
+      variant="solid"
+      size="md"
+      onPress={onPress}
+      isLoading={isLoading}
+      disabled={disabled}
+      iconName={icon}
+      style={ButtonStyles.primary}
+    >
+      {title}
+    </ButtonWithLoading>
+  );
+};
+```
+
+### 3. **Consistent Text Patterns**
+```typescript
+// ✅ Use ThemedText with consistent types
+<ThemedText type="title">Page Title</ThemedText>
+<ThemedText type="subtitle">Section Title</ThemedText>
+<ThemedText type="default">Body text</ThemedText>
+<ThemedText type="caption">Helper text</ThemedText>
+
+// ✅ For custom text, use design system
+<Text style={[TextStyles.body, { color: theme.text }]}>
+  Custom styled text
+</Text>
+```
+
+## 🎯 Common Component Patterns
+
+### 1. **Button Components**
+```typescript
+// ✅ Use ButtonWithLoading for all buttons
+<ButtonWithLoading
+  variant="solid"        // solid, outline, link
+  size="md"             // xs, sm, md, lg, xl
+  onPress={handlePress}
+  isLoading={loading}
+  iconName="save"
+>
+  Save
+</ButtonWithLoading>
+```
+
+### 2. **Card Components**
+```typescript
+// ✅ Use Gluestack Card with consistent styling
+<Card style={[CardStyles.container, { backgroundColor: theme.background }]}>
+  <ThemedText type="subtitle">Card Title</ThemedText>
+  <ThemedText type="default">Card content</ThemedText>
+</Card>
+```
+
+### 3. **Input Components**
+```typescript
+// ✅ Use consistent input styling
+<Input style={[InputStyles.container, { borderColor: theme.gray[4] }]}>
+  <InputField placeholder="Enter text" />
+</Input>
+```
+
+### 4. **Layout Components**
+```typescript
+// ✅ Use consistent layout patterns
+<VStack space="md" style={LayoutStyles.container}>
+  <HStack space="sm" style={LayoutStyles.row}>
+    <ThemedText type="label">Label:</ThemedText>
+    <ThemedText type="default">Value</ThemedText>
+  </HStack>
+</VStack>
+```
+
+## 🎨 Design System Usage
+
+### 1. **Text Styles** (from `constants/Styles.ts`)
+```typescript
+TextStyles.title      // 24px, bold
+TextStyles.subtitle   // 18px, semibold
+TextStyles.body       // 16px, regular
+TextStyles.caption    // 14px, regular
+TextStyles.small      // 12px, regular
+TextStyles.label      // 14px, medium
+```
+
+### 2. **Spacing** (from `constants/Styles.ts`)
+```typescript
+Spacing.xs    // 4px
+Spacing.sm    // 8px
+Spacing.md    // 16px
+Spacing.lg    // 24px
+Spacing.xl    // 32px
+Spacing.xxl   // 48px
+```
+
+### 3. **Border Radius** (from `constants/Styles.ts`)
+```typescript
+BorderRadius.sm   // 4px
+BorderRadius.md   // 8px
+BorderRadius.lg   // 12px
+BorderRadius.xl   // 16px
+BorderRadius.xxl  // 24px
+```
+
+## 🔧 Implementation Guidelines
+
+### 1. **Component Hierarchy**
+```
+components/
+├── ui/                    # Reusable UI components
+│   ├── ButtonWithLoading.tsx
+│   ├── IconSymbol.tsx
+│   └── TabBarBackground.tsx
+├── ThemedText.tsx         # Themed text component
+├── ThemedView.tsx         # Themed view component
+└── [feature-components]/  # Feature-specific components
+```
+
+### 2. **Style Organization**
+```typescript
+// ✅ Organize styles by purpose
+const styles = StyleSheet.create({
+  // Layout styles
+  container: {
+    flex: 1,
+    padding: Spacing.md,
+  },
+  
+  // Component styles
+  button: {
+    ...ButtonStyles.primary,
+    marginTop: Spacing.sm,
+  },
+  
+  // Text styles
+  title: {
+    ...TextStyles.title,
+    marginBottom: Spacing.md,
+  },
+});
+```
+
+### 3. **Consistent Props Interface**
+```typescript
+// ✅ Use consistent prop patterns
+interface ComponentProps {
+  onPress?: () => void;
+  isLoading?: boolean;
+  disabled?: boolean;
+  variant?: 'primary' | 'secondary' | 'destructive';
+  size?: 'sm' | 'md' | 'lg';
+  style?: any;
+}
+```
+
+## ⚠️ Critical Rules
+
+1. **Never duplicate styles** - Use design system constants
+2. **Create reusable components** - Build once, use everywhere
+3. **Follow established patterns** - Use existing component interfaces
+4. **Consistent spacing** - Use `Spacing` constants
+5. **Consistent typography** - Use `TextStyles` or `ThemedText`
+6. **Test across themes** - Ensure light/dark mode compatibility
+
+## 🔍 Files That Need Uniformity Attention
+
+Based on your codebase, these files commonly need uniformity updates:
+- `components/RecordForm/RecordForm.tsx` - Form styling consistency
+- `components/RecordList.tsx` - List item styling
+- `components/WeekdayPicker.tsx` - Card styling consistency
+- `components/settings/*.tsx` - Input styling consistency
+- `app/(app)/index.tsx` - Button styling consistency
+
+## 🚀 Quick Checklist
+
+When creating new components:
+- [ ] Use design system constants (`TextStyles`, `Spacing`, `BorderRadius`)
+- [ ] Create reusable components for common patterns
+- [ ] Use `ThemedText` and `ThemedView` when possible
+- [ ] Follow established component interfaces
+- [ ] Test in both light and dark modes
+- [ ] Avoid duplicating existing styles
+- [ ] Use `ButtonWithLoading` for all buttons
+- [ ] Use Gluestack UI components when available
+
+## 📊 Component Reusability Score
+
+**Current Status: 7/10**
+- ✅ Good foundation with `constants/Styles.ts`
+- ✅ `ButtonWithLoading` component exists
+- ✅ `ThemedText` and `ThemedView` components
+- ⚠️ Some style duplication in components
+- ⚠️ Inconsistent button patterns
+- ⚠️ Missing some reusable input components

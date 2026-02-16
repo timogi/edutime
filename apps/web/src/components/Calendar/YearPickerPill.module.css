@@ -1,0 +1,87 @@
+.yearPickerCard {
+  display: inline-flex;
+  margin: 0 auto;
+  overflow: hidden;
+  min-height: 42px;
+  height: 42px;
+}
+
+.yearPickerGroup {
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
+}
+
+.yearPickerArrow {
+  border-radius: 0 !important;
+  min-width: 44px;
+  padding: 0;
+  aspect-ratio: 1;
+}
+
+.yearPickerGroup > .yearPickerArrow:first-child {
+  border-top-left-radius: var(--mantine-radius-xl) !important;
+  border-bottom-left-radius: var(--mantine-radius-xl) !important;
+}
+
+.yearPickerGroup > .yearPickerArrow:last-child {
+  border-top-right-radius: var(--mantine-radius-xl) !important;
+  border-bottom-right-radius: var(--mantine-radius-xl) !important;
+}
+
+.yearPickerInput {
+  flex: 1;
+  min-width: 120px;
+}
+
+.yearPickerInput button,
+.yearPickerInput input {
+  border-left: none !important;
+  border-right: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  text-align: center !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.yearPickerInput button:focus,
+.yearPickerInput input:focus,
+.yearPickerInput:focus-within button,
+.yearPickerInput:focus-within input {
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.yearPickerInput button:focus-visible,
+.yearPickerInput input:focus-visible {
+  box-shadow: none !important;
+  outline: 2px solid var(--mantine-color-violet-6) !important;
+  outline-offset: -2px !important;
+}
+
+.yearPickerInput:focus-within {
+  box-shadow: none !important;
+}
+
+.yearPickerInput button:hover,
+.yearPickerInput input:hover {
+  background-color: var(--mantine-color-gray-0) !important;
+}
+
+[data-mantine-color-scheme='dark'] .yearPickerInput button:hover,
+[data-mantine-color-scheme='dark'] .yearPickerInput input:hover {
+  background-color: var(--mantine-color-dark-6) !important;
+}
+
+.yearSeparator {
+  padding: 0 var(--mantine-spacing-xs);
+  color: var(--mantine-color-dimmed);
+  display: flex;
+  align-items: center;
+  font-size: var(--mantine-font-size-md);
+}

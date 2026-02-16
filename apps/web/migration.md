@@ -1,0 +1,4 @@
+- correct UID
+- migrate licenses
+- add new env variables
+- create new server
