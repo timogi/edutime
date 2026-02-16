@@ -10,13 +10,23 @@
     "postinstall": "patch-package",
     "dev:web": "npm run dev -w @edutime/web",
     "dev:mobile": "npm run start -w @edutime/mobile",
+    "dev:mobile:ios": "npm run ios -w @edutime/mobile",
+    "dev:mobile:android": "npm run android -w @edutime/mobile",
     "build:web": "npm run build -w @edutime/web",
     "build:shared": "npm run build -w @edutime/shared",
+    "build:mobile:ios": "cd apps/mobile && eas build --platform ios",
+    "build:mobile:android": "cd apps/mobile && eas build --platform android",
+    "build:mobile:all": "cd apps/mobile && eas build --platform all",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "tsc --noEmit --workspaces"
   },
   "devDependencies": {
     "patch-package": "^8.0.0"
+  },
+  "overrides": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "@types/react": "~19.1.10"
   },
   "engines": {
     "node": ">=20"
