@@ -1,25 +1,20 @@
 import React, { useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { StyleSheet, View, TouchableOpacity } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
 import { 
   Box, 
-  Button, 
-  ButtonText, 
   HStack, 
   VStack, 
   Text,
-  Pressable,
-  Input,
-  InputField
 } from '@gluestack-ui/themed';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
 import { de, en, fr } from 'date-fns/locale';
 import { Ionicons } from '@expo/vector-icons';
 import { HapticFeedback } from '@/lib/haptics';
-import { Spacing, TextStyles } from '@/constants/Styles';
+import { Spacing, TextStyles, BorderRadius } from '@/constants/Styles';
 
 interface DateRangePickerProps {
   startDate: Date;
@@ -44,10 +39,13 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'light'];
   
-  // Validate dates and provide fallbacks
+  // DateTimePicker must only be rendered when the user explicitly opens it.
+  // On Android it renders as a native modal dialog that opens immediately on mount.
+  // Never render it unconditionally — always gate on this state.
+  const [activePicker, setActivePicker] = useState<'start' | 'end' | null>(null);
+  
   const safeStartDate = startDate && !isNaN(startDate.getTime()) ? startDate : new Date();
   const safeEndDate = endDate && !isNaN(endDate.getTime()) ? endDate : new Date();
-  
 
   const getLocale = () => {
     switch (i18n.language) {
@@ -61,40 +59,35 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     return format(date, 'dd.MM.yyyy', { locale: getLocale() });
   };
 
-  const handleStartDateChange = (event: any, selectedDate?: Date) => {
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    const picker = activePicker;
+    setActivePicker(null);
+
     if (selectedDate) {
       HapticFeedback.light();
-      onStartDateChange(selectedDate);
-      if (onRangeChange) {
-        onRangeChange(selectedDate, safeEndDate);
+      if (picker === 'start') {
+        onStartDateChange(selectedDate);
+        if (onRangeChange) onRangeChange(selectedDate, safeEndDate);
+      } else if (picker === 'end') {
+        onEndDateChange(selectedDate);
+        if (onRangeChange) onRangeChange(safeStartDate, selectedDate);
       }
     }
   };
-
-  const handleEndDateChange = (event: any, selectedDate?: Date) => {
-    if (selectedDate) {
-      HapticFeedback.light();
-      onEndDateChange(selectedDate);
-      if (onRangeChange) {
-        onRangeChange(safeStartDate, selectedDate);
-      }
-    }
-  };
-
 
   if (compact) {
     return (
       <View style={[styles.compactContainer, style]}>
         <HStack space="lg" alignItems="center" justifyContent="space-between" style={styles.compactContent}>
           <VStack space="md" flex={1} alignItems="center">
-            <DateTimePicker
-              value={safeStartDate}
-              mode="date"
-              locale={i18n.language}
-              onChange={handleStartDateChange}
-              accentColor={theme.primary[6]}
-              style={styles.compactPicker}
-            />
+            <TouchableOpacity
+              style={styles.dateButton}
+              onPress={() => setActivePicker('start')}
+            >
+              <Text style={[styles.dateText, { color: theme.primary[6] }]}>
+                {formatDate(safeStartDate)}
+              </Text>
+            </TouchableOpacity>
           </VStack>
           
           <Ionicons 
@@ -105,16 +98,26 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           />
           
           <VStack space="md" flex={1} alignItems="center">
-            <DateTimePicker
-              value={safeEndDate}
-              mode="date"
-              locale={i18n.language}
-              onChange={handleEndDateChange}
-              accentColor={theme.primary[6]}
-              style={styles.compactPicker}
-            />
+            <TouchableOpacity
+              style={styles.dateButton}
+              onPress={() => setActivePicker('end')}
+            >
+              <Text style={[styles.dateText, { color: theme.primary[6] }]}>
+                {formatDate(safeEndDate)}
+              </Text>
+            </TouchableOpacity>
           </VStack>
         </HStack>
+
+        {activePicker && (
+          <DateTimePicker
+            value={activePicker === 'start' ? safeStartDate : safeEndDate}
+            mode="date"
+            locale={i18n.language}
+            onChange={handleDateChange}
+            accentColor={theme.primary[6]}
+          />
+        )}
       </View>
     );
   }
@@ -131,14 +134,14 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             <Text style={[styles.fieldLabel, { color: theme.gray[6] }]}>
               {t('Index.startDate')}
             </Text>
-                  <DateTimePicker
-                    value={safeStartDate}
-                    mode="date"
-                    locale={i18n.language}
-                    onChange={handleStartDateChange}
-                    accentColor={theme.primary[6]}
-                    style={styles.picker}
-                  />
+            <TouchableOpacity
+              style={styles.dateButton}
+              onPress={() => setActivePicker('start')}
+            >
+              <Text style={[styles.dateText, { color: theme.primary[6] }]}>
+                {formatDate(safeStartDate)}
+              </Text>
+            </TouchableOpacity>
           </VStack>
 
           <Ionicons 
@@ -152,16 +155,26 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             <Text style={[styles.fieldLabel, { color: theme.gray[6] }]}>
               {t('Index.endDate')}
             </Text>
-                  <DateTimePicker
-                    value={safeEndDate}
-                    mode="date"
-                    locale={i18n.language}
-                    onChange={handleEndDateChange}
-                    accentColor={theme.primary[6]}
-                    style={styles.picker}
-                  />
+            <TouchableOpacity
+              style={styles.dateButton}
+              onPress={() => setActivePicker('end')}
+            >
+              <Text style={[styles.dateText, { color: theme.primary[6] }]}>
+                {formatDate(safeEndDate)}
+              </Text>
+            </TouchableOpacity>
           </VStack>
         </HStack>
+
+        {activePicker && (
+          <DateTimePicker
+            value={activePicker === 'start' ? safeStartDate : safeEndDate}
+            mode="date"
+            locale={i18n.language}
+            onChange={handleDateChange}
+            accentColor={theme.primary[6]}
+          />
+        )}
       </VStack>
     </Box>
   );
@@ -189,12 +202,20 @@ const styles = StyleSheet.create({
     ...TextStyles.caption,
     fontWeight: '500',
   },
-  picker: {
-    alignSelf: 'center',
+  dateButton: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 40,
   },
-  compactPicker: {
-    alignSelf: 'center',
-    // Remove scale transform to make it full size like in index.tsx
+  dateText: {
+    ...TextStyles.body,
+    fontWeight: '500',
   },
   arrow: {
     marginHorizontal: Spacing.sm,
