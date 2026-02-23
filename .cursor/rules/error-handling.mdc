@@ -1,0 +1,59 @@
+---
+alwaysApply: true
+description: "Always handle errors. Use try-catch, user-friendly messages, error boundaries, and i18n for error text."
+---
+
+# Error Handling
+
+## Core Rules
+
+- **Never leave async operations without error handling**
+- **Never show raw error messages to users** — use friendly, i18n-translated text
+- **Always log errors** with context for debugging
+- **Use error boundaries** to prevent crashes
+
+## Pattern
+
+```typescript
+const handleAsyncOperation = async () => {
+  try {
+    setLoading(true);
+    const result = await apiCall();
+    // success feedback
+  } catch (error) {
+    console.error('Context:', error);
+    // user-friendly feedback
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+## Error Utilities
+
+```typescript
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  return 'An unexpected error occurred';
+};
+```
+
+## Mobile-Specific
+
+Use custom toast (not Gluestack toast — it's unreliable):
+
+```typescript
+import { showToast } from '@/components/ui/Toast';
+showToast({ type: 'error', title: 'Error', message: 'User-friendly message' });
+```
+
+## Mutation Error Handling
+
+```typescript
+useMutation({
+  mutationFn: deleteRecord,
+  onError: (error) => showToast({ type: 'error', title: t('Errors.deleteFailed'), message: getErrorMessage(error) }),
+  onSuccess: () => showToast({ type: 'success', title: t('Errors.deleted') }),
+});
+```

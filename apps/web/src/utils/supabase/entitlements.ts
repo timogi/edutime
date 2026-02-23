@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 import { supabase } from './client'
+import type { Database, Entitlement } from '@edutime/shared'
 
-// Create a separate client for license schema queries
-const licenseSupabase = createClient(
+const licenseSupabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   {
@@ -16,24 +16,6 @@ const licenseSupabase = createClient(
     },
   },
 )
-
-export type EntitlementKind = 'trial' | 'personal' | 'org_seat' | 'student'
-export type EntitlementSource = 'system' | 'payrexx' | 'eduid' | 'manual'
-export type EntitlementStatus = 'pending' | 'active' | 'revoked' | 'expired'
-
-export interface Entitlement {
-  id: string
-  user_id: string | null
-  organization_id: number | null
-  kind: EntitlementKind
-  source: EntitlementSource
-  status: EntitlementStatus
-  valid_from: string
-  valid_until: string | null
-  billing_subscription_id: string | null
-  created_at: string
-  updated_at: string
-}
 
 /**
  * Check if a user has an active entitlement

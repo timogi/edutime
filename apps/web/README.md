@@ -42,7 +42,7 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
 
 npx supabase login
-npx supabase gen types typescript --project-id "byxozdvpisjlxfsajmwv" --schema public,billing,license,legal > src/types/supabase.ts
+npx supabase gen types typescript --project-id "byxozdvpisjlxfsajmwv" --schema public,billing,license,legal > ../../packages/shared/src/database.types.ts
 
 ## format and lint
 

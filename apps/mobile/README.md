@@ -53,7 +53,7 @@ Join our community of developers creating universal apps.
 Update types:
 
 ```bash
-npx supabase gen types typescript --project-id "byxozdvpisjlxfsajmwv" --schema public > database.types.ts
+npx supabase gen types typescript --project-id "byxozdvpisjlxfsajmwv" --schema public,billing,license,legal > ../../packages/shared/src/database.types.ts
 ```
 
 Build:

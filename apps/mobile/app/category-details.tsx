@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
 import { Text } from '@gluestack-ui/themed';
-import { Database } from '@/database.types';
+import { Database } from '@edutime/shared';
 import { convertMinutesToHoursAndMinutes } from '@/lib/helpers';
 import { format } from 'date-fns';
 import { de, en, fr } from 'date-fns/locale';

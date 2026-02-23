@@ -1,0 +1,60 @@
+---
+alwaysApply: true
+description: "Strict TypeScript with Supabase database types. No 'any', type all props/hooks, database types first."
+---
+
+# TypeScript
+
+## Core Rules
+
+- **Never use `any`** — use proper types or `unknown`
+- **Database types first** — always use `Database['public']['Tables']['table']['Row' | 'Insert' | 'Update']` from `@edutime/shared` when available
+- **Shared types** — import shared types (e.g. `TimeRecord`, `UserData`, `Category`) from `@edutime/shared`
+- **Type all component props** with interfaces
+- **Type all hook return values**
+- **Use `const` assertions** instead of enums: `as const`
+- **Use strict mode** — `strict: true`, `noImplicitAny: true`, `strictNullChecks: true`
+
+## Supabase Type Patterns
+
+Generated types live in `packages/shared/src/database.types.ts`. Regenerate with:
+
+```bash
+npx supabase gen types typescript --project-id "byxozdvpisjlxfsajmwv" --schema public,billing,license,legal > packages/shared/src/database.types.ts
+```
+
+Import and use them from the shared package:
+
+```typescript
+import { Database } from '@edutime/shared';
+
+type TimeRecord = Database['public']['Tables']['records']['Row'];
+type CreateTimeRecord = Database['public']['Tables']['records']['Insert'];
+type UpdateTimeRecord = Database['public']['Tables']['records']['Update'];
+```
+
+Supabase clients must be typed with the `Database` generic:
+
+```typescript
+import { Database } from '@edutime/shared';
+createClient<Database>(url, key);
+```
+
+Only create custom interfaces for component props, UI state, or data not in the database.
+
+## Type Guards
+
+```typescript
+function isTimeRecord(obj: unknown): obj is TimeRecord {
+  return obj != null && typeof obj === 'object' &&
+    'id' in obj && 'date' in obj && 'duration' in obj;
+}
+```
+
+## Error Types
+
+```typescript
+type Result<T> =
+  | { success: true; data: T }
+  | { success: false; error: { message: string; code?: string } };
+```

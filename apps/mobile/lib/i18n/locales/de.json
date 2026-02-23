@@ -252,5 +252,13 @@
     "teacher_relief_one": "1 Lektion",
     "teacher_relief_one_half": "1 ½ Lektionen",
     "teacher_relief_two": "2 Lektionen"
+  },
+  "Legal": {
+    "title": "Rechtliche Dokumente",
+    "description": "Bitte akzeptiere die folgenden Dokumente, um EduTime weiter zu nutzen.",
+    "iAccept": "Ich akzeptiere die",
+    "acceptAndContinue": "Akzeptieren & Weiter",
+    "openDocument": "Dokument öffnen",
+    "cannotAccept": "Nicht akzeptierbar"
   }
 }

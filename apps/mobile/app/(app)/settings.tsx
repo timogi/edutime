@@ -14,7 +14,7 @@ import { updateUserData } from "@/lib/database/user";
 import { createUserCategory, updateUserCategory, deleteUserCategory } from "@/lib/database/user_categories";
 import { deleteAccount } from "@/lib/database/user";
 import { createUserCustomTarget, updateUserCustomTarget } from "@/lib/database/user_custom_targets";
-import { Database } from "@/database.types";
+import { Database } from "@edutime/shared";
 import { Spacing, LayoutStyles } from "@/constants/Styles";
 import { EmploymentCategory } from "@/lib/types";
 

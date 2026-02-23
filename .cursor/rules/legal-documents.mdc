@@ -1,0 +1,74 @@
+---
+alwaysApply: true
+description: "Legal document acceptance system. Users must accept current versions of legal docs (terms, privacy) before using the app. User scope only."
+---
+
+# Legal Documents
+
+## Scope
+
+**User scope only.** Organization-scoped acceptance is not implemented yet. Do not pass `p_organization_id` — always accept for the current user.
+
+## Key Concepts
+
+- Documents are identified by a stable **code**: `terms_of_use`, `privacy_policy`, `saas_agb`, `saas_single_contract`, `avv`
+- Each document has **versions**. The view `legal.current_versions` resolves the currently effective version.
+- **Acceptances** are stored in `legal.acceptances`, linked to a specific `document_version_id`.
+- The system is **idempotent** — calling accept repeatedly is safe (on conflict do nothing).
+
+## Supabase RPCs
+
+### Check missing documents
+
+```typescript
+const { data } = await supabase.rpc('legal_missing_documents', {
+  p_context: 'app', // 'app' | 'checkout_individual' | 'checkout_org'
+});
+```
+
+Returns array of:
+```typescript
+{ code: string; title: string; version_label: string; can_accept: boolean; document_version_id: number; scope: string }
+```
+
+Empty array = user is compliant, can continue.
+
+### Accept a document
+
+```typescript
+await supabase.rpc('legal_accept_document', {
+  p_code: 'terms_of_use',       // document code
+  p_source: 'web',              // 'web' | 'ios' | 'android' | 'register' | 'checkout'
+  // p_organization_id: omit    // user scope only for now
+});
+```
+
+## Client-Side Flow
+
+1. **Check** — call `legal_missing_documents` with the relevant context (`app` for normal usage)
+2. **Show** — if docs are missing, render them with an accept action. If `can_accept = false`, disable and instruct user.
+3. **Accept** — call `legal_accept_document` for each accepted document
+4. **Re-check** — always re-check after acceptance to update UI state
+
+## Document Routes (Web)
+
+| Code | Route |
+|---|---|
+| `privacy_policy` | `/docs/privacy` |
+| `terms_of_use` | `/docs/terms` |
+| `saas_agb` | `/docs/agb` |
+
+## Errors to Handle
+
+| Error | Meaning |
+|---|---|
+| `not_authenticated` | User must be logged in |
+| `unknown_document_code` | Invalid document code sent |
+| `not_org_admin` | User tried org-scoped acceptance without admin rights |
+
+## Web Implementation
+
+- `LegalGate` component wraps the app shell — blocks access until `terms_of_use` + `privacy_policy` are accepted for context `app`
+- `CheckoutLegalGate` component blocks checkout flows — accepts all required docs for `checkout_individual` context
+- Both call `legal_missing_documents` RPC, render checkboxes/buttons, then call `legal_accept_document` per doc
+- Gate components live in `apps/web/src/components/`

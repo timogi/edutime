@@ -16,7 +16,7 @@ import {
 } from '@gluestack-ui/themed';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { Database } from '@/database.types';
+import { Database } from '@edutime/shared';
 
 type EducationLevel = Database["public"]["Enums"]["education_level"];
 

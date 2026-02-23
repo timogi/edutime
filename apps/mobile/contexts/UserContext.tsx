@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { User } from "@supabase/supabase-js";
 import { getUser, isSubscribed } from "@/lib/database/user";
-import { Database } from "@/database.types";
+import { Database } from "@edutime/shared";
 import { supabase } from "@/lib/supabase";
 import { getAllCategories, CategoryResult, getUserCategories } from "@/lib/database/categories";
 import { EmploymentCategory, CantonData } from "@/lib/types";

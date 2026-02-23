@@ -1,9 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
+import { Database } from '@edutime/shared'
 
 // Create a single supabase client for interacting with your database
 // Important: This client is created once and reused across the app
 // Never create a new client in components or hooks to avoid deadlocks
-export const supabase = createClient(
+export const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   {

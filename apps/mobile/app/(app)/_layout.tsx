@@ -8,14 +8,16 @@ import { useUser } from "@/contexts/UserContext";
 import { useTranslation } from "react-i18next";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { useVersionCheck } from "@/lib/version-check";
+import { useLegalCheck } from "@/hooks/useLegalCheck";
 
 const TabLayout = () => {
   const { user, hasActiveSubscription, isLoading } = useUser();
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const { isValid: isVersionValid, isLoading: isVersionLoading } = useVersionCheck();
+  const { data: missingDocs, isLoading: legalLoading } = useLegalCheck(!!user && hasActiveSubscription);
 
-  if (isLoading || isVersionLoading) {
+  if (isLoading || isVersionLoading || (!!user && hasActiveSubscription && legalLoading)) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" />
@@ -33,6 +35,10 @@ const TabLayout = () => {
 
   if (!hasActiveSubscription) {
     return <Redirect href="/no-license" />;
+  }
+
+  if (missingDocs && missingDocs.length > 0) {
+    return <Redirect href="/legal-acceptance" />;
   }
 
   return (

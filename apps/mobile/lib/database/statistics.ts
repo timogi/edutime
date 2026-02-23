@@ -2,7 +2,7 @@ import { supabase } from '../supabase';
 import { getIsoDate } from '../helpers';
 import { CantonData, Category } from '../types';
 import { getUserCategories } from './categories';
-import { Database } from '@/database.types';
+import { Database } from '@edutime/shared';
 
 export interface CategoryStatistic {
   duration: number;

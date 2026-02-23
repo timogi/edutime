@@ -116,6 +116,7 @@ function RootLayoutNav() {
         />
 
         <Stack.Screen name="no-license" options={{ headerShown: false }} />
+        <Stack.Screen name="legal-acceptance" options={{ headerShown: false }} />
         <Stack.Screen name="update-required" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>

@@ -1,0 +1,50 @@
+---
+globs: apps/mobile/**
+description: "Mobile UI: use Gluestack components over RN core, design system constants (Spacing, TextStyles, BorderRadius), ThemedText/ThemedView, ButtonWithLoading."
+---
+
+# Mobile UI Components
+
+## Gluestack UI
+
+**Use Gluestack components instead of React Native core:**
+
+| Instead of | Use |
+|---|---|
+| `View` | `Box` |
+| `TouchableOpacity` | `Pressable` |
+| `Text` (RN) | `Text` (from `@gluestack-ui/themed`) |
+| Custom buttons | `Button` + `ButtonText` |
+| Manual layouts | `VStack`, `HStack` with `space` prop |
+| Custom cards | `Card` |
+
+**Exception:** Use custom toast (`@/components/ui/Toast`) — Gluestack toast is unreliable.
+
+## Design System Constants
+
+From `constants/Styles.ts`:
+
+```typescript
+import { TextStyles, Spacing, BorderRadius } from '@/constants/Styles';
+
+// Spacing: xs=4, sm=8, md=16, lg=24, xl=32, xxl=48
+// BorderRadius: sm=4, md=8, lg=12, xl=16, xxl=24
+// TextStyles: title(24/bold), subtitle(18/semibold), body(16), caption(14), small(12), label(14/medium)
+```
+
+## Component Patterns
+
+- **Text:** Use `<ThemedText type="title|subtitle|default|caption">` for automatic theming
+- **Views:** Use `<ThemedView>` for themed containers
+- **Buttons:** Use `<ButtonWithLoading variant="solid|outline|link" size="xs|sm|md|lg|xl">`
+- **Styles:** Use `StyleSheet.create()` with design system constants, never inline hardcoded values
+- **Colors:** Import from `constants/Colors.ts`, access via `Colors[colorScheme ?? 'light']`
+
+## Style Organization
+
+```typescript
+const styles = StyleSheet.create({
+  container: { flex: 1, padding: Spacing.md },
+  title: { ...TextStyles.title, marginBottom: Spacing.md },
+});
+```

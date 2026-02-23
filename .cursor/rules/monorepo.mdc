@@ -1,0 +1,54 @@
+---
+alwaysApply: true
+description: "TypeScript monorepo with npm workspaces. Share business logic, types, and utilities via @edutime/shared."
+---
+
+# Monorepo
+
+## Structure
+
+This is an **npm workspaces monorepo**. All apps and packages use **TypeScript**.
+
+```
+edutime/
+├── apps/
+│   ├── mobile/    # React Native (Expo) — @edutime/mobile
+│   └── web/       # Next.js — @edutime/web
+├── packages/
+│   └── shared/    # Shared code — @edutime/shared
+└── package.json   # Root workspace config
+```
+
+## Shared Code (`@edutime/shared`)
+
+Put code in `packages/shared/src/` whenever it can be reused across apps:
+
+- **Database types** — generated Supabase types (`database.types.ts`)
+- **Business logic** — validation, calculations, formatting, constants
+- **Type definitions** — shared interfaces and type aliases
+- **Utilities** — helpers not tied to a specific framework or platform
+
+Import from `@edutime/shared` in any app:
+
+```typescript
+import { Database, TimeRecord, UserData } from '@edutime/shared';
+```
+
+Export new modules from `packages/shared/src/index.ts`.
+
+## Rules of Thumb
+
+- **DRY across apps** — if the same logic exists (or would exist) in both `mobile` and `web`, extract it to `@edutime/shared`
+- **No framework dependencies in shared** — shared code must not import React, Next.js, Expo, or any app-specific library
+- **App-specific code stays in apps** — UI components, routing, platform APIs belong in their respective app
+
+## Commands
+
+| Task | Command |
+|---|---|
+| Install all deps | `npm install` (from root) |
+| Dev web | `npm run dev:web` |
+| Dev mobile | `npm run dev:mobile` |
+| Build web | `npm run build:web` |
+| Typecheck all | `npm run typecheck` |
+| Lint all | `npm run lint` |

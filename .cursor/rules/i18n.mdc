@@ -1,0 +1,44 @@
+---
+alwaysApply: true
+description: "All user-facing text must use i18n. Supported locales: de, en, fr. Never hardcode strings."
+---
+
+# Internationalization (i18n)
+
+## Core Rules
+
+- **Never hardcode user-facing strings** — always use translation functions
+- **Update all 3 locale files** when adding text: `de`, `en`, `fr`
+- **Use English for translation keys** — `Index.welcome` not `Index.willkommen`
+
+## Key Naming
+
+- **PascalCase** for sections: `Index`, `Settings`, `Errors`, `Categories`
+- **camelCase** for simple keys: `createEntry`, `saveAndContinue`
+- **kebab-case** for complex keys: `error-loading-records`
+
+## Platform Differences
+
+### Mobile (`apps/mobile/`)
+
+Library: `react-i18next`
+
+```typescript
+import { useTranslation } from "react-i18next";
+const { t } = useTranslation();
+<Text>{t("Index.welcome")}</Text>
+```
+
+Translation files: `lib/i18n/locales/{de,en,fr}.json`
+
+### Web (`apps/web/`)
+
+Library: `next-intl`
+
+```typescript
+import { useTranslations } from "next-intl";
+const t = useTranslations("Index");
+<div>{t("welcome")}</div>
+```
+
+Translation files: `messages/{locale}.json`

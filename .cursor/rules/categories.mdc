@@ -1,0 +1,38 @@
+---
+alwaysApply: true
+description: "Category system with canton categories, user categories (Weiterbeschäftigung), no-category, and other-canton handling."
+---
+
+# Categories
+
+## Category Types
+
+| Type | `is_user_category` | `category_id` | `user_category_id` | `category_set_title` |
+|---|---|---|---|---|
+| **Canton (regular)** | `false` | `number` | `null` | canton-specific |
+| **User (Weiterbeschäftigung)** | `true` | `null` | `number` | `'furtherEmployment'` |
+| **No category** | `false` | `null` | `null` | — |
+| **Other canton** | `false` | `number` (not in current canton) | `null` | — |
+
+## Detection Logic
+
+```typescript
+const getCategoryType = (record: TimeRecord) => {
+  if (record.is_user_category && record.user_category_id) return 'user';
+  if (record.category_id) return 'regular';
+  return 'none';
+};
+```
+
+## Critical Rules
+
+1. **Always check `is_user_category` first** — user categories have different logic
+2. **Validate canton context** — regular categories must belong to current canton
+3. **User categories are always valid** — they're not canton-specific
+4. Subcategory display: user → `record.user_categories?.subtitle`, regular → `record.categories?.subtitle`
+
+## i18n Labels
+
+- User categories: "Weitere Anstellungen" / "Further employments" / "Autres emplois"
+- No category: "Keine Kategorie" / "No category" / "Pas de catégorie"
+- Other canton: "Anderer Kanton" / "Other canton" / "Autre canton"

@@ -12,8 +12,9 @@ import {
   Container,
 } from '@mantine/core'
 import { IconAlertCircle, IconExternalLink, IconCheck } from '@tabler/icons-react'
+import { DOCUMENT_ROUTES, DOCUMENT_LABELS } from '@edutime/shared'
 
-interface MissingDocument {
+interface MissingDocumentResponse {
   document_code: string
   document_version_id: number
   title: string
@@ -21,38 +22,18 @@ interface MissingDocument {
   can_accept: boolean
 }
 
-const DOCUMENT_ROUTES: Record<string, string> = {
-  privacy_policy: '/docs/privacy',
-  terms_of_use: '/docs/terms',
-  saas_agb: '/docs/agb',
-  saas_single_contract: '/contract',
-  avv: '/avv',
-}
-
-const DOCUMENT_LABELS: Record<string, string> = {
-  privacy_policy: 'Datenschutz',
-  terms_of_use: 'Nutzungsbedingungen',
-  saas_agb: 'SaaS AGB',
-  saas_single_contract: 'SaaS-Einzelvertrag (Muster)',
-  avv: 'AVV',
-}
-
 interface CheckoutLegalGateProps {
-  context: 'checkout_individual' | 'checkout_org'
-  organizationId?: number
   accessToken?: string
   onAllAccepted: () => void
   onAuthError?: () => void
 }
 
 export function CheckoutLegalGate({
-  context,
-  organizationId,
   accessToken,
   onAllAccepted,
   onAuthError,
 }: CheckoutLegalGateProps) {
-  const [missingDocs, setMissingDocs] = useState<MissingDocument[]>([])
+  const [missingDocs, setMissingDocs] = useState<MissingDocumentResponse[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [accepting, setAccepting] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -72,10 +53,7 @@ export function CheckoutLegalGate({
         method: 'POST',
         headers,
         credentials: 'include',
-        body: JSON.stringify({
-          context,
-          organizationId: context === 'checkout_org' ? organizationId : undefined,
-        }),
+        body: JSON.stringify({ context: 'checkout_individual' }),
       })
 
       if (!response.ok) {
@@ -93,7 +71,6 @@ export function CheckoutLegalGate({
       const missing = data.missing || []
       setMissingDocs(missing)
 
-      // If no missing documents, call onAllAccepted
       if (missing.length === 0) {
         onAllAccepted()
       }
@@ -103,13 +80,13 @@ export function CheckoutLegalGate({
     } finally {
       setIsLoading(false)
     }
-  }, [context, organizationId, accessToken, onAllAccepted, onAuthError])
+  }, [accessToken, onAllAccepted, onAuthError])
 
   useEffect(() => {
     checkMissingDocuments()
   }, [checkMissingDocuments])
 
-  const handleAccept = async (doc: MissingDocument) => {
+  const handleAccept = async (doc: MissingDocumentResponse) => {
     setAccepting(doc.document_version_id)
     setError(null)
     try {
@@ -126,7 +103,6 @@ export function CheckoutLegalGate({
         credentials: 'include',
         body: JSON.stringify({
           documentCode: doc.document_code,
-          organizationId: context === 'checkout_org' ? organizationId : undefined,
           source: 'checkout',
         }),
       })
@@ -141,7 +117,6 @@ export function CheckoutLegalGate({
         return
       }
 
-      // Refresh missing documents
       await checkMissingDocuments()
     } catch (error) {
       console.error('Error accepting document:', error)
@@ -188,8 +163,6 @@ export function CheckoutLegalGate({
     return null
   }
 
-  const hasNonAcceptable = missingDocs.some((doc) => !doc.can_accept)
-
   return (
     <Container size={600} my={40}>
       <Paper withBorder p={30} radius='md'>
@@ -199,11 +172,10 @@ export function CheckoutLegalGate({
             Bitte akzeptieren Sie die folgenden Dokumente, um mit der Zahlung fortzufahren.
           </Text>
 
-          {hasNonAcceptable && (
+          {missingDocs.some((doc) => !doc.can_accept) && (
             <Alert icon={<IconAlertCircle size='1rem' />} color='yellow' title='Hinweis'>
-              {context === 'checkout_org'
-                ? 'Nur Administratoren können für die Organisation akzeptieren.'
-                : 'Einige Dokumente können derzeit nicht akzeptiert werden. Bitte kontaktieren Sie den Support.'}
+              Einige Dokumente können derzeit nicht akzeptiert werden. Bitte kontaktieren Sie den
+              Support.
             </Alert>
           )}
 
@@ -219,15 +191,17 @@ export function CheckoutLegalGate({
                       </Text>
                     )}
                   </Group>
-                  <Anchor
-                    href={DOCUMENT_ROUTES[doc.document_code]}
-                    target='_blank'
-                    size='sm'
-                    style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
-                  >
-                    <IconExternalLink size='0.875rem' />
-                    Dokument öffnen
-                  </Anchor>
+                  {DOCUMENT_ROUTES[doc.document_code] && (
+                    <Anchor
+                      href={DOCUMENT_ROUTES[doc.document_code]}
+                      target='_blank'
+                      size='sm'
+                      style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      <IconExternalLink size='0.875rem' />
+                      Dokument öffnen
+                    </Anchor>
+                  )}
                 </Stack>
                 {doc.can_accept ? (
                   <Button

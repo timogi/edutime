@@ -179,8 +179,6 @@ export default function CheckoutPage() {
   if (plan && !legalAccepted) {
     return (
       <CheckoutLegalGate
-        context={plan === 'org' ? 'checkout_org' : 'checkout_individual'}
-        organizationId={organizationId}
         accessToken={accessToken || undefined}
         onAllAccepted={handleLegalAccepted}
         onAuthError={handleAuthError}

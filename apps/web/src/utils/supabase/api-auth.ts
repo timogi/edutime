@@ -2,6 +2,7 @@ import type { NextApiRequest } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import { createServerClient } from '@supabase/ssr'
 import type { SupabaseClient, User } from '@supabase/supabase-js'
+import { Database } from '@edutime/shared'
 
 /**
  * Gets an authenticated Supabase client and user from a Next.js API request.
@@ -23,7 +24,7 @@ export async function getAuthenticatedUser(
   const authHeader = req.headers.authorization
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.substring(7)
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
       global: {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -71,7 +72,7 @@ export async function getAuthenticatedUser(
     value,
   }))
 
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+  const supabase = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
         return cookies

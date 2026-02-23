@@ -1,5 +1,5 @@
 import { supabase } from '../supabase'
-import { Database, Tables } from '../../database.types'
+import { Database, Tables } from '@edutime/shared'
 import { EmploymentCategory, TimeRecord } from '../types'
 
 interface UserData {

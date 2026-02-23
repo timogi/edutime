@@ -1,0 +1,46 @@
+---
+globs: apps/web/**
+description: "Web UI: use Mantine components, CSS variables for theming, light-dark() for mode differences."
+---
+
+# Web UI (Mantine)
+
+## Core Rules
+
+- **Use Mantine components as the base** — extend them, don't create custom HTML elements
+- **Use Mantine's sizing and spacing system** — don't hardcode dimensions
+- Components should be **responsive** (Mantine responsive utilities) and **accessible**
+
+## Color & Theme Access
+
+**Prefer CSS variables for static styles:**
+
+```css
+background-color: var(--mantine-color-body);
+color: var(--mantine-color-text);
+color: var(--mantine-color-dimmed);
+border-color: var(--mantine-color-border);
+```
+
+**For dark/light differences in CSS:**
+
+```css
+background-color: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
+```
+
+**`theme.colors.*` is acceptable only for dynamic runtime color computation.**
+
+## Button Guidelines
+
+| Action | Color |
+|---|---|
+| Primary | Omit `color` prop (uses primary violet) |
+| Destructive | `color="red"` |
+| Secondary / Cancel | `color="gray"` or `variant="subtle"` |
+
+## Data Access
+
+- Use Supabase client from `src/utils/supabase/client.ts`
+- Create utility functions in `src/utils/supabase/` for data operations
+- Use hooks like `useRecords`, `useDailyDuration` when available
+- Use Supabase real-time subscriptions for live updates when needed

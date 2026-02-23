@@ -1,0 +1,52 @@
+---
+globs: apps/mobile/**
+description: "Mobile-only native concerns: haptic feedback via HapticFeedback utility, Android DateTimePicker must be gated behind state."
+---
+
+# Mobile Native
+
+## Haptic Feedback
+
+**Always use the centralized `HapticFeedback` utility** — never call `Haptics` directly (it handles platform checks):
+
+```typescript
+import { HapticFeedback } from '@/lib/haptics';
+
+HapticFeedback.light();     // button presses, selections, navigation
+HapticFeedback.medium();    // important actions, form submissions
+HapticFeedback.heavy();     // critical actions, deletions
+HapticFeedback.selection(); // picker changes, tab switches
+HapticFeedback.success();   // successful operations
+HapticFeedback.error();     // error states
+HapticFeedback.warning();   // warning states
+```
+
+Add haptic feedback to all interactive elements. Debounce for rapid interactions.
+
+## Android DateTimePicker — CRITICAL
+
+`@react-native-community/datetimepicker` opens a **native modal on mount** on Android. **Never render it unconditionally.**
+
+```typescript
+// WRONG — opens dialog immediately on Android
+<DateTimePicker value={date} mode="date" onChange={handleDateChange} />
+
+// CORRECT — gate behind state
+const [showPicker, setShowPicker] = useState(false);
+
+{showPicker && (
+  <DateTimePicker
+    value={date}
+    mode="date"
+    onChange={(event, selectedDate) => {
+      setShowPicker(false);
+      if (selectedDate) onDateChange(selectedDate);
+    }}
+  />
+)}
+```
+
+**When refactoring DateTimePicker code:**
+- Do NOT remove conditional rendering (`{show && <DateTimePicker />}`)
+- Do NOT remove show/hide state variables
+- Do NOT remove `setShow(false)` inside `onChange`

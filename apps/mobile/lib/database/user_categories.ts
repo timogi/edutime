@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { Database, Tables, TablesInsert } from '@/database.types'
+import { Database, Tables, TablesInsert } from '@edutime/shared'
 
 export const createUserCategory = async (
   userId: string,

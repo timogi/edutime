@@ -1,4 +1,4 @@
-import { Database } from '../../database.types';
+import { Database } from '@edutime/shared';
 import { supabase, tempSupabase } from '@/lib/supabase'
 
 export async function getUser(userId: string): Promise<Database['public']['Tables']['users']['Row'] | null> {

@@ -24,7 +24,7 @@ import { YearlyHoursInput } from './YearyHoursInput';
 import { ClassSizeInput } from './ClassSizeInput';
 import { EducationLevelInput } from './EducationLevelInput';
 import { TeacherReliefInput } from './TeacherReliefInput';
-import { Database } from '@/database.types';
+import { Database } from '@edutime/shared';
 
 interface EmploymentInputProps {
   onSave: (workload: number, canton: string, customWorkHours?: number, userPercentages?: {[key: number]: number}, classSize?: number | null, educationLevel?: Database["public"]["Enums"]["education_level"] | null, teacherRelief?: number | null) => void;

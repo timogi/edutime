@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { getAuthenticatedUser } from '@/utils/supabase/api-auth'
+import { getMissingUserDocuments, type LegalContext } from '@edutime/shared'
 
 type MissingDocument = {
   document_code: string
@@ -14,6 +15,8 @@ type ResponseData = {
   error?: string
 }
 
+const VALID_CONTEXTS: LegalContext[] = ['app', 'checkout_individual']
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -27,34 +30,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     const { supabase } = auth
+    const { context } = req.body
 
-    const { context, organizationId } = req.body
-
-    if (!context || !['app', 'checkout_individual', 'checkout_org'].includes(context)) {
+    if (!context || !VALID_CONTEXTS.includes(context)) {
       return res.status(400).json({ error: 'Invalid context' })
     }
 
-    if (context === 'checkout_org' && !organizationId) {
-      return res.status(400).json({ error: 'organizationId required for checkout_org context' })
-    }
+    const docs = await getMissingUserDocuments(supabase, context)
 
-    const { data, error } = await supabase.rpc('legal_missing_documents', {
-      p_context: context,
-      p_organization_id: organizationId || undefined,
-    })
-
-    if (error) {
-      console.error('Error calling legal_missing_documents:', error)
-      return res.status(500).json({ error: 'Failed to fetch missing documents' })
-    }
-
-    // Map RPC response field "code" to "document_code" for the frontend
-    const missing: MissingDocument[] = (data || []).map((row: any) => ({
-      document_code: row.code,
-      document_version_id: row.document_version_id,
-      title: row.title,
-      version_label: row.version_label,
-      can_accept: row.can_accept,
+    const missing: MissingDocument[] = docs.map((doc) => ({
+      document_code: doc.code,
+      document_version_id: doc.document_version_id,
+      title: doc.title,
+      version_label: doc.version_label,
+      can_accept: doc.can_accept,
     }))
 
     return res.status(200).json({ missing })

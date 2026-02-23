@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getRecordsForCategoryType, getCategoryColorForRecord, getRecordsByCategory, getRecordsByCategorySet } from '@/lib/database/records';
-import { Database } from '@/database.types';
+import { Database } from '@edutime/shared';
 import { useUser } from '@/contexts/UserContext';
 
 type TimeRecord = Database['public']['Tables']['records']['Row'];

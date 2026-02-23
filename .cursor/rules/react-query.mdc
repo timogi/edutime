@@ -1,0 +1,57 @@
+---
+globs: apps/mobile/**
+description: "Use React Query for all server state. Consistent query keys, handle loading/error/success states, optimistic updates."
+---
+
+# React Query (Mobile)
+
+## Core Rules
+
+- **Never use `useState` + `useEffect` for data fetching** — use React Query
+- **Use query key factories** for consistency
+- **Handle all states**: loading, error, success
+- **Invalidate cache** after mutations
+
+## Query Key Factory
+
+```typescript
+export const recordKeys = {
+  all: ['records'] as const,
+  lists: () => [...recordKeys.all, 'list'] as const,
+  list: (filters: RecordFilters) => [...recordKeys.lists(), filters] as const,
+  details: () => [...recordKeys.all, 'detail'] as const,
+  detail: (id: number) => [...recordKeys.details(), id] as const,
+} as const;
+```
+
+## Custom Query Hooks
+
+```typescript
+export const useRecords = (filters?: RecordFilters) =>
+  useQuery({
+    queryKey: recordKeys.list(filters || {}),
+    queryFn: () => fetchRecords(filters),
+    staleTime: 5 * 60 * 1000,
+  });
+```
+
+## Mutations with Optimistic Updates
+
+```typescript
+export const useCreateRecord = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createRecord,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: recordKeys.lists() }),
+    onError: (error) => showToast({ type: 'error', title: 'Failed', message: getErrorMessage(error) }),
+  });
+};
+```
+
+## State Handling
+
+```typescript
+const { data, isPending, isFetching, isError, error, refetch } = useRecords();
+if (isPending) return <LoadingSpinner />;
+if (isError) return <ErrorMessage error={error} onRetry={refetch} />;
+```

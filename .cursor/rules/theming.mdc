@@ -1,0 +1,53 @@
+---
+alwaysApply: true
+description: "Dark and light theme support. Never hardcode colors. Primary color is violet (#845ef7). Use platform-specific theme systems."
+---
+
+# Theming
+
+## Core Rules
+
+- **Never hardcode colors** — always use the theme system
+- **Support both light and dark mode** — test in both
+- Primary color: **violet** (`#845ef7`)
+- Use semantic color references: text, background, primary, border, dimmed
+
+## Mobile (`apps/mobile/`)
+
+Use `useColorScheme` + `Colors` constants + themed components:
+
+```typescript
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { Colors } from '@/constants/Colors';
+
+const colorScheme = useColorScheme();
+const theme = Colors[colorScheme ?? 'light'];
+
+// Semantic usage
+color: theme.text              // primary text
+backgroundColor: theme.background  // main background
+backgroundColor: theme.primary[5]  // primary actions
+borderColor: theme.gray[3]    // borders
+color: theme.gray[6]          // secondary text
+```
+
+Prefer `<ThemedText>` and `<ThemedView>` components over manual styling.
+
+## Web (`apps/web/`)
+
+Use Mantine CSS variables. Prefer CSS vars over `theme.colors.*`:
+
+```css
+color: var(--mantine-color-text);
+background-color: var(--mantine-color-body);
+border-color: var(--mantine-color-border);
+color: var(--mantine-color-dimmed);
+```
+
+For dark/light differences in CSS:
+
+```css
+background-color: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
+```
+
+Runtime `theme.colors.*` access is acceptable only for dynamic color computation.

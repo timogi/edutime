@@ -1,4 +1,4 @@
-import { Database } from '../../database.types';
+import { Database } from '@edutime/shared';
 import { supabase } from '../supabase';
 
 
