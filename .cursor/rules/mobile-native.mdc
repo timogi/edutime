@@ -23,9 +23,13 @@ HapticFeedback.warning();   // warning states
 
 Add haptic feedback to all interactive elements. Debounce for rapid interactions.
 
-## Android DateTimePicker — CRITICAL
+## DateTimePicker — Platform Differences
 
-`@react-native-community/datetimepicker` opens a **native modal on mount** on Android. **Never render it unconditionally.**
+`@react-native-community/datetimepicker` behaves **very differently** on iOS vs Android. Always use platform-specific rendering.
+
+### Android — CRITICAL: Gate behind state
+
+On Android, the picker opens a **native modal dialog immediately on mount**. Never render it unconditionally.
 
 ```typescript
 // WRONG — opens dialog immediately on Android
@@ -46,7 +50,46 @@ const [showPicker, setShowPicker] = useState(false);
 )}
 ```
 
-**When refactoring DateTimePicker code:**
+**When refactoring Android DateTimePicker code:**
 - Do NOT remove conditional rendering (`{show && <DateTimePicker />}`)
 - Do NOT remove show/hide state variables
 - Do NOT remove `setShow(false)` inside `onChange`
+
+### iOS — Render inline with `display="compact"`
+
+On iOS, `display="compact"` renders a **small tappable date label** that opens a calendar popover when tapped. The picker **is its own trigger** — no separate button needed.
+
+```typescript
+// iOS: render directly — no trigger button, no show/hide state
+<DateTimePicker
+  value={date}
+  mode="date"
+  display="compact"
+  onChange={(event, selectedDate) => {
+    if (selectedDate) onDateChange(selectedDate);
+  }}
+/>
+```
+
+- Do NOT wrap in a `TouchableOpacity` trigger button — the compact picker handles its own tap interaction
+- Do NOT gate behind show/hide state — the picker should always be rendered
+- Do NOT call `setShow(false)` in `onChange` — the popover dismisses itself
+
+### Platform-aware pattern
+
+```typescript
+import { Platform } from 'react-native';
+const isIOS = Platform.OS === 'ios';
+
+{isIOS ? (
+  <DateTimePicker value={date} mode="date" display="compact" onChange={handleChange} />
+) : (
+  <>
+    <TouchableOpacity onPress={() => setShow(true)}>
+      <Text>{formatDate(date)}</Text>
+    </TouchableOpacity>
+    {show && (
+      <DateTimePicker value={date} mode="date" onChange={(e, d) => { setShow(false); if (d) handleChange(d); }} />
+    )}
+  </>
+)}

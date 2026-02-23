@@ -11,9 +11,9 @@ import { useUser } from "@/contexts/UserContext";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { useToast, Toast, ToastTitle, ToastDescription, VStack } from "@gluestack-ui/themed";
-import * as Haptics from "expo-haptics";
-import { Platform } from "react-native";
+import { showErrorToast } from "@/components/ui/Toast";
+import { HapticFeedback } from "@/lib/haptics";
+
 import { useNavigationGuard } from "@/hooks/useNavigationGuard";
 import { useCreateStopwatchSession } from "@/hooks/useRecordsQuery";
 
@@ -27,7 +27,7 @@ export const StopWatchButton = () => {
   const { activeSession, loading, error } = useStopWatch();
   const { user } = useUser();
   const { t } = useTranslation();
-  const toast = useToast();
+  
   const { navigateToRecordForm } = useNavigationGuard();
   const queryClient = useQueryClient();
   const createStopwatchSessionMutation = useCreateStopwatchSession();
@@ -81,7 +81,7 @@ export const StopWatchButton = () => {
           .limit(1);
         
         if (fetchError) {
-          console.log('Error fetching existing sessions:', fetchError);
+          console.error('Error fetching existing sessions:', fetchError);
         }
         
         // If there's already a session for this user, refresh the cache and return
@@ -102,7 +102,7 @@ export const StopWatchButton = () => {
           user_category_id: undefined,
         });
       } catch (error) {
-        console.log('Timer creation error:', error);
+        console.error('Timer creation error:', error);
         
         // Check if it's a unique constraint violation (session already exists)
         if (error instanceof Error && error.message.includes('duplicate key value violates unique constraint')) {
@@ -113,20 +113,8 @@ export const StopWatchButton = () => {
         }
         
         // Only show error for other types of errors
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        toast.show({
-          placement: "top",
-          render: () => (
-            <Toast action="error" variant="outline">
-              <VStack space="xs">
-                <ToastTitle>{t("Index.error")}</ToastTitle>
-                <ToastDescription>
-                  {t("Index.error-creating-timer")}
-                </ToastDescription>
-              </VStack>
-            </Toast>
-          ),
-        });
+        HapticFeedback.error();
+        showErrorToast(t("Index.error"), t("Index.error-creating-timer"));
       } finally {
         setIsCreating(false);
       }
@@ -140,9 +128,7 @@ export const StopWatchButton = () => {
       size="md"
       variant="solid"
       onPressIn={() => {
-        if (Platform.OS === 'ios') {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }
+        HapticFeedback.light();
         setIsPressed(true);
       }}
       onPressOut={() => setIsPressed(false)}

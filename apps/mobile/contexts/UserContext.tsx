@@ -1,11 +1,12 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { User } from "@supabase/supabase-js";
 import { getUser, isSubscribed } from "@/lib/database/user";
-import { Database } from "@edutime/shared";
+import { Database, ConfigMode, getConfigMode, ConfigProfileData, ProfileCategoryData } from "@edutime/shared";
 import { supabase } from "@/lib/supabase";
 import { getAllCategories, CategoryResult, getUserCategories } from "@/lib/database/categories";
 import { EmploymentCategory, CantonData } from "@/lib/types";
 import { getCantonData } from "@/lib/database/canton";
+import { getConfigProfile, getProfileCategories, profileCategoriesToCategoryResults } from "@/lib/database/config_profiles";
 
 
 type UserContextType = {
@@ -21,6 +22,9 @@ type UserContextType = {
   refreshAuth: () => Promise<void>;
   userCategories: EmploymentCategory[];
   refreshUserData: () => Promise<void>;
+  configMode: ConfigMode;
+  configProfile: ConfigProfileData | null;
+  profileCategories: ProfileCategoryData[];
 };
 
 const Context = createContext<UserContextType>({
@@ -36,6 +40,9 @@ const Context = createContext<UserContextType>({
   refreshAuth: async () => {},
   userCategories: [],
   refreshUserData: async () => {},
+  configMode: 'default',
+  configProfile: null,
+  profileCategories: [],
 });
 
 const Provider = ({ children }: { children: React.ReactNode }) => {
@@ -48,6 +55,9 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userCategories, setUserCategories] = useState<EmploymentCategory[]>([]);
   const [cantonData, setCantonData] = useState<CantonData | null>(null);
+  const [configMode, setConfigMode] = useState<ConfigMode>('default');
+  const [configProfile, setConfigProfile] = useState<ConfigProfileData | null>(null);
+  const [profileCategories, setProfileCategories] = useState<ProfileCategoryData[]>([]);
 
   useEffect(() => {
     const initializeSession = async () => {
@@ -61,6 +71,9 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
         setCategories([]);
         setUserCategories([]);
         setCantonData(null);
+        setConfigMode('default');
+        setConfigProfile(null);
+        setProfileCategories([]);
       }
       setIsLoading(false);
     };
@@ -77,6 +90,9 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
           setCategories([]);
           setUserCategories([]);
           setCantonData(null);
+          setConfigMode('default');
+          setConfigProfile(null);
+          setProfileCategories([]);
         }
       }
     );
@@ -135,10 +151,33 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
       }
       const userData = await getUser(sessionUser.id);
       setUser(userData);
-      if (userData?.canton_code) {
-        await fetchCantonData(userData.canton_code, userData.user_id);
+
+      const mode = userData ? getConfigMode(userData) : 'default';
+      setConfigMode(mode);
+
+      if (mode === 'custom' && userData?.active_config_profile_id) {
+        const profile = await getConfigProfile(userData.active_config_profile_id);
+        setConfigProfile(profile);
+
+        const profCats = await getProfileCategories(userData.active_config_profile_id);
+        setProfileCategories(profCats);
+
+        const categoryResults = profileCategoriesToCategoryResults(profCats);
+        setCategories(categoryResults);
+
+        if (userData.canton_code) {
+          await fetchCantonData(userData.canton_code, userData.user_id);
+        }
+      } else {
+        setConfigProfile(null);
+        setProfileCategories([]);
+
+        if (userData?.canton_code) {
+          await fetchCantonData(userData.canton_code, userData.user_id);
+        }
+        await fetchCategories(userData);
       }
-      await fetchCategories(userData);
+
       await fetchUserCategories(sessionUser.id);
     } catch (error) {
       console.error("Error updating data:", error);
@@ -171,6 +210,9 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
       setCategories([]);
       setUserCategories([]);
       setCantonData(null);
+      setConfigMode('default');
+      setConfigProfile(null);
+      setProfileCategories([]);
     } catch (error) {
       setIsLoading(false);
       throw error;
@@ -197,10 +239,33 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
     try {
       const userData = await getUser(user.user_id);
       setUser(userData);
-      if (userData?.canton_code) {
-        await fetchCantonData(userData.canton_code, userData.user_id);
+
+      const mode = userData ? getConfigMode(userData) : 'default';
+      setConfigMode(mode);
+
+      if (mode === 'custom' && userData?.active_config_profile_id) {
+        const profile = await getConfigProfile(userData.active_config_profile_id);
+        setConfigProfile(profile);
+
+        const profCats = await getProfileCategories(userData.active_config_profile_id);
+        setProfileCategories(profCats);
+
+        const categoryResults = profileCategoriesToCategoryResults(profCats);
+        setCategories(categoryResults);
+
+        if (userData.canton_code) {
+          await fetchCantonData(userData.canton_code, userData.user_id);
+        }
+      } else {
+        setConfigProfile(null);
+        setProfileCategories([]);
+
+        if (userData?.canton_code) {
+          await fetchCantonData(userData.canton_code, userData.user_id);
+        }
+        await fetchCategories(userData);
       }
-      await fetchCategories(userData);
+
       await fetchUserCategories(user.user_id);
       if (userEmail) {
         await fetchUserEntitlements(userEmail);
@@ -225,6 +290,9 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
         refreshAuth,
         userCategories,
         refreshUserData,
+        configMode,
+        configProfile,
+        profileCategories,
       }}
     >
       {children}

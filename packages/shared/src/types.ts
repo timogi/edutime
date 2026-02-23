@@ -26,11 +26,33 @@ export type Vacation = {
   title: string
 }
 
+export type ConfigMode = 'default' | 'custom'
+
+export const getConfigMode = (user: { active_config_profile_id: string | null }): ConfigMode =>
+  user.active_config_profile_id ? 'custom' : 'default'
+
+export interface ProfileCategoryData {
+  id: string
+  title: string
+  subtitle: string
+  color: string
+  weight: number
+  order: number | null
+  config_profile_id: string
+}
+
+export interface ConfigProfileData {
+  id: string
+  title: string
+  annual_work_hours: number
+}
+
 export type BaseTimeRecord = {
   id?: number
   category_id: number | null
   is_user_category: boolean
   user_category_id: number | null
+  profile_category_id?: string | null
 }
 
 export type StopWatchSession = BaseTimeRecord & {
@@ -61,6 +83,7 @@ export type EmploymentCategory = CategoryBase & {
 export type Category = CategoryBase & {
   category_set_title: string
   category_set_order?: number
+  profile_category_id?: string
 }
 
 export type DailySums = { [date: string]: { duration: number } }

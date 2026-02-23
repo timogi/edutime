@@ -92,7 +92,18 @@
     "invalid-invite-code": "Ungültiger Einladungscode",
     "error-accepting-invite": "Fehler beim Akzeptieren der Einladung",
     "noAccount": "Ich habe keinen Account",
-    "forgotPassword": "Passwort vergessen?"
+    "forgotPassword": "Passwort vergessen?",
+    "oops": "Hoppla!",
+    "screenNotFound": "Diese Seite existiert nicht.",
+    "goHome": "Zur Startseite!",
+    "somethingWentWrong": "Etwas ist schiefgelaufen",
+    "restartApp": "Bitte starte die App neu, um fortzufahren",
+    "unknownError": "Ein unbekannter Fehler ist aufgetreten",
+    "tryAgain": "Erneut versuchen",
+    "toastError": "Fehler",
+    "toastSuccess": "Erfolg",
+    "toastInfo": "Info",
+    "toastWarning": "Warnung"
   },
   "Categories": {
     "cat_teaching": "Unterricht",
@@ -251,7 +262,20 @@
     "teacher_relief_half": "½ Lektion",
     "teacher_relief_one": "1 Lektion",
     "teacher_relief_one_half": "1 ½ Lektionen",
-    "teacher_relief_two": "2 Lektionen"
+    "teacher_relief_two": "2 Lektionen",
+    "custom": "Benutzerdefiniert",
+    "cantonMode": "Kanton",
+    "customMode": "Benutzerdefiniert",
+    "switchToCustom": "Zu benutzerdefiniert wechseln",
+    "switchToCanton": "Zu Kanton wechseln",
+    "confirmSwitchToCustom": "Beim Wechsel in den benutzerdefinierten Modus werden die aktuellen Kantonskategorien kopiert. Du kannst sie dann frei bearbeiten.",
+    "confirmSwitchToCanton": "Beim Zurückwechseln werden die Kantonskategorien verwendet. Dein benutzerdefiniertes Profil bleibt erhalten.",
+    "annualWorkHours": "Jahresarbeitszeit",
+    "customCategories": "Benutzerdefinierte Kategorien",
+    "weight": "Gewicht",
+    "createCategory": "Kategorie erstellen",
+    "editCategory": "Kategorie bearbeiten",
+    "version": "Version"
   },
   "Legal": {
     "title": "Rechtliche Dokumente",

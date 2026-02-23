@@ -28,6 +28,8 @@ export interface CategoryResult {
   color: string
   category_set_title: string
   is_further_employment: boolean
+  is_profile_category?: boolean
+  profile_category_id?: string
   order: number | null
 }
 
@@ -92,15 +94,21 @@ export const getAllCategories = async (userData: UserData) => {
 }
 
 export const findCategory = (record: TimeRecord, categories: CategoryResult[]) => {
+  if (record.profile_category_id) {
+    return categories.find(
+      (cat) => cat.profile_category_id === record.profile_category_id && cat.category_set_title === 'custom',
+    )
+  }
+
   if (record.is_user_category) {
     return categories.find(
       (cat) => cat.id === record.user_category_id && cat.category_set_title === 'furtherEmployment',
     )
-  } else {
-    return categories.find(
-      (cat) => cat.id === record.category_id && cat.category_set_title !== 'furtherEmployment',
-    )
   }
+
+  return categories.find(
+    (cat) => cat.id === record.category_id && cat.category_set_title !== 'furtherEmployment',
+  )
 }
 
 export const getUserCategories = async (userId: string): Promise<EmploymentCategory[]> => {

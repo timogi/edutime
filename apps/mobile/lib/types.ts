@@ -1,3 +1,7 @@
+import { Colors } from '@/constants/Colors';
+
+export type ColorTheme = typeof Colors.light;
+
 export type CategorySet = {
   title_de: string
   target_percentage: number
@@ -26,11 +30,17 @@ export type Vacation = {
   title: string
 }
 
+export type ConfigMode = 'default' | 'custom'
+
+export const getConfigMode = (user: { active_config_profile_id: string | null }): ConfigMode =>
+  user.active_config_profile_id ? 'custom' : 'default'
+
 export type BaseTimeRecord = {
   id?: number
   category_id: number | null
   is_user_category: boolean
   user_category_id: number | null
+  profile_category_id?: string | null
 }
 
 export type StopWatchSession = BaseTimeRecord & {
@@ -59,6 +69,7 @@ export type EmploymentCategory = CategoryBase & {
 
 export type Category = CategoryBase & {
   category_set_title: string
+  profile_category_id?: string
 }
 
 export type DailySums = { [date: string]: { duration: number } }

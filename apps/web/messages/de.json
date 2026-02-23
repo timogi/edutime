@@ -144,6 +144,13 @@
     "subtitle": "Untertitel",
     "color": "Farbe",
     "additionalCategories": "Zusätzliche Kategorien",
+    "customCategories": "Benutzerdefinierte Kategorien",
+    "switchToCustom": "Zu benutzerdefiniert wechseln",
+    "confirmSwitchToCustom": "Beim Wechsel in den benutzerdefinierten Modus werden die aktuellen Kantonskategorien kopiert. Du kannst sie dann frei bearbeiten.",
+    "cantonMode": "Kanton",
+    "customMode": "Benutzerdefiniert",
+    "annualWorkHours": "Jahresarbeitszeit",
+    "weight": "Gewicht",
     "editEmployment": "Anstellung bearbeiten",
     "createEmployment": "Anstellung erstellen",
     "workload": "Pensum",
@@ -456,7 +463,8 @@
     "wallis": "Wallis",
     "neuenburg": "Neuenburg",
     "genf": "Genf",
-    "jura": "Jura"
+    "jura": "Jura",
+    "custom": "Benutzerdefiniert"
   },
   "Privacy": {
     "title": "EduTime Datenschutzerklärung",

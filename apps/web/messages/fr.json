@@ -141,6 +141,13 @@
     "subtitle": "Sous-titre",
     "color": "Couleur",
     "additionalCategories": "Catégories supplémentaires",
+    "customCategories": "Catégories personnalisées",
+    "switchToCustom": "Passer au mode personnalisé",
+    "confirmSwitchToCustom": "Lors du passage en mode personnalisé, les catégories cantonales actuelles seront copiées. Vous pourrez ensuite les modifier librement.",
+    "cantonMode": "Canton",
+    "customMode": "Personnalisé",
+    "annualWorkHours": "Heures de travail annuelles",
+    "weight": "Poids",
     "editEmployment": "Modifier l'emploi",
     "createEmployment": "Créer un emploi",
     "workload": "Charge de travail",
@@ -464,7 +471,8 @@
     "wallis": "Valais",
     "neuenburg": "Neuchâtel",
     "genf": "Genève",
-    "jura": "Jura"
+    "jura": "Jura",
+    "custom": "Personnalisé"
   },
 
   "Privacy": {

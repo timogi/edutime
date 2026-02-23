@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Platform, StyleSheet } from 'react-native';
-import { Controller } from 'react-hook-form';
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { Control, Controller } from 'react-hook-form';
+import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { Text } from "@gluestack-ui/themed";
 import { TouchableOpacity } from "react-native";
 import { TextStyles, Spacing, BorderRadius } from "@/constants/Styles";
@@ -12,14 +12,15 @@ import {
   FormControlLabel,
   FormControlLabelText,
 } from "@gluestack-ui/themed";
+import { ColorTheme } from "@/lib/types";
 
 interface DurationInputProps {
-  control: any;
+  control: Control<Record<string, Date | null | string | number | boolean | undefined>>;
   isExpanded: boolean;
   onToggleDurationPicker: () => void;
-  onDurationChange: (event: any, selectedTime: Date | undefined) => void;
+  onDurationChange: (event: DateTimePickerEvent, selectedTime: Date | undefined) => void;
   colorScheme: string | null | undefined;
-  theme: any;
+  theme: ColorTheme;
 }
 
 export function DurationInput({

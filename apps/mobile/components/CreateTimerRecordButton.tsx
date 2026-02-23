@@ -1,11 +1,11 @@
-import { StyleSheet, View, Platform, TouchableOpacity, Modal } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Modal, Platform } from 'react-native';
 import { Button, ButtonText } from '@gluestack-ui/themed';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useState } from 'react';
 import { Spinner } from '@gluestack-ui/themed';
-import * as Haptics from 'expo-haptics';
+import { HapticFeedback } from '@/lib/haptics';
 import { useTranslation } from 'react-i18next';
 import { Text } from '@gluestack-ui/themed';
 
@@ -29,9 +29,7 @@ export const CreateTimerRecordButton = ({
 
   const handleMenuSelect = async (key: string) => {
     try {
-      if (Platform.OS === "ios") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
+      HapticFeedback.light();
       setLoading(key);
       setShowMenu(false);
       
@@ -48,9 +46,7 @@ export const CreateTimerRecordButton = ({
   };
 
   const toggleMenu = () => {
-    if (Platform.OS === "ios") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    HapticFeedback.light();
     setShowMenu(!showMenu);
   };
 
@@ -60,9 +56,7 @@ export const CreateTimerRecordButton = ({
         size="md"
         variant="solid"
         onPress={() => {
-          if (Platform.OS === "ios") {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          }
+          HapticFeedback.light();
           onPress();
         }}
         style={styles.mainButton}

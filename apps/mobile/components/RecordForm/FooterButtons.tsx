@@ -4,6 +4,7 @@ import { Button, ButtonText } from "@gluestack-ui/themed";
 import { Spacing } from "@/constants/Styles";
 import { useTranslation } from "react-i18next";
 import { CreateTimerRecordButton } from "@/components/CreateTimerRecordButton";
+import { ColorTheme } from "@/lib/types";
 
 interface FooterButtonsProps {
   isEditing: boolean;
@@ -14,7 +15,7 @@ interface FooterButtonsProps {
   onSaveAndContinue: () => Promise<void>;
   loading: boolean;
   colorScheme: string | null | undefined;
-  theme: any;
+  theme: ColorTheme;
 }
 
 export function FooterButtons({
@@ -111,8 +112,6 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     padding: Spacing.md,
     borderTopWidth: 1,
-    borderColor: "#ccc",
-    backgroundColor: "#fff",
   },
   footerButtonContainer: {
     flex: 1,

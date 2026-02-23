@@ -141,6 +141,13 @@
     "subtitle": "Subtitle",
     "color": "Color",
     "additionalCategories": "Additional categories",
+    "customCategories": "Custom categories",
+    "switchToCustom": "Switch to custom",
+    "confirmSwitchToCustom": "When switching to custom mode, the current canton categories will be copied. You can then edit them freely.",
+    "cantonMode": "Canton",
+    "customMode": "Custom",
+    "annualWorkHours": "Annual work hours",
+    "weight": "Weight",
     "editEmployment": "Edit employment",
     "createEmployment": "Create employment",
     "workload": "Workload",
@@ -452,7 +459,8 @@
     "wallis": "Valais",
     "neuenburg": "Neuchâtel",
     "genf": "Geneva",
-    "jura": "Jura"
+    "jura": "Jura",
+    "custom": "Custom"
   },
   "Privacy": {
     "title": "EduTime Privacy Policy",

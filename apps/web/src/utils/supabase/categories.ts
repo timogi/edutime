@@ -64,13 +64,19 @@ export const findCategory = (record: BaseTimeRecord, categories: Category[]) => 
     return undefined
   }
 
+  if (record.profile_category_id) {
+    return categories.find(
+      (cat) => cat.profile_category_id === record.profile_category_id && cat.category_set_title === 'custom',
+    )
+  }
+
   if (record.is_user_category) {
     return categories.find(
       (cat) => cat.id === record.user_category_id && cat.category_set_title === 'furtherEmployment',
     )
-  } else {
-    return categories.find(
-      (cat) => cat.id === record.category_id && cat.category_set_title !== 'furtherEmployment',
-    )
   }
+
+  return categories.find(
+    (cat) => cat.id === record.category_id && cat.category_set_title !== 'furtherEmployment',
+  )
 }

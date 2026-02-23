@@ -5,15 +5,13 @@ import {
   Text,
   Button,
   Modal,
-  ScrollArea,
   Table,
-  TextInput,
-  ColorPicker,
   Group,
   NumberInput,
   ActionIcon,
   SimpleGrid,
   Select,
+  SegmentedControl,
 } from '@mantine/core'
 import { GetStaticPropsContext } from 'next/types'
 import { ThemeDropdown } from './ThemeDropdown'
@@ -30,8 +28,8 @@ import {
   updateUserCategory,
 } from '@/utils/supabase/user'
 import { AppComponentProps } from '@/types/globals'
-import { HEADER_HEIGHT } from '@/components/AppLayout'
 import { EmploymentCategory, CantonData } from '@/types/globals'
+import { ProfileCategoryData } from '@edutime/shared'
 import {
   IconCheck,
   IconCircleFilled,
@@ -39,11 +37,21 @@ import {
   IconTableImport,
   IconTable,
 } from '@tabler/icons-react'
-import { CantonExplanation } from './CantonExplanation'
 import { notifications } from '@mantine/notifications'
 import { CategoryModal } from './CategoryModal'
+import { ProfileCategoryModal } from './ProfileCategoryModal'
 import ImportModal from './ImportModal'
 import { getCantonData } from '@/utils/supabase/canton'
+import {
+  getOrCreateConfigProfile,
+  activateCustomMode,
+  deactivateCustomMode,
+  updateConfigProfile,
+  createProfileCategory,
+  updateProfileCategory,
+  deleteProfileCategory,
+} from '@/utils/supabase/config_profiles'
+import { useUser } from '@/contexts/UserProvider'
 import classes from './Settings.module.css'
 
 const WORK_HOURS_DATA = [
@@ -63,6 +71,8 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
   const [cantonData, setCantonData] = useState<CantonData | null>(null)
   const [categoryModalOpened, { open: openCategoryModal, close: closeCategoryModal }] =
     useDisclosure(false)
+  const [profileCategoryModalOpened, { open: openProfileCategoryModal, close: closeProfileCategoryModal }] =
+    useDisclosure(false)
   const [importModalOpened, { open: openImportModal, close: closeImportModal }] =
     useDisclosure(false)
   const [calculatorModalOpened, { open: openCalculatorModal, close: closeCalculatorModal }] =
@@ -73,14 +83,17 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
     color: '',
     workload: 0,
   } as EmploymentCategory)
+  const [currentProfileCategory, setCurrentProfileCategory] = useState<ProfileCategoryData | null>(null)
   const [userPercentages, setUserPercentages] = useState<{ [key: number]: number }>({})
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingCantonData, setIsLoadingCantonData] = useState(false)
+  const [customAnnualHours, setCustomAnnualHours] = useState(1930)
+
+  const { configMode, configProfile, profileCategories, refreshUserData: refreshCtx } = useUser()
 
   const t = useTranslations('Index')
   const t_cat = useTranslations('Categories')
 
-  // Format number for Swiss locale (no thousands separator)
   const formatSwissNumber = (num: number): string => {
     return num.toString()
   }
@@ -95,13 +108,17 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
     closeCalculatorModal()
   }
 
+  useEffect(() => {
+    if (configProfile) {
+      setCustomAnnualHours(configProfile.annual_work_hours)
+    }
+  }, [configProfile])
+
   const initializeUserPercentages = useCallback((data: CantonData) => {
     const initialPercentages: { [key: number]: number } = {}
-
     data.category_sets.forEach((categorySet) => {
       initialPercentages[categorySet.id] = categorySet.user_percentage ?? 0
     })
-
     setUserPercentages(initialPercentages)
   }, [])
 
@@ -124,16 +141,41 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
     }
   }
 
+  const handleModeSwitch = async (value: string) => {
+    if (value === 'custom' && configMode !== 'custom') {
+      setIsLoading(true)
+      try {
+        const profile = await getOrCreateConfigProfile(userData.user_id)
+        await activateCustomMode(userData.user_id, profile.id)
+        await reloadUserData()
+        await refreshCtx()
+      } catch (error) {
+        console.error('[Settings] Error activating custom mode:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    } else if (value === 'default' && configMode === 'custom') {
+      setIsLoading(true)
+      try {
+        await deactivateCustomMode(userData.user_id)
+        await reloadUserData()
+        await refreshCtx()
+      } catch (error) {
+        console.error('[Settings] Error deactivating custom mode:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+  }
+
   const loadCantonData = useCallback(async () => {
     if (!canton || !userData?.user_id) {
       setCantonData(null)
       return
     }
-
     setIsLoadingCantonData(true)
     let retryCount = 0
     const maxRetries = 3
-
     while (retryCount <= maxRetries) {
       try {
         const data = await getCantonData(canton, userData.user_id)
@@ -145,7 +187,6 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
         } else {
           if (retryCount < maxRetries) {
             retryCount++
-            // Wait longer between retries (exponential backoff)
             await new Promise((resolve) => setTimeout(resolve, 1000 * retryCount))
             continue
           }
@@ -157,7 +198,6 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
         console.error('[Settings] Error loading canton data in useEffect:', error)
         if (retryCount < maxRetries) {
           retryCount++
-          // Wait longer between retries (exponential backoff)
           await new Promise((resolve) => setTimeout(resolve, 1000 * retryCount))
           continue
         }
@@ -170,12 +210,8 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
 
   useEffect(() => {
     loadCantonData()
-
-    // Don't auto-reload on visibility change - let React Query handle it
-    // The visibility change handler was causing issues with stuck queries
   }, [loadCantonData, canton, userData.user_id])
 
-  // Update canton state when userData.canton_code changes (e.g., after page navigation)
   useEffect(() => {
     if (userData.canton_code && userData.canton_code !== canton) {
       setCanton(userData.canton_code)
@@ -195,16 +231,13 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
         const existingCategorySet = cantonData?.category_sets.find(
           (cs) => cs.id === Number(categorySetId),
         )
-
         if (
           existingCategorySet &&
           existingCategorySet.user_percentage !== null &&
           existingCategorySet.user_percentage_id !== null
         ) {
-          // Update existing percentage using the user_percentage_id
           await updateUserCustomTarget(existingCategorySet.user_percentage_id, userPercentage)
         } else {
-          // Create a new custom target
           await createUserCustomTarget(userData.user_id, Number(categorySetId), userPercentage)
         }
       }
@@ -220,15 +253,15 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
 
   const saveCantonAndWorkload = useCallback(async () => {
     try {
-      const updateData: any = { canton_code: canton, workload: workload, class_size: classSize }
+      const data: Record<string, unknown> = { canton_code: canton, workload: workload, class_size: classSize }
       if (cantonData?.use_custom_work_hours) {
-        updateData.custom_work_hours = customWorkHours
+        data.custom_work_hours = customWorkHours
       }
       if (canton === 'TG_S') {
-        updateData.education_level = educationLevel
-        updateData.teacher_relief = teacherRelief
+        data.education_level = educationLevel
+        data.teacher_relief = teacherRelief
       }
-      await updateUserData(updateData, userData.user_id)
+      await updateUserData(data, userData.user_id)
     } catch (error) {
       console.error('Error saving settings:', error)
       notifications.show({ title: t('error'), message: t('error_saving_settings'), color: 'red' })
@@ -248,50 +281,52 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
   const handleSave = useCallback(async () => {
     setIsLoading(true)
 
-    // Move calculateTotalPercentage inside handleSave
     const calculateTotalPercentage = () => {
       const total = Object.values(userPercentages).reduce((sum, val) => {
-        // Convert to 2 decimal places to avoid floating point issues
         return Math.round((sum + val) * 100) / 100
       }, 0)
       return total
     }
 
     try {
-      // If the canton is configurable, check percentages sum to 100 before saving
-      if (cantonData?.is_configurable) {
-        const totalPercentage = calculateTotalPercentage()
-
-        if (Math.abs(totalPercentage - 100) > 0.01) {
-          // Allow small floating point differences
-          notifications.show({
-            title: t('error'),
-            message: t('percentages_must_sum_to_100'),
-            color: 'red',
-          })
-          setIsLoading(false)
-          return // Don't proceed with saving
+      if (configMode === 'custom') {
+        if (configProfile) {
+          await updateConfigProfile(configProfile.id, { annual_work_hours: customAnnualHours })
         }
+        await updateUserData({ workload }, userData.user_id)
+        notifications.show({
+          title: t('success'),
+          message: t('saved'),
+          color: 'green',
+          icon: <IconCheck />,
+        })
+        await reloadUserData()
+        await refreshCtx()
+      } else {
+        if (cantonData?.is_configurable) {
+          const totalPercentage = calculateTotalPercentage()
+          if (Math.abs(totalPercentage - 100) > 0.01) {
+            notifications.show({
+              title: t('error'),
+              message: t('percentages_must_sum_to_100'),
+              color: 'red',
+            })
+            setIsLoading(false)
+            return
+          }
+        }
+        await saveCantonAndWorkload()
+        if (cantonData?.is_configurable) {
+          await saveConfigurablePercentages()
+        }
+        notifications.show({
+          title: t('success'),
+          message: t('saved'),
+          color: 'green',
+          icon: <IconCheck />,
+        })
+        await reloadUserData()
       }
-
-      // Always save the canton and workload
-      await saveCantonAndWorkload()
-
-      // If the canton is configurable, also save the percentages
-      if (cantonData?.is_configurable) {
-        await saveConfigurablePercentages()
-      }
-
-      // Show single success message after everything is saved
-      notifications.show({
-        title: t('success'),
-        message: t('saved'),
-        color: 'green',
-        icon: <IconCheck />,
-      })
-
-      // Refresh data after saving
-      await reloadUserData()
     } catch (error) {
       console.error('Error during save:', error)
       notifications.show({ title: t('error'), message: t('error_saving_settings'), color: 'red' })
@@ -299,11 +334,17 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
       setIsLoading(false)
     }
   }, [
+    configMode,
+    configProfile,
+    customAnnualHours,
+    workload,
     saveCantonAndWorkload,
     saveConfigurablePercentages,
     reloadUserData,
+    refreshCtx,
     cantonData?.is_configurable,
     userPercentages,
+    userData.user_id,
     t,
   ])
 
@@ -333,6 +374,55 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
     reloadUserData()
   }
 
+  const handleCreateProfileCategory = () => {
+    setCurrentProfileCategory(null)
+    openProfileCategoryModal()
+  }
+
+  const handleEditProfileCategory = (category: ProfileCategoryData) => {
+    setCurrentProfileCategory(category)
+    openProfileCategoryModal()
+  }
+
+  const handleSaveProfileCategory = async (category: ProfileCategoryData) => {
+    if (!configProfile) return
+    try {
+      if (currentProfileCategory) {
+        await updateProfileCategory(currentProfileCategory.id, {
+          title: category.title,
+          subtitle: category.subtitle,
+          color: category.color,
+          weight: category.weight,
+        })
+      } else {
+        await createProfileCategory(userData.user_id, configProfile.id, {
+          title: category.title,
+          subtitle: category.subtitle,
+          color: category.color,
+          weight: category.weight,
+        })
+      }
+      closeProfileCategoryModal()
+      await reloadUserData()
+      await refreshCtx()
+    } catch (error) {
+      console.error('Error saving profile category:', error)
+    }
+  }
+
+  const handleDeleteProfileCategory = async (id: string) => {
+    try {
+      await deleteProfileCategory(id)
+      closeProfileCategoryModal()
+      await reloadUserData()
+      await refreshCtx()
+    } catch (error) {
+      console.error('Error deleting profile category:', error)
+    }
+  }
+
+  const totalProfileWeight = profileCategories.reduce((sum, cat) => sum + cat.weight, 0)
+
   return (
     <>
       <Stack className={classes.wrapper} p={'lg'}>
@@ -346,9 +436,19 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
         <Card radius='md' withBorder>
           <Stack gap='sm'>
             <Text size='xl'>{t('employment')}</Text>
+
+            <SegmentedControl
+              value={configMode}
+              onChange={handleModeSwitch}
+              data={[
+                { label: t('cantonMode'), value: 'default' },
+                { label: t('customMode'), value: 'custom' },
+              ]}
+              disabled={isLoading}
+            />
+
             <div className={classes.employmentCardContent}>
               <div className={classes.inputsGrid}>
-                {/* Base workload input - always shown */}
                 <NumberInput
                   value={workload}
                   onChange={(value) => setWorkload(typeof value === 'number' ? value : 0)}
@@ -360,8 +460,20 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
                   size='md'
                 />
 
-                {/* Conditional cells - easily addable */}
-                {canton === 'TG_S' && (
+                {configMode === 'custom' && (
+                  <NumberInput
+                    value={customAnnualHours}
+                    onChange={(value) => setCustomAnnualHours(typeof value === 'number' ? value : 1930)}
+                    placeholder={t('annualWorkHours')}
+                    min={0}
+                    max={10000}
+                    decimalScale={0}
+                    label={t('annualWorkHours')}
+                    size='md'
+                  />
+                )}
+
+                {configMode === 'default' && canton === 'TG_S' && (
                   <NumberInput
                     value={classSize}
                     onChange={(value) => setClassSize(typeof value === 'number' ? value : 0)}
@@ -374,10 +486,10 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
                   />
                 )}
 
-                {canton === 'TG_S' && (
+                {configMode === 'default' && canton === 'TG_S' && (
                   <Select
                     value={educationLevel}
-                    onChange={(value) => setEducationLevel(value as any)}
+                    onChange={(value) => setEducationLevel(value as string)}
                     placeholder={t('education_level_placeholder')}
                     label={t('education_level')}
                     size='md'
@@ -396,10 +508,14 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
                   />
                 )}
               </div>
-              <div className={classes.cantonPickerWrapper}>
-                <CantonPicker canton={canton} setCanton={handleCantonChange} required={false} />
-              </div>
-              {cantonData && (
+
+              {configMode === 'default' && (
+                <div className={classes.cantonPickerWrapper}>
+                  <CantonPicker canton={canton} setCanton={handleCantonChange} required={false} />
+                </div>
+              )}
+
+              {configMode === 'default' && cantonData && (
                 <Card radius='md' withBorder style={{ gridColumn: '1 / -1' }}>
                   <Stack gap='sm' p='lg'>
                     {cantonData.title && (
@@ -483,6 +599,66 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
                   </Stack>
                 </Card>
               )}
+
+              {configMode === 'custom' && (
+                <Card radius='md' withBorder style={{ gridColumn: '1 / -1' }}>
+                  <Stack gap='sm' p='lg'>
+                    <Group justify='space-between'>
+                      <Text size='lg' fw={500}>{t('customCategories')}</Text>
+                      <Text size='sm' c={Math.abs(totalProfileWeight - 100) > 0.01 ? 'orange' : 'dimmed'}>
+                        {totalProfileWeight.toFixed(0)}%
+                      </Text>
+                    </Group>
+
+                    {profileCategories.length > 0 && (
+                      <Table.ScrollContainer minWidth={400}>
+                        <Table
+                          striped
+                          highlightOnHover
+                          withColumnBorders
+                          withTableBorder
+                          horizontalSpacing='md'
+                          verticalSpacing='sm'
+                        >
+                          <Table.Thead>
+                            <Table.Tr>
+                              <Table.Th w='40%'>{t('Title')}</Table.Th>
+                              <Table.Th w='30%'>{t('subtitle')}</Table.Th>
+                              <Table.Th w='10%'>{t('color')}</Table.Th>
+                              <Table.Th w='20%'>{t('weight')}</Table.Th>
+                            </Table.Tr>
+                          </Table.Thead>
+                          <Table.Tbody>
+                            {profileCategories.map((category) => (
+                              <Table.Tr
+                                key={category.id}
+                                onClick={() => handleEditProfileCategory(category)}
+                                style={{ cursor: 'pointer' }}
+                              >
+                                <Table.Td>{category.title}</Table.Td>
+                                <Table.Td>{category.subtitle}</Table.Td>
+                                <Table.Td>
+                                  <IconCircleFilled
+                                    style={{ color: category.color ?? undefined, width: 16, opacity: 0.5 }}
+                                  />
+                                </Table.Td>
+                                <Table.Td>{category.weight}%</Table.Td>
+                              </Table.Tr>
+                            ))}
+                          </Table.Tbody>
+                        </Table>
+                      </Table.ScrollContainer>
+                    )}
+
+                    <Group justify='flex-start'>
+                      <Button onClick={handleCreateProfileCategory} leftSection={<IconPlus />}>
+                        {t('createCategory')}
+                      </Button>
+                    </Group>
+                  </Stack>
+                </Card>
+              )}
+
               <div className={classes.saveButtonWrapper}>
                 <Group justify='flex-start'>
                   <Button onClick={handleSave} disabled={isLoading}>
@@ -494,57 +670,59 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
           </Stack>
         </Card>
 
-        <Card radius='md' withBorder>
-          <Stack gap='sm'>
-            <Text size='xl'>{t('additionalCategories')}</Text>
+        {configMode === 'default' && (
+          <Card radius='md' withBorder>
+            <Stack gap='sm'>
+              <Text size='xl'>{t('additionalCategories')}</Text>
 
-            {userData.user_categories.length > 0 && (
-              <Table.ScrollContainer minWidth={500}>
-                <Table
-                  striped
-                  highlightOnHover
-                  withColumnBorders
-                  withTableBorder
-                  horizontalSpacing='md'
-                  verticalSpacing='sm'
-                >
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th w='40%'>{t('Title')}</Table.Th>
-                      <Table.Th w='40%'>{t('subtitle')}</Table.Th>
-                      <Table.Th w='10%'>{t('color')}</Table.Th>
-                      <Table.Th w='10%'>{t('workload')}</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {userData.user_categories.map((category) => (
-                      <Table.Tr
-                        key={category.id}
-                        onClick={() => handleEditCategory(category)}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <Table.Td>{category.title}</Table.Td>
-                        <Table.Td>{category.subtitle}</Table.Td>
-                        <Table.Td>
-                          <IconCircleFilled
-                            style={{ color: category.color ?? undefined, width: 16, opacity: 0.5 }}
-                          />
-                        </Table.Td>
-                        <Table.Td>{category.workload}%</Table.Td>
+              {userData.user_categories.length > 0 && (
+                <Table.ScrollContainer minWidth={500}>
+                  <Table
+                    striped
+                    highlightOnHover
+                    withColumnBorders
+                    withTableBorder
+                    horizontalSpacing='md'
+                    verticalSpacing='sm'
+                  >
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th w='40%'>{t('Title')}</Table.Th>
+                        <Table.Th w='40%'>{t('subtitle')}</Table.Th>
+                        <Table.Th w='10%'>{t('color')}</Table.Th>
+                        <Table.Th w='10%'>{t('workload')}</Table.Th>
                       </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              </Table.ScrollContainer>
-            )}
-            <Group justify='flex-start'>
-              <Button onClick={handleCreateCategory} leftSection={<IconPlus />}>
-                {t('createCategory')}
-              </Button>
-            </Group>
-          </Stack>
-        </Card>
-        {canton === 'BE' && (
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {userData.user_categories.map((category) => (
+                        <Table.Tr
+                          key={category.id}
+                          onClick={() => handleEditCategory(category)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <Table.Td>{category.title}</Table.Td>
+                          <Table.Td>{category.subtitle}</Table.Td>
+                          <Table.Td>
+                            <IconCircleFilled
+                              style={{ color: category.color ?? undefined, width: 16, opacity: 0.5 }}
+                            />
+                          </Table.Td>
+                          <Table.Td>{category.workload}%</Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                </Table.ScrollContainer>
+              )}
+              <Group justify='flex-start'>
+                <Button onClick={handleCreateCategory} leftSection={<IconPlus />}>
+                  {t('createCategory')}
+                </Button>
+              </Group>
+            </Stack>
+          </Card>
+        )}
+        {configMode === 'default' && canton === 'BE' && (
           <Card radius='md' withBorder>
             <Stack gap='sm'>
               <Text size='xl'>{t('importData')}</Text>
@@ -565,6 +743,13 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
         onDelete={handleDeleteCategory}
         onClose={closeCategoryModal}
         opened={categoryModalOpened}
+      />
+      <ProfileCategoryModal
+        category={currentProfileCategory}
+        onSave={handleSaveProfileCategory}
+        onDelete={currentProfileCategory ? () => handleDeleteProfileCategory(currentProfileCategory.id) : undefined}
+        onClose={closeProfileCategoryModal}
+        opened={profileCategoryModalOpened}
       />
       <ImportModal
         onClose={closeImportModal}

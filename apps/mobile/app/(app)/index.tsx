@@ -5,7 +5,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
-import * as Haptics from 'expo-haptics';
+import { HapticFeedback } from '@/lib/haptics';
 import { Button, ButtonText } from '@gluestack-ui/themed';
 
 import { ThemedView } from '@/components/ThemedView';
@@ -50,9 +50,7 @@ export default function TimesheetScreen() {
     
     lastClickRef.current = now;
     
-    if (Platform.OS === 'ios') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    HapticFeedback.light();
     const formattedDate = format(date, 'yyyy-MM-dd');
     navigateToRecordForm({
       date: formattedDate,
@@ -60,7 +58,7 @@ export default function TimesheetScreen() {
     });
   };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
+  const handleDateChange = (_event: unknown, selectedDate?: Date) => {
     setShowDatePicker(Platform.OS === 'ios');
     if (selectedDate) {
       setDate(selectedDate);

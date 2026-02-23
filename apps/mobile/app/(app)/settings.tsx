@@ -14,9 +14,19 @@ import { updateUserData } from "@/lib/database/user";
 import { createUserCategory, updateUserCategory, deleteUserCategory } from "@/lib/database/user_categories";
 import { deleteAccount } from "@/lib/database/user";
 import { createUserCustomTarget, updateUserCustomTarget } from "@/lib/database/user_custom_targets";
+import {
+  getOrCreateConfigProfile,
+  activateCustomMode,
+  deactivateCustomMode,
+  updateConfigProfile,
+  createProfileCategory,
+  updateProfileCategory,
+  deleteProfileCategory,
+} from "@/lib/database/config_profiles";
 import { Database } from "@edutime/shared";
 import { Spacing, LayoutStyles } from "@/constants/Styles";
 import { EmploymentCategory } from "@/lib/types";
+import { ProfileCategoryData } from "@edutime/shared";
 
 const deleteUserAccount = async (userId: string, password: string, email: string): Promise<void> => {
   if (!userId || !password || !email) {
@@ -34,7 +44,7 @@ const deleteUserAccount = async (userId: string, password: string, email: string
 };
 
 export default function SettingsScreen() {
-  const { userEmail, user, userCategories, cantonData, refreshUserData, logout } = useUser();
+  const { userEmail, user, userCategories, cantonData, refreshUserData, logout, configMode, configProfile, profileCategories } = useUser();
   const { t } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -44,13 +54,14 @@ export default function SettingsScreen() {
     setRefreshing(false);
   }, [refreshUserData]);
 
-  const saveConfigurablePercentages = useCallback(async (userPercentages: {[key: number]: number}, cantonData: any) => {
+  const saveConfigurablePercentages = useCallback(async (userPercentages: {[key: number]: number}, cantonData: unknown) => {
     if (!user?.user_id) return;
+    const cd = cantonData as { category_sets: Array<{ id: number; user_percentage: number | null; user_percentage_id: number | null }> };
     
     try {
       for (const [categorySetId, userPercentage] of Object.entries(userPercentages)) {
-        const existingCategorySet = cantonData?.category_sets.find(
-          (cs: any) => cs.id === Number(categorySetId),
+        const existingCategorySet = cd?.category_sets.find(
+          (cs) => cs.id === Number(categorySetId),
         );
         const numericUserPercentage =
           typeof userPercentage === 'string' ? parseFloat(userPercentage) : userPercentage;
@@ -60,13 +71,11 @@ export default function SettingsScreen() {
           existingCategorySet.user_percentage !== null &&
           existingCategorySet.user_percentage_id !== null
         ) {
-          // Update existing percentage using the user_percentage_id
           await updateUserCustomTarget(
             existingCategorySet.user_percentage_id,
             numericUserPercentage as number,
           );
         } else {
-          // Create a new custom target
           await createUserCustomTarget(
             user.user_id,
             Number(categorySetId),
@@ -83,7 +92,7 @@ export default function SettingsScreen() {
   const handleSaveEmployment = async (workload: number, canton: string, customWorkHours?: number, userPercentages?: {[key: number]: number}, classSize?: number | null, educationLevel?: Database["public"]["Enums"]["education_level"] | null, teacherRelief?: number | null) => {
     if (!user?.user_id) return;
     try {
-      const userData: any = { workload, canton_code: canton };
+      const userData: Partial<Database['public']['Tables']['users']['Update']> = { workload, canton_code: canton };
       if (customWorkHours) {
         userData.custom_work_hours = customWorkHours;
       }
@@ -100,24 +109,52 @@ export default function SettingsScreen() {
       }
       await updateUserData(user.user_id, userData);
       
-      // Save configurable percentages if canton is configurable and percentages are provided
       if (cantonData?.is_configurable && userPercentages && cantonData) {
         await saveConfigurablePercentages(userPercentages, cantonData);
       }
       
-      // Refresh user data to get updated canton data with new percentages
       await refreshUserData();
     } catch (error) {
       console.error('Error saving employment:', error);
     }
   };
 
+  const handleSaveCustom = async (annualWorkHours: number, workload: number) => {
+    if (!user?.user_id || !configProfile) return;
+    try {
+      await updateConfigProfile(configProfile.id, { annual_work_hours: annualWorkHours });
+      await updateUserData(user.user_id, { workload });
+      await refreshUserData();
+    } catch (error) {
+      console.error('Error saving custom settings:', error);
+    }
+  };
+
+  const handleActivateCustomMode = async () => {
+    if (!user?.user_id) return;
+    try {
+      const profile = await getOrCreateConfigProfile(user.user_id);
+      await activateCustomMode(user.user_id, profile.id);
+      await refreshUserData();
+    } catch (error) {
+      console.error('Error activating custom mode:', error);
+    }
+  };
+
+  const handleDeactivateCustomMode = async () => {
+    if (!user?.user_id) return;
+    try {
+      await deactivateCustomMode(user.user_id);
+      await refreshUserData();
+    } catch (error) {
+      console.error('Error deactivating custom mode:', error);
+    }
+  };
+
   const handleCantonChange = async (newCanton: string) => {
     if (!user?.user_id) return;
     try {
-      // Update the canton in the database
       await updateUserData(user.user_id, { canton_code: newCanton });
-      // Refresh user data to get updated canton data
       await refreshUserData();
     } catch (error) {
       console.error('Error changing canton:', error);
@@ -129,7 +166,7 @@ export default function SettingsScreen() {
     try {
       const categoryData = {
         ...category,
-        color: category.color || '#845ef7', // Default color if null
+        color: category.color || '#845ef7',
       };
       await updateUserCategory(category.id, categoryData);
       await refreshUserData();
@@ -144,7 +181,7 @@ export default function SettingsScreen() {
       const { id, ...categoryWithoutId } = category;
       const categoryData = {
         ...categoryWithoutId,
-        color: categoryWithoutId.color || '#845ef7', // Default color if null
+        color: categoryWithoutId.color || '#845ef7',
       };
       await createUserCategory(user.user_id, categoryData);
       await refreshUserData();
@@ -162,6 +199,34 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleCreateProfileCategory = async (category: Omit<ProfileCategoryData, 'id' | 'config_profile_id'>) => {
+    if (!user?.user_id || !configProfile) return;
+    try {
+      await createProfileCategory(user.user_id, configProfile.id, category);
+      await refreshUserData();
+    } catch (error) {
+      console.error('Error creating profile category:', error);
+    }
+  };
+
+  const handleEditProfileCategory = async (id: string, updates: Partial<ProfileCategoryData>) => {
+    try {
+      await updateProfileCategory(id, updates);
+      await refreshUserData();
+    } catch (error) {
+      console.error('Error editing profile category:', error);
+    }
+  };
+
+  const handleDeleteProfileCategory = async (id: string) => {
+    try {
+      await deleteProfileCategory(id);
+      await refreshUserData();
+    } catch (error) {
+      console.error('Error deleting profile category:', error);
+    }
+  };
+
   const handleDeleteAccount = async (password: string) => {
     if (!user?.user_id || !userEmail) {
       throw new Error('User not found');
@@ -169,8 +234,6 @@ export default function SettingsScreen() {
 
     try {
       await deleteUserAccount(user.user_id, password, userEmail);
-      // The deleteAccount function now handles signing out the user
-      // We need to call logout to update the UserContext state
       await logout();
     } catch (error) {
       console.error('Error deleting account:', error);
@@ -194,20 +257,31 @@ export default function SettingsScreen() {
         }
       >
         <ThemedView style={styles.buttonContainer}>
-          {cantonData && (
+          {(cantonData || configMode === 'custom') && (
             <EmploymentInput
               onSave={handleSaveEmployment}
               onCantonChange={handleCantonChange}
-              cantonData={cantonData}
+              onSaveCustom={handleSaveCustom}
+              onActivateCustomMode={handleActivateCustomMode}
+              onDeactivateCustomMode={handleDeactivateCustomMode}
+              cantonData={cantonData!}
               userData={user}
+              configMode={configMode}
+              configProfile={configProfile}
+              profileCategories={profileCategories}
+              onCreateProfileCategory={handleCreateProfileCategory}
+              onEditProfileCategory={handleEditProfileCategory}
+              onDeleteProfileCategory={handleDeleteProfileCategory}
             />
           )}
-          <FurtherEmploymentInput
-            userCategories={userCategories}
-            onEditCategory={handleEditCategory}
-            onCreateCategory={handleCreateCategory}
-            onDeleteCategory={handleDeleteCategory}
-          />
+          {configMode === 'default' && (
+            <FurtherEmploymentInput
+              userCategories={userCategories}
+              onEditCategory={handleEditCategory}
+              onCreateCategory={handleCreateCategory}
+              onDeleteCategory={handleDeleteCategory}
+            />
+          )}
           <Informations />
           <LogoutButton />
           <DeleteAccount onDeleteAccount={handleDeleteAccount} />

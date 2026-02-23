@@ -1,19 +1,20 @@
 import React from 'react';
 import { View, Platform, StyleSheet } from 'react-native';
-import { Controller } from 'react-hook-form';
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { Control, Controller } from 'react-hook-form';
+import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { Text } from "@gluestack-ui/themed";
 import { TouchableOpacity } from "react-native";
 import { TextStyles, Spacing, BorderRadius } from "@/constants/Styles";
 import { useTranslation } from "react-i18next";
+import { ColorTheme } from "@/lib/types";
 
 interface DateInputProps {
-  control: any;
+  control: Control<Record<string, Date | null | string | number | boolean | undefined>>;
   showDatePicker: boolean;
   onToggleDatePicker: () => void;
-  onDateChange: (event: any, selectedDate: Date | undefined) => void;
+  onDateChange: (event: DateTimePickerEvent, selectedDate: Date | undefined) => void;
   colorScheme: string | null | undefined;
-  theme: any;
+  theme: ColorTheme;
 }
 
 export function DateInput({

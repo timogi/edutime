@@ -115,7 +115,7 @@ export const ToastContainer: React.FC = () => {
   );
 };
 
-const ToastItem: React.FC<{ toast: ToastState; theme: any }> = ({ toast, theme }) => {
+const ToastItem: React.FC<{ toast: ToastState; theme: typeof Colors.light }> = ({ toast, theme }) => {
   const [opacity] = useState(new Animated.Value(0));
   const [translateY] = useState(new Animated.Value(-100));
 

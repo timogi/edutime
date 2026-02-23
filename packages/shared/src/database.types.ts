@@ -589,6 +589,38 @@ export type Database = {
           },
         ]
       }
+      config_profiles: {
+        Row: {
+          annual_work_hours: number
+          created_at: string
+          id: string
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          annual_work_hours: number
+          created_at?: string
+          id?: string
+          title: string
+          user_id?: string | null
+        }
+        Update: {
+          annual_work_hours?: number
+          created_at?: string
+          id?: string
+          title?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "config_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       languages: {
         Row: {
           created_at: string
@@ -702,6 +734,57 @@ export type Database = {
         }
         Relationships: []
       }
+      profile_categories: {
+        Row: {
+          color: string
+          config_profile_id: string
+          created_at: string
+          id: string
+          order: number | null
+          subtitle: string
+          title: string
+          user_id: string
+          weight: number
+        }
+        Insert: {
+          color?: string
+          config_profile_id: string
+          created_at?: string
+          id?: string
+          order?: number | null
+          subtitle?: string
+          title: string
+          user_id: string
+          weight?: number
+        }
+        Update: {
+          color?: string
+          config_profile_id?: string
+          created_at?: string
+          id?: string
+          order?: number | null
+          subtitle?: string
+          title?: string
+          user_id?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_categories_config_profile_id_fkey"
+            columns: ["config_profile_id"]
+            isOneToOne: false
+            referencedRelation: "config_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_categories_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       records: {
         Row: {
           category_id: number | null
@@ -712,6 +795,7 @@ export type Database = {
           end_time: string | null
           id: number
           is_user_category: boolean
+          profile_category_id: string | null
           start_time: string | null
           user_category_id: number | null
           user_id: string
@@ -725,6 +809,7 @@ export type Database = {
           end_time?: string | null
           id?: number
           is_user_category?: boolean
+          profile_category_id?: string | null
           start_time?: string | null
           user_category_id?: number | null
           user_id?: string
@@ -738,6 +823,7 @@ export type Database = {
           end_time?: string | null
           id?: number
           is_user_category?: boolean
+          profile_category_id?: string | null
           start_time?: string | null
           user_category_id?: number | null
           user_id?: string
@@ -748,6 +834,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "records_profile_category_id_fkey"
+            columns: ["profile_category_id"]
+            isOneToOne: false
+            referencedRelation: "profile_categories"
             referencedColumns: ["id"]
           },
           {
@@ -871,6 +964,7 @@ export type Database = {
       }
       users: {
         Row: {
+          active_config_profile_id: string | null
           canton_code: string
           class_size: number | null
           created_at: string
@@ -887,6 +981,7 @@ export type Database = {
           workload: number | null
         }
         Insert: {
+          active_config_profile_id?: string | null
           canton_code: string
           class_size?: number | null
           created_at?: string
@@ -905,6 +1000,7 @@ export type Database = {
           workload?: number | null
         }
         Update: {
+          active_config_profile_id?: string | null
           canton_code?: string
           class_size?: number | null
           created_at?: string

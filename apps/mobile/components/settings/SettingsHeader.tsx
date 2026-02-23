@@ -1,22 +1,21 @@
 import { Image, StyleSheet, View } from "react-native";
 import Constants from "expo-constants";
-import { ThemedText } from "@/components/ThemedText";
 import { useTranslation } from "react-i18next";
 import {
-  Badge,
-  BadgeText,
   HStack,
   Text
 } from "@gluestack-ui/themed";
 import { useColorScheme } from "@/hooks/useColorScheme";
+import { Colors } from "@/constants/Colors";
 
 export default function SettingsHeader() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme ?? 'light'];
   const version = Constants.expoConfig?.version || "1.0.0";
 
   const textStyle = {
-    color: colorScheme === 'dark' ? 'white' : undefined
+    color: theme.text,
   };
 
   return (
@@ -25,7 +24,7 @@ export default function SettingsHeader() {
         <View style={styles.textContainer}>
           <Text style={[styles.title, textStyle]}>edutime.ch</Text>
           <HStack space="sm" style={styles.versionContainer}>
-            <Text style={[styles.version, textStyle]}>Version {version}</Text>
+            <Text style={[styles.version, textStyle]}>{t('Settings.version')} {version}</Text>
             {/* <Badge size="sm" variant="solid" action="info">
               <BadgeText>Beta</BadgeText>
             </Badge> */}
@@ -63,7 +62,7 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: Colors.light.gray[2],
     overflow: "hidden",
   },
   appIcon: {
@@ -77,6 +76,6 @@ const styles = StyleSheet.create({
   },
   version: {
     fontSize: 16,
-    color: "#747474",
+    color: Colors.light.gray[6],
   },
 });

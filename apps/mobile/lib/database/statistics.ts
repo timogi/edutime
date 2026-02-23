@@ -2,7 +2,7 @@ import { supabase } from '../supabase';
 import { getIsoDate } from '../helpers';
 import { CantonData, Category } from '../types';
 import { getUserCategories } from './categories';
-import { Database } from '@edutime/shared';
+import { Database, ConfigMode, ConfigProfileData, ProfileCategoryData } from '@edutime/shared';
 
 export interface CategoryStatistic {
   duration: number;
@@ -88,7 +88,7 @@ export interface CategoryStatistics {
   ): Promise<any[]> => {
     const { data, error } = await supabase
       .from('records')
-      .select('category_id, duration, user_category_id, is_user_category')
+      .select('category_id, duration, user_category_id, is_user_category, profile_category_id')
       .gte('date', startISO)
       .lte('date', endISO)
       .eq('user_id', user_id)
@@ -158,6 +158,9 @@ export interface CategoryStatistics {
   }
   
   const findCategory = (record: any, categories: Category[]): Category | undefined => {
+    if (record.profile_category_id) {
+      return categories.find(cat => cat.profile_category_id === record.profile_category_id);
+    }
     return categories.find(cat => cat.id === record.category_id);
   };
   
@@ -344,10 +347,130 @@ export interface CategoryStatistics {
         title: t_cat('Categories.other_canton'),
         effectiveDuration: otherCantonDuration,
         targetDuration: 0,
-        color: 'rgb(100,100,100)', // Default color or any placeholder
+        color: 'rgb(100,100,100)',
       })
     }
   
     return { rows }
   }
-  
+
+  const calculateCustomRequiredHours = (
+    annualWorkHours: number,
+    weight: number,
+    startDate: Date,
+    endDate: Date,
+    workload: number,
+  ): number => {
+    const isLeapYear = (year: number) => new Date(year, 1, 29).getMonth() === 1
+    const daysInYear = isLeapYear(endDate.getFullYear()) ? 366 : 365
+    const workingDays = (endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24) + 1
+    const adjustedAnnualWorkMinutes = ((annualWorkHours * 60) / daysInYear) * workingDays
+    return Math.round(adjustedAnnualWorkMinutes * (weight / 100) * (workload / 100))
+  }
+
+  export const getCustomCategoryStatisticsData = async (
+    start: Date,
+    end: Date,
+    user_id: string,
+    profileCategories: ProfileCategoryData[],
+    configProfile: ConfigProfileData,
+    user: Database["public"]["Tables"]["users"]["Row"],
+    t_cat: (key: string) => string,
+  ): Promise<CategoryStatistics> => {
+    const startISO = getIsoDate(start)
+    const endISO = getIsoDate(end)
+    const data = await fetchCategoryStatistics(startISO, endISO, user_id)
+
+    const profileAggregation: { [key: string]: number } = {}
+    for (const record of data) {
+      if (record.profile_category_id) {
+        const key = record.profile_category_id
+        profileAggregation[key] = (profileAggregation[key] || 0) + (record.duration || 0)
+      }
+    }
+
+    const rows: CategoryStatisticsProps[] = profileCategories.map((cat) => {
+      const effectiveDuration = profileAggregation[cat.id] || 0
+      const targetDuration = calculateCustomRequiredHours(
+        configProfile.annual_work_hours,
+        cat.weight,
+        start,
+        end,
+        user.workload ?? 100,
+      )
+
+      return {
+        title: cat.title,
+        effectiveDuration,
+        targetDuration,
+        effectiveWorkload: '0',
+        targetWorkload: cat.weight.toString(),
+        color: cat.color,
+        categoryIds: [],
+      }
+    })
+
+    const totalEffectiveDuration = rows.reduce((sum, row) => sum + row.effectiveDuration, 0)
+    const totalTargetDuration = rows.reduce((sum, row) => sum + row.targetDuration, 0)
+
+    rows.forEach((row) => {
+      row.effectiveWorkload = totalEffectiveDuration === 0
+        ? '0.00'
+        : ((row.effectiveDuration / totalEffectiveDuration) * 100).toFixed(2)
+    })
+
+    return {
+      rows,
+      noCategoryDuration: 0,
+      totalEffectiveDuration,
+      totalTargetDuration,
+    }
+  }
+
+  export const getCustomRemainingStatisticsData = async (
+    start: Date,
+    end: Date,
+    user_id: string,
+    profileCategories: ProfileCategoryData[],
+    t_cat: (key: string) => string,
+  ): Promise<{ rows: RemainingCategoryStatisticsProps[] }> => {
+    const startISO = getIsoDate(start)
+    const endISO = getIsoDate(end)
+    const data = await fetchCategoryStatistics(startISO, endISO, user_id)
+
+    const rows: RemainingCategoryStatisticsProps[] = []
+
+    const profileCatIds = new Set(profileCategories.map(pc => pc.id))
+
+    const noCategoryDuration = data
+      .filter((r) => !r.category_id && !r.user_category_id && !r.profile_category_id)
+      .reduce((sum, r) => sum + (r.duration || 0), 0)
+
+    if (noCategoryDuration > 0) {
+      rows.push({
+        title: t_cat('Categories.no_category'),
+        effectiveDuration: noCategoryDuration,
+        targetDuration: 0,
+        color: 'rgb(100,100,100)',
+      })
+    }
+
+    const unmatchedDuration = data
+      .filter((r) => {
+        if (r.profile_category_id && !profileCatIds.has(r.profile_category_id)) return true
+        if (!r.profile_category_id && (r.category_id || r.user_category_id)) return true
+        return false
+      })
+      .reduce((sum, r) => sum + (r.duration || 0), 0)
+
+    if (unmatchedDuration > 0) {
+      rows.push({
+        title: t_cat('Categories.other_canton'),
+        effectiveDuration: unmatchedDuration,
+        targetDuration: 0,
+        color: 'rgb(100,100,100)',
+      })
+    }
+
+    return { rows }
+  }

@@ -7,7 +7,9 @@ import { getUserData } from '@/utils/supabase/user'
 import { getAllCategories } from '@/utils/supabase/categories'
 import { getMemberships, getOrganizations } from '@/utils/supabase/organizations'
 import { hasActiveEntitlement } from '@/utils/supabase/entitlements'
+import { getConfigProfile, getProfileCategories } from '@/utils/supabase/config_profiles'
 import { UserData, Category, Membership, Organization } from '@/types/globals'
+import { ConfigMode, getConfigMode, ConfigProfileData, ProfileCategoryData } from '@edutime/shared'
 
 type UserContextType = {
   isLoading: boolean
@@ -21,6 +23,9 @@ type UserContextType = {
   organizations: Organization[]
   userEmail: string | null
   refreshUserData: () => Promise<void>
+  configMode: ConfigMode
+  configProfile: ConfigProfileData | null
+  profileCategories: ProfileCategoryData[]
 }
 
 const Context = createContext<UserContextType>({
@@ -35,6 +40,9 @@ const Context = createContext<UserContextType>({
   organizations: [],
   userEmail: null,
   refreshUserData: async () => {},
+  configMode: 'default',
+  configProfile: null,
+  profileCategories: [],
 })
 
 const Provider = ({ children }: { children: React.ReactNode }) => {
@@ -46,6 +54,9 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [memberships, setMemberships] = useState<Membership[]>([])
   const [organizations, setOrganizations] = useState<Organization[]>([])
+  const [configMode, setConfigMode] = useState<ConfigMode>('default')
+  const [configProfile, setConfigProfile] = useState<ConfigProfileData | null>(null)
+  const [profileCategories, setProfileCategories] = useState<ProfileCategoryData[]>([])
   const [currentSession, setCurrentSession] = useState<{ user: User; event: string } | null>(null)
   const router = useRouter()
   const { colorScheme, toggleColorScheme } = useMantineColorScheme()
@@ -106,20 +117,57 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
 
       setUser(userData)
 
-      // Fetch categories and organizations in parallel
-      const [fetchedCategories, fetchedOrganizations] = await Promise.all([
-        getAllCategories(userData).catch((err) => {
-          console.error('Error fetching categories:', err)
-          return []
-        }),
-        getOrganizations(userData.user_id).catch((err) => {
-          console.error('Error fetching organizations:', err)
-          return []
-        }),
-      ])
+      const mode = getConfigMode(userData as unknown as { active_config_profile_id: string | null })
+      setConfigMode(mode)
 
-      setCategories(fetchedCategories || [])
-      setOrganizations(fetchedOrganizations || [])
+      if (mode === 'custom' && (userData as unknown as { active_config_profile_id: string | null }).active_config_profile_id) {
+        const profileId = (userData as unknown as { active_config_profile_id: string }).active_config_profile_id
+        const [profile, profCats, fetchedOrganizations] = await Promise.all([
+          getConfigProfile(profileId).catch((err) => {
+            console.error('Error fetching config profile:', err)
+            return null
+          }),
+          getProfileCategories(profileId).catch((err) => {
+            console.error('Error fetching profile categories:', err)
+            return []
+          }),
+          getOrganizations(userData.user_id).catch((err) => {
+            console.error('Error fetching organizations:', err)
+            return []
+          }),
+        ])
+
+        setConfigProfile(profile)
+        setProfileCategories(profCats)
+
+        const categoryResults: Category[] = profCats.map((pc) => ({
+          id: pc.id as unknown as number,
+          title: pc.title,
+          subtitle: pc.subtitle,
+          color: pc.color,
+          category_set_title: 'custom',
+          profile_category_id: pc.id,
+        }))
+        setCategories(categoryResults)
+        setOrganizations(fetchedOrganizations || [])
+      } else {
+        setConfigProfile(null)
+        setProfileCategories([])
+
+        const [fetchedCategories, fetchedOrganizations] = await Promise.all([
+          getAllCategories(userData).catch((err) => {
+            console.error('Error fetching categories:', err)
+            return []
+          }),
+          getOrganizations(userData.user_id).catch((err) => {
+            console.error('Error fetching organizations:', err)
+            return []
+          }),
+        ])
+
+        setCategories(fetchedCategories || [])
+        setOrganizations(fetchedOrganizations || [])
+      }
 
       // Check entitlements for active license
       try {
@@ -223,6 +271,9 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
         setOrganizations([])
         setUserEmail(null)
         setHasActiveSubscription(false)
+        setConfigMode('default')
+        setConfigProfile(null)
+        setProfileCategories([])
 
         if (event === 'SIGNED_OUT') {
           setIsLoading(false)
@@ -334,6 +385,9 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
       setOrganizations([])
       setUserEmail(null)
       setHasActiveSubscription(false)
+      setConfigMode('default')
+      setConfigProfile(null)
+      setProfileCategories([])
       router.push('/login')
     } catch (error) {
       console.error('Logout error:', error)
@@ -366,6 +420,9 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
         organizations,
         userEmail,
         refreshUserData,
+        configMode,
+        configProfile,
+        profileCategories,
       }}
     >
       {children}

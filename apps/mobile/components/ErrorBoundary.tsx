@@ -1,11 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { Button, ButtonText } from '@gluestack-ui/themed';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
 import { TextStyles, Spacing, BorderRadius, LayoutStyles } from '@/constants/Styles';
+import { useTranslation } from 'react-i18next';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -62,17 +63,18 @@ const DefaultErrorFallback: React.FC<{ error: Error; resetError: () => void }> =
 }) => {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'light'];
+  const { t } = useTranslation();
 
   return (
     <ThemedView style={styles.container}>
       <ThemedText style={styles.title}>
-        Something went wrong
+        {t('Index.somethingWentWrong')}
       </ThemedText>
       <ThemedText style={styles.subtitle}>
-        Please restart the app to continue
+        {t('Index.restartApp')}
       </ThemedText>
       <ThemedText style={styles.errorText}>
-        {error?.message || 'Unknown error occurred'}
+        {error?.message || t('Index.unknownError')}
       </ThemedText>
       <Button
         variant="solid"
@@ -80,7 +82,7 @@ const DefaultErrorFallback: React.FC<{ error: Error; resetError: () => void }> =
         onPress={resetError}
         style={[styles.retryButton, { backgroundColor: theme.primary[5] }]}
       >
-        <ButtonText style={styles.retryText}>Try Again</ButtonText>
+        <ButtonText style={styles.retryText}>{t('Index.tryAgain')}</ButtonText>
       </Button>
     </ThemedView>
   );

@@ -92,7 +92,18 @@
     "invalid-invite-code": "Invalid invite code",
     "error-accepting-invite": "Error accepting invite",
     "noAccount": "I don't have an account",
-    "forgotPassword": "Forgot password?"
+    "forgotPassword": "Forgot password?",
+    "oops": "Oops!",
+    "screenNotFound": "This screen doesn't exist.",
+    "goHome": "Go to home screen!",
+    "somethingWentWrong": "Something went wrong",
+    "restartApp": "Please restart the app to continue",
+    "unknownError": "Unknown error occurred",
+    "tryAgain": "Try Again",
+    "toastError": "Error",
+    "toastSuccess": "Success",
+    "toastInfo": "Info",
+    "toastWarning": "Warning"
   },
   "Categories": {
     "cat_teaching": "Teaching",
@@ -252,7 +263,20 @@
     "teacher_relief_half": "½ Lesson",
     "teacher_relief_one": "1 Lesson",
     "teacher_relief_one_half": "1 ½ Lessons",
-    "teacher_relief_two": "2 Lessons"
+    "teacher_relief_two": "2 Lessons",
+    "custom": "Custom",
+    "cantonMode": "Canton",
+    "customMode": "Custom",
+    "switchToCustom": "Switch to custom",
+    "switchToCanton": "Switch to canton",
+    "confirmSwitchToCustom": "When switching to custom mode, the current canton categories will be copied. You can then edit them freely.",
+    "confirmSwitchToCanton": "When switching back, the canton categories will be used. Your custom profile will be kept for later.",
+    "annualWorkHours": "Annual work hours",
+    "customCategories": "Custom categories",
+    "weight": "Weight",
+    "createCategory": "Create category",
+    "editCategory": "Edit category",
+    "version": "Version"
   },
   "Legal": {
     "title": "Legal Documents",

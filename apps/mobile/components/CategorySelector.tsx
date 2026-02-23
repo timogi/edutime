@@ -17,7 +17,7 @@ export const CategorySelector = ({
   selectedCategory,
   onCategorySelect,
 }: CategorySelectorProps) => {
-  const { categories } = useUser();
+  const { categories, configMode } = useUser();
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
@@ -121,19 +121,18 @@ export const CategorySelector = ({
                   >
                     {category.id === null
                       ? category.title
-                      : category.is_further_employment
+                      : (category.is_further_employment || category.is_profile_category)
                       ? category.title
                       : t("Categories." + category.title)}
                   </Text>
                   {category.id !== null && (() => {
-                    const titleText = category.is_further_employment
+                    const titleText = (category.is_further_employment || category.is_profile_category)
                       ? category.title
                       : t("Categories." + category.title);
-                    const subtitleText = category.is_further_employment
+                    const subtitleText = (category.is_further_employment || category.is_profile_category)
                       ? category.subtitle
                       : t("Categories." + category.category_set_title);
                     
-                    // Only show subtitle if it's different from title and not empty
                     if (subtitleText && subtitleText !== titleText) {
                       return (
                         <Text
@@ -186,15 +185,15 @@ export const CategorySelector = ({
                   >
                     {category.id === null
                       ? category.title
-                      : category.is_further_employment
+                      : (category.is_further_employment || category.is_profile_category)
                       ? category.title
                       : t("Categories." + category.title)}
                   </Text>
                   {category.id !== null && (() => {
-                    const titleText = category.is_further_employment
+                    const titleText = (category.is_further_employment || category.is_profile_category)
                       ? category.title
                       : t("Categories." + category.title);
-                    const subtitleText = category.is_further_employment
+                    const subtitleText = (category.is_further_employment || category.is_profile_category)
                       ? category.subtitle
                       : t("Categories." + category.category_set_title);
                     

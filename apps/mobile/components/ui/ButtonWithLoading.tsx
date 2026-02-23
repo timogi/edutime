@@ -1,4 +1,5 @@
 import React from 'react';
+import { StyleProp, ViewStyle, PressableAndroidRippleConfig } from 'react-native';
 import { Button, ButtonText, ButtonIcon, Spinner } from '@gluestack-ui/themed';
 import { IconSymbol } from './IconSymbol';
 import { SymbolViewProps } from 'expo-symbols';
@@ -18,8 +19,8 @@ interface ButtonWithLoadingProps {
   alignItems?: 'center' | 'flex-start' | 'flex-end' | 'stretch';
   justifyContent?: 'center' | 'flex-start' | 'flex-end' | 'space-between' | 'space-around' | 'space-evenly';
   gap?: number;
-  android_ripple?: any;
-  style?: any;
+  android_ripple?: PressableAndroidRippleConfig;
+  style?: StyleProp<ViewStyle>;
 }
 
 export const ButtonWithLoading: React.FC<ButtonWithLoadingProps> = ({

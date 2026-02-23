@@ -711,7 +711,7 @@ const RecordsTable = ({
             </PdfText>
             <PdfText style={styles.recordsTableCellCategory}>
               {category
-                ? category.category_set_title === 'furtherEmployment'
+                ? category.category_set_title === 'furtherEmployment' || category.category_set_title === 'custom'
                   ? category.title
                   : t_cat(category.title)
                 : record.category_id

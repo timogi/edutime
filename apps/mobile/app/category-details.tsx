@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -8,7 +8,7 @@ import { Text } from '@gluestack-ui/themed';
 import { Database } from '@edutime/shared';
 import { convertMinutesToHoursAndMinutes } from '@/lib/helpers';
 import { format } from 'date-fns';
-import { de, en, fr } from 'date-fns/locale';
+import { de, enUS, fr } from 'date-fns/locale';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '@gluestack-ui/themed';
 import { Spacing, TextStyles } from '@/constants/Styles';
@@ -19,7 +19,12 @@ import { useUser } from '@/contexts/UserContext';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import { useDateRange } from '@/contexts/DateRangeContext';
 
-type TimeRecord = Database['public']['Tables']['records']['Row'];
+type RecordRow = Database['public']['Tables']['records']['Row'];
+type TimeRecord = RecordRow & {
+  categories?: { subtitle: string } | null;
+  user_categories?: { subtitle: string } | null;
+  categoryColor?: string;
+};
 
 export default function CategoryDetails() {
   const { t, i18n } = useTranslation();
@@ -62,7 +67,7 @@ export default function CategoryDetails() {
     switch (i18n.language) {
       case 'de': return de;
       case 'fr': return fr;
-      default: return en;
+      default: return enUS;
     }
   };
 
@@ -91,7 +96,7 @@ export default function CategoryDetails() {
 
   const getCategoryColor = (record: TimeRecord) => {
     // Records now come with categoryColor already set from the hook
-    return (record as any).categoryColor || '#000000';
+    return record.categoryColor || theme.text;
   };
 
   const getSortedDates = () => {
@@ -102,11 +107,11 @@ export default function CategoryDetails() {
 
   const cardStyle = {
     ...styles.card,
-    backgroundColor: colorScheme === 'light' ? 'white' : '#1A1B1E'
+    backgroundColor: colorScheme === 'light' ? theme.background : theme.gray[9]
   };
 
   const textStyle = {
-    color: colorScheme === 'dark' ? 'white' : undefined
+    color: theme.text,
   };
 
   return (
@@ -115,9 +120,9 @@ export default function CategoryDetails() {
         options={{ 
           title: categoryTitle,
           headerBackTitle: t('Index.back'),
-          headerTintColor: colorScheme === 'dark' ? 'white' : 'black',
+          headerTintColor: theme.text,
           headerStyle: {
-            backgroundColor: colorScheme === 'dark' ? theme.background : 'white',
+            backgroundColor: theme.background,
           },
         }} 
       />
@@ -137,7 +142,7 @@ export default function CategoryDetails() {
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.primary[5]} />
-            <Text style={[styles.loadingText, textStyle]}>{t('Index.loading')}...</Text>
+            <Text style={[styles.loadingText, textStyle]}>{t('Index.loading')}</Text>
           </View>
         ) : records.length === 0 ? (
           <View style={styles.emptyContainer}>
@@ -179,13 +184,12 @@ export default function CategoryDetails() {
                             </Text>
                             {/* Display subcategory for canton categories */}
                             {!record.is_user_category && record.categories?.subtitle && (
-                              <Text style={[styles.recordSubcategory, textStyle]} numberOfLines={1}>
+                              <Text style={[styles.recordSubcategory, { color: theme.primary[5] }]} numberOfLines={1}>
                                 {t(`Categories.${record.categories.subtitle}`) || record.categories.subtitle}
                               </Text>
                             )}
-                            {/* Display subcategory for user categories */}
                             {record.is_user_category && record.user_categories?.subtitle && (
-                              <Text style={[styles.recordSubcategory, textStyle]} numberOfLines={1}>
+                              <Text style={[styles.recordSubcategory, { color: theme.primary[5] }]} numberOfLines={1}>
                                 {t(`Categories.${record.user_categories.subtitle}`) || record.user_categories.subtitle}
                               </Text>
                             )}
@@ -196,8 +200,8 @@ export default function CategoryDetails() {
                             )}
                           </View>
                           <View style={styles.recordRight}>
-                            <Text style={[styles.recordDuration, textStyle]}>
-                              {convertMinutesToHoursAndMinutes(record.duration)}
+                            <Text style={[styles.recordDuration, { color: theme.primary[5] }]}>
+                              {convertMinutesToHoursAndMinutes(record.duration ?? 0)}
                             </Text>
                             <Ionicons 
                               name="chevron-forward" 
@@ -265,7 +269,7 @@ const styles = StyleSheet.create({
   },
   recordItemWithBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E7',
+    borderBottomColor: Colors.light.gray[2],
   },
   recordItemFirst: {
     borderTopLeftRadius: 6,
@@ -300,11 +304,9 @@ const styles = StyleSheet.create({
   recordDuration: {
     ...TextStyles.body,
     fontWeight: '600',
-    color: '#007AFF',
   },
   recordSubcategory: {
     ...TextStyles.small,
-    color: '#007AFF',
     marginTop: 2,
     fontWeight: '500',
   },

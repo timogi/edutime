@@ -10,13 +10,16 @@ import {
   FormControlLabelText,
 } from "@gluestack-ui/themed";
 
+import { Control } from 'react-hook-form';
+import { ColorTheme } from "@/lib/types";
+
 interface DescriptionInputProps {
-  control: any;
+  control: Control<Record<string, Date | null | string | number | boolean | undefined>>;
   isDescriptionFocused: boolean;
   onFocus: () => void;
   onBlur: () => void;
   colorScheme: string | null | undefined;
-  theme: any;
+  theme: ColorTheme;
 }
 
 export function DescriptionInput({

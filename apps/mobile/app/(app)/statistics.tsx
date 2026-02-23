@@ -11,7 +11,7 @@ import { ActivityIndicator } from 'react-native';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import { Colors } from '@/constants/Colors';
 import { Button, ButtonText } from '@gluestack-ui/themed';
-import { getCategoryStatisticsData, getRemainingCategoryStatisticsData } from '@/lib/database/statistics';
+import { getCategoryStatisticsData, getRemainingCategoryStatisticsData, getCustomCategoryStatisticsData, getCustomRemainingStatisticsData } from '@/lib/database/statistics';
 import { CategoryStatistics, RemainingCategoryStatisticsProps } from '@/lib/database/statistics';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAllCategories } from '@/lib/database/categories';
@@ -19,7 +19,7 @@ import { Spacing, BorderRadius, LayoutStyles, TextStyles } from '@/constants/Sty
 import { useDateRange } from '@/contexts/DateRangeContext';
 
 export default function Statistics() {
-  const { user, cantonData, refreshUserData } = useUser();
+  const { user, cantonData, refreshUserData, configMode, configProfile, profileCategories } = useUser();
   const { t, i18n } = useTranslation();
   const colorScheme = useColorScheme();
   const insets = useSafeAreaInsets();
@@ -31,34 +31,52 @@ export default function Statistics() {
   const { startDate, endDate, setStartDate, setEndDate, setDateRange } = useDateRange();
 
   const loadCategoryStatistics = async () => {
-    if (!cantonData || !user?.user_id) return;
-    
-    try {
-      const categories = await getAllCategories({ canton_code: user.canton_code, user_id: user.user_id });
-      const statistics = await getCategoryStatisticsData(startDate, endDate, user.user_id, categories, cantonData, user, t);
-      setCategoryStatistics(statistics);
-    } catch (error) {
-      console.error('Error fetching category statistics:', error);
-    }
+    if (!user?.user_id) return;
 
-    try {
-      const categories = await getAllCategories({ canton_code: user.canton_code, user_id: user.user_id });
-      const remainingStats = await getRemainingCategoryStatisticsData(startDate, endDate, user.user_id, categories, cantonData, user, t);
-      setRemainingCategoryStatistics(remainingStats.rows);
-    } catch (error) {
-      console.error('Error fetching remaining category statistics:', error);
+    if (configMode === 'custom' && configProfile && profileCategories.length > 0) {
+      try {
+        const statistics = await getCustomCategoryStatisticsData(startDate, endDate, user.user_id, profileCategories, configProfile, user, t);
+        setCategoryStatistics(statistics);
+      } catch (error) {
+        console.error('Error fetching custom category statistics:', error);
+      }
+
+      try {
+        const remainingStats = await getCustomRemainingStatisticsData(startDate, endDate, user.user_id, profileCategories, t);
+        setRemainingCategoryStatistics(remainingStats.rows);
+      } catch (error) {
+        console.error('Error fetching custom remaining statistics:', error);
+      }
+    } else if (cantonData) {
+      try {
+        const categories = await getAllCategories({ canton_code: user.canton_code, user_id: user.user_id });
+        const statistics = await getCategoryStatisticsData(startDate, endDate, user.user_id, categories, cantonData, user, t);
+        setCategoryStatistics(statistics);
+      } catch (error) {
+        console.error('Error fetching category statistics:', error);
+      }
+
+      try {
+        const categories = await getAllCategories({ canton_code: user.canton_code, user_id: user.user_id });
+        const remainingStats = await getRemainingCategoryStatisticsData(startDate, endDate, user.user_id, categories, cantonData, user, t);
+        setRemainingCategoryStatistics(remainingStats.rows);
+      } catch (error) {
+        console.error('Error fetching remaining category statistics:', error);
+      }
     }
   };
 
   useEffect(() => {
     loadCategoryStatistics();
-  }, [cantonData, startDate, endDate, user, t]);
+  }, [cantonData, startDate, endDate, user, t, configMode, configProfile, profileCategories]);
 
+
+  const theme = Colors[colorScheme ?? 'light'];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
       <Stack.Screen options={{ title: t('Index.statistics') }} />
-      <View style={[styles.stickyDateContainer, { top: insets.top }]}>
+      <View style={[styles.stickyDateContainer, { top: insets.top, backgroundColor: theme.background }]}>
         <DateRangePicker
           startDate={startDate}
           endDate={endDate}
@@ -69,8 +87,8 @@ export default function Statistics() {
           style={styles.dateContainer}
         />
       </View>
-      <View style={styles.graySpacer} />
-      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <View style={[styles.graySpacer, { backgroundColor: colorScheme === 'dark' ? theme.gray[9] : theme.gray[0] }]} />
+      <ScrollView style={[styles.container, { backgroundColor: colorScheme === 'dark' ? theme.gray[9] : theme.gray[0] }]} contentContainerStyle={styles.contentContainer}>
 
         <ThemedView>
           {categoryStatistics ? (
@@ -110,11 +128,9 @@ export default function Statistics() {
 const styles = StyleSheet.create({
   safeArea: {
     ...LayoutStyles.container,
-    backgroundColor: 'white',
   },
   container: {
     flex: 1,
-    backgroundColor: '#f3f3f3',
   },
   contentContainer: {
     padding: Spacing.md,
@@ -123,7 +139,6 @@ const styles = StyleSheet.create({
   },
   graySpacer: {
     height: 20,
-    backgroundColor: '#f3f3f3',
   },
   stickyDateContainer: {
     position: 'absolute',
@@ -131,7 +146,6 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 10,
     elevation: 10,
-    backgroundColor: 'white',
   },
   dateContainer: {
     paddingVertical: 0,

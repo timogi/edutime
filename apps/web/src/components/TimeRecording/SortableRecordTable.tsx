@@ -202,7 +202,7 @@ export function SortableRecordTable({
             }}
           >
             {category
-              ? category.category_set_title === 'furtherEmployment'
+              ? category.category_set_title === 'furtherEmployment' || category.category_set_title === 'custom'
                 ? category.title
                 : t_cat(category.title)
               : record.category_id

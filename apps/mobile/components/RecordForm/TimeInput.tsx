@@ -1,24 +1,25 @@
 import React from 'react';
 import { View, Platform } from 'react-native';
-import { Controller } from 'react-hook-form';
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { Control, Controller } from 'react-hook-form';
+import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { Text } from "@gluestack-ui/themed";
 import { TouchableOpacity } from "react-native";
 import { TextStyles, Spacing, BorderRadius } from "@/constants/Styles";
 import { useTranslation } from "react-i18next";
 import { IconSymbol } from "@/components/ui/IconSymbol";
+import { ColorTheme } from "@/lib/types";
 
 interface TimeInputProps {
-  control: any;
+  control: Control<Record<string, Date | null | string | number | boolean | undefined>>;
   activeTimePicker: "start" | "end" | null;
   onToggleTimePicker: (type: "start" | "end") => void;
-  onStartTimeChange: (event: any, selectedTime?: Date) => void;
-  onEndTimeChange: (event: any, selectedTime?: Date) => void;
+  onStartTimeChange: (event: DateTimePickerEvent, selectedTime?: Date) => void;
+  onEndTimeChange: (event: DateTimePickerEvent, selectedTime?: Date) => void;
   onResetTime: (type: "start" | "end") => void;
   timePickerValue: Date;
   setTimePickerValue: (date: Date) => void;
   colorScheme: string | null | undefined;
-  theme: any;
+  theme: ColorTheme;
 }
 
 export function TimeInput({

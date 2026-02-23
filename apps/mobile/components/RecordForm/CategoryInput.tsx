@@ -6,11 +6,13 @@ import { useTranslation } from "react-i18next";
 import { CategorySelector } from "@/components/CategorySelector";
 import { CategoryResult } from "@/lib/database/categories";
 
+import { ColorTheme } from "@/lib/types";
+
 interface CategoryInputProps {
   selectedCategory: CategoryResult | null | undefined;
   onCategorySelect: (selectedCategory: CategoryResult | null) => void;
   colorScheme: string | null | undefined;
-  theme: any;
+  theme: ColorTheme;
 }
 
 export function CategoryInput({

@@ -9,6 +9,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { useUser } from "@/contexts/UserContext";
 import { useTranslation } from "react-i18next";
 import { getMemberships, updateMembership } from "@/lib/database/organization";
+import { Membership } from "@/lib/types";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { Colors } from "@/constants/Colors";
 import { TextStyles, Spacing, BorderRadius, ShadowStyles, LayoutStyles } from "@/constants/Styles";
@@ -28,7 +29,7 @@ export default function NotSubscribedScreen() {
     reloadSubscription,
   } = useUser();
 
-  const [memberships, setMemberships] = useState<any[]>([]);
+  const [memberships, setMemberships] = useState<Membership[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // ────────────────────────────────────────────────────────────

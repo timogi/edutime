@@ -111,3 +111,11 @@ import { UserData, Category, TimeRecord } from '@edutime/shared'
 ```
 
 Both apps have path aliases configured so TypeScript resolves the source directly -- no build step needed for the shared package during development.
+
+### Update Database Types
+
+To regenerate the Supabase database types, run from `apps/web/`:
+
+```bash
+npx supabase gen types typescript --project-id "byxozdvpisjlxfsajmwv" --schema public,billing,license,legal > ./packages/shared/src/database.types.ts
+```

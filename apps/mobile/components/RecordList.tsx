@@ -104,7 +104,7 @@ export const RecordList = ({ date }: RecordListProps) => {
                   numberOfLines={2}
                   ellipsizeMode="tail"
                 >
-                  {category ? (category.is_further_employment ? category.title : t('Categories.' + category.title)) : t('Index.noCategory')}
+                  {category ? (category.is_further_employment || category.is_profile_category ? category.title : t('Categories.' + category.title)) : t('Index.noCategory')}
                 </ThemedText>
               </HStack>
             </View>

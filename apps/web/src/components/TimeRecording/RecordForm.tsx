@@ -180,6 +180,9 @@ export const RecordForm = ({
       return
     }
     if (!editTimeRecord?.id) return
+    const isProfileCat = category?.category_set_title === 'custom'
+    const profCatId = isProfileCat ? (category?.id?.toString() ?? null) : null
+
     const record: TimeRecord = {
       id: editTimeRecord.id,
       duration: timeStringToMinutes(duration),
@@ -187,9 +190,10 @@ export const RecordForm = ({
       description,
       start_time: startTime !== '' ? startTime : null,
       end_time: endTime !== '' ? endTime : null,
-      category_id: !isUserCategory ? category?.id || null : null,
-      is_user_category: isUserCategory,
-      user_category_id: isUserCategory ? category?.id || null : null,
+      category_id: profCatId ? null : (!isUserCategory ? category?.id || null : null),
+      is_user_category: profCatId ? false : isUserCategory,
+      user_category_id: profCatId ? null : (isUserCategory ? category?.id || null : null),
+      profile_category_id: profCatId,
       user_id: userData.user_id,
     }
     try {
@@ -223,15 +227,19 @@ export const RecordForm = ({
       setTimeError(t('durationCannotBeEmpty'))
       return
     }
+    const isProfileCategory = category?.category_set_title === 'custom'
+    const profileCatId = isProfileCategory ? (category?.id?.toString() ?? null) : null
+
     const record: TimeRecord = {
       duration: timeStringToMinutes(duration),
       date: getIsoDate(date),
       description,
       start_time: startTime === '' ? null : startTime,
       end_time: endTime === '' ? null : endTime,
-      category_id: !isUserCategory ? category?.id || null : null,
-      is_user_category: isUserCategory,
-      user_category_id: isUserCategory ? category?.id || null : null,
+      category_id: profileCatId ? null : (!isUserCategory ? category?.id || null : null),
+      is_user_category: profileCatId ? false : isUserCategory,
+      user_category_id: profileCatId ? null : (isUserCategory ? category?.id || null : null),
+      profile_category_id: profileCatId,
       user_id: userData.user_id,
     }
     try {
@@ -370,7 +378,7 @@ export const RecordForm = ({
 
         // Translate category title unless it's a user category (furtherEmployment)
         const label =
-          category.category_set_title === 'furtherEmployment'
+          category.category_set_title === 'furtherEmployment' || category.category_set_title === 'custom'
             ? category.title
             : t_cat(category.title)
 
@@ -387,8 +395,10 @@ export const RecordForm = ({
     return Object.entries(groupedCategories).map(([groupTitle, items]) => ({
       group:
         groupTitle === 'furtherEmployment'
-          ? t('additionalCategories') // Use existing translation for user categories
-          : t_cat(groupTitle), // Translate group title
+          ? t('additionalCategories')
+          : groupTitle === 'custom'
+          ? t('customCategories')
+          : t_cat(groupTitle),
       items: items,
     }))
   }, [categories, t_cat, t])

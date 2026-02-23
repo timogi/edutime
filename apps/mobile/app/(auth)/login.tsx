@@ -25,7 +25,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { showErrorToast } from "@/components/ui/Toast";
 import Constants from "expo-constants";
-import * as Haptics from "expo-haptics";
+import { HapticFeedback } from "@/lib/haptics";
 import {
   FormControl,
   FormControlError,
@@ -108,13 +108,14 @@ export default function Login() {
     setLoading(true);
     try {
       await login(data.email, data.password);
-    } catch (error: any) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      let errorMessage = t("Index.plaseTryAgain");
+    } catch (error: unknown) {
+      HapticFeedback.error();
+      let errorMessage = t("Index.pleaseTryAgain");
 
       // Handle specific auth error codes
-      if (error?.message) {
-        switch (error.code) {
+      const authError = error as { message?: string; code?: string };
+      if (authError?.message) {
+        switch (authError.code) {
           case "invalid_credentials":
             errorMessage = t("Index.invalidCredentials");
             break;
@@ -131,7 +132,7 @@ export default function Login() {
             errorMessage = t("Index.userBanned");
             break;
           default:
-            errorMessage = error.message;
+            errorMessage = authError.message ?? errorMessage;
         }
       }
 

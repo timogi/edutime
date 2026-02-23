@@ -107,21 +107,19 @@ function formatTimeForDB(date: Date | null): string | null {
   });
 }
 
-function showToast(
+function showToastMessage(
   message: string,
-  type: "success" | "error" | "info" | "warn"
+  type: "success" | "error" | "info" | "warn",
+  t: (key: string) => string
 ) {
-  const positionValue = 0;
-
-  // Use our custom toast
   if (type === "error") {
-    showErrorToast("Error", message);
+    showErrorToast(t("Index.toastError"), message);
   } else if (type === "success") {
-    showSuccessToast("Success", message);
+    showSuccessToast(t("Index.toastSuccess"), message);
   } else if (type === "info") {
-    showSuccessToast("Info", message);
+    showSuccessToast(t("Index.toastInfo"), message);
   } else if (type === "warn") {
-    showErrorToast("Warning", message);
+    showErrorToast(t("Index.toastWarning"), message);
   }
 }
 
@@ -142,7 +140,7 @@ export default function RecordForm() {
   const [timePickerValue, setTimePickerValue] = useState<Date>(new Date());
   const [isDescriptionFocused, setIsDescriptionFocused] = useState(false);
 
-  const { user, categories, isLoading } = useUser();
+  const { user, categories, isLoading, configMode } = useUser();
   const { setActiveSession } = useStopWatch();
   const deleteRecordMutation = useDeleteRecord();
   const createRecordMutation = useCreateRecord();
@@ -271,7 +269,7 @@ export default function RecordForm() {
                 router.back();
               } catch (error) {
                 HapticFeedback.error();
-                showToast(t("Index.error-discarding-timer"), "error");
+                showToastMessage(t("Index.error-discarding-timer"), "error", t);
               }
             },
           },
@@ -293,7 +291,7 @@ export default function RecordForm() {
                 router.back();
               } catch (error) {
                 HapticFeedback.error();
-                showToast(t("Index.error-deleting-record"), "error");
+                showToastMessage(t("Index.error-deleting-record"), "error", t);
               }
             },
           },
@@ -306,7 +304,11 @@ export default function RecordForm() {
     HapticFeedback.light();
     setSelectedCategory(selectedCategory);
     if (selectedCategory) {
-      if (selectedCategory.is_further_employment) {
+      if (selectedCategory.is_profile_category && selectedCategory.profile_category_id) {
+        setValue("category_id", null);
+        setValue("is_user_category", false);
+        setValue("user_category_id", null);
+      } else if (selectedCategory.is_further_employment) {
         setValue("user_category_id", selectedCategory.id);
         setValue("is_user_category", true);
         setValue("category_id", null);
@@ -322,7 +324,7 @@ export default function RecordForm() {
     }
   }
 
-  function handleStartTimeChange(event: any, selectedTime?: Date) {
+  function handleStartTimeChange(_event: unknown, selectedTime?: Date) {
     if (selectedTime) {
       setValue("startTime", selectedTime);
 
@@ -341,7 +343,7 @@ export default function RecordForm() {
     }
   }
 
-  function handleEndTimeChange(event: any, selectedTime?: Date) {
+  function handleEndTimeChange(_event: unknown, selectedTime?: Date) {
     if (selectedTime) {
       setValue("endTime", selectedTime);
 
@@ -360,7 +362,7 @@ export default function RecordForm() {
     }
   }
 
-  function handleDurationChange(event: any, selectedTime: Date | undefined) {
+  function handleDurationChange(_event: unknown, selectedTime: Date | undefined) {
     HapticFeedback.light();
     if (Platform.OS === "android") {
       setIsExpanded(false);
@@ -378,7 +380,7 @@ export default function RecordForm() {
     }
   }
 
-  function handleDateChange(event: any, selectedDate: Date | undefined) {
+  function handleDateChange(_event: unknown, selectedDate: Date | undefined) {
     HapticFeedback.light();
     if (Platform.OS === "android") {
       setShowDatePicker(false);
@@ -407,7 +409,7 @@ export default function RecordForm() {
       await deleteStopwatchSessionMutation.mutateAsync(Number(stopwatchSessionId));
     } catch {
       HapticFeedback.error();
-      showToast(t("Index.error-deleting-timer"), "error");
+      showToastMessage(t("Index.error-deleting-timer"), "error", t);
       return;
     }
 
@@ -419,7 +421,7 @@ export default function RecordForm() {
       });
     } catch {
       HapticFeedback.error();
-      showToast(t("Index.error-creating-timer"), "error");
+      showToastMessage(t("Index.error-creating-timer"), "error", t);
     }
   };
 
@@ -436,7 +438,7 @@ export default function RecordForm() {
       router.back();
     } catch {
       HapticFeedback.error();
-      showToast(t("Index.error-saving-timer"), "error");
+      showToastMessage(t("Index.error-saving-timer"), "error", t);
     }
   };
 
@@ -444,19 +446,24 @@ export default function RecordForm() {
     HapticFeedback.light();
     if (!user) {
       HapticFeedback.error();
-      showToast(t("Index.error"), "error");
+      showToastMessage(t("Index.error"), "error", t);
       return;
     }
     setLoading(true);
 
     try {
+      const profileCatId = selectedCategory?.is_profile_category
+        ? selectedCategory.profile_category_id ?? null
+        : null;
+
       const baseRecord = {
         date: data.date.toISOString().split("T")[0],
         duration: timeToMinutes(data.duration),
         description: data.description || "",
-        category_id: data.category_id || null,
-        is_user_category: data.is_user_category || false,
-        user_category_id: data.user_category_id || null,
+        category_id: profileCatId ? null : (data.category_id || null),
+        is_user_category: profileCatId ? false : (data.is_user_category || false),
+        user_category_id: profileCatId ? null : (data.user_category_id || null),
+        profile_category_id: profileCatId,
         start_time: formatTimeForDB(data.startTime),
         end_time: formatTimeForDB(data.endTime),
       };
@@ -481,11 +488,12 @@ export default function RecordForm() {
       router.back();
     } catch (error) {
       HapticFeedback.error();
-      showToast(
+      showToastMessage(
         isEditing
           ? t("Index.error-updating-record")
           : t("Index.error-creating-record"),
-        "error"
+        "error",
+        t
       );
     } finally {
       setLoading(false);

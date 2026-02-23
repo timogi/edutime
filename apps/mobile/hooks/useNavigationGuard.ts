@@ -8,7 +8,7 @@ import { useRouter } from 'expo-router';
 export const useNavigationGuard = (debounceMs: number = 300) => {
   const router = useRouter();
   const [isNavigating, setIsNavigating] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const navigateWithGuard = useCallback(
     (navigationFn: () => void) => {
@@ -31,7 +31,7 @@ export const useNavigationGuard = (debounceMs: number = 300) => {
       // Reset navigating flag after debounce period
       timeoutRef.current = setTimeout(() => {
         setIsNavigating(false);
-      }, debounceMs) as any;
+      }, debounceMs);
     },
     [isNavigating, debounceMs]
   );

@@ -6,6 +6,8 @@ import { Category, CantonData, UserData } from '@/types/globals'
 import {
   getCategoryStatisticsData,
   getRemainingCategoryStatisticsData,
+  getCustomCategoryStatisticsData,
+  getCustomRemainingCategoryStatisticsData,
 } from '@/utils/supabase/categoryStatisticsService'
 import { DateRangePickerPill } from './DateRangePickerPill'
 import { useStyles } from './styles'
@@ -16,6 +18,7 @@ import CategoryStatsTable, {
 import { getCantonData } from '@/utils/supabase/canton'
 import { updateUserStatDates } from '@/utils/supabase/user'
 import { ReportingComponent } from './ReportingComponent'
+import { useUser } from '@/contexts/UserProvider'
 
 interface StatisticsProps {
   userData: UserData
@@ -24,6 +27,7 @@ interface StatisticsProps {
 }
 
 const Statistics: React.FC<StatisticsProps> = ({ userData, categories, reloadUserData }) => {
+  const { configMode, configProfile, profileCategories } = useUser()
   const { classes } = useStyles()
   const t_cat = useTranslations('Categories')
   const t_stats = useTranslations('Statistics')
@@ -97,39 +101,68 @@ const Statistics: React.FC<StatisticsProps> = ({ userData, categories, reloadUse
 
   useEffect(() => {
     const loadCategoryStatistics = async () => {
-      if (!cantonData || !categories || categories.length === 0) return
-      try {
-        const stats = await getCategoryStatisticsData(
-          startDate,
-          endDate,
-          userData.user_id,
-          categories,
-          cantonData,
-          userData,
-          t_cat,
-        )
-        setCategoryStatistics(stats)
-      } catch (error) {
-        console.error('Error fetching category statistics:', error)
-      }
-      try {
-        const stats = await getRemainingCategoryStatisticsData(
-          startDate,
-          endDate,
-          userData.user_id,
-          categories,
-          cantonData,
-          userData,
-          t_cat,
-        )
-        setRemainingCategoryStatistics(stats)
-      } catch (error) {
-        console.error('Error fetching remaining category statistics:', error)
+      if (configMode === 'custom' && configProfile && profileCategories.length > 0) {
+        try {
+          const stats = await getCustomCategoryStatisticsData(
+            startDate,
+            endDate,
+            userData.user_id,
+            profileCategories,
+            configProfile,
+            userData,
+            t_cat,
+          )
+          setCategoryStatistics(stats)
+        } catch (error) {
+          console.error('Error fetching custom category statistics:', error)
+        }
+        try {
+          const stats = await getCustomRemainingCategoryStatisticsData(
+            startDate,
+            endDate,
+            userData.user_id,
+            profileCategories,
+            t_cat,
+          )
+          setRemainingCategoryStatistics(stats)
+        } catch (error) {
+          console.error('Error fetching custom remaining statistics:', error)
+        }
+      } else {
+        if (!cantonData || !categories || categories.length === 0) return
+        try {
+          const stats = await getCategoryStatisticsData(
+            startDate,
+            endDate,
+            userData.user_id,
+            categories,
+            cantonData,
+            userData,
+            t_cat,
+          )
+          setCategoryStatistics(stats)
+        } catch (error) {
+          console.error('Error fetching category statistics:', error)
+        }
+        try {
+          const stats = await getRemainingCategoryStatisticsData(
+            startDate,
+            endDate,
+            userData.user_id,
+            categories,
+            cantonData,
+            userData,
+            t_cat,
+          )
+          setRemainingCategoryStatistics(stats)
+        } catch (error) {
+          console.error('Error fetching remaining category statistics:', error)
+        }
       }
     }
 
     loadCategoryStatistics()
-  }, [cantonData, startDate, endDate, userData, categories, t_cat])
+  }, [cantonData, startDate, endDate, userData, categories, t_cat, configMode, configProfile, profileCategories])
 
   // Check if canton has working hours disabled (no annual work time)
   const hasNoAnnualWorkTime = cantonData?.is_working_hours_disabled === true
