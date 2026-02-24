@@ -8,8 +8,9 @@ import { DeleteAccount } from './DeleteAccount'
 import { GetStaticPropsContext } from 'next/types'
 import { IconDeviceFloppy } from '@tabler/icons-react'
 import LocaleSwitcher from '../Settings/LocaleSwitcher'
+import { getUserEntitlements } from '@edutime/shared'
 import { UserData, Entitlement } from '@/types/globals'
-import { getUserEntitlements } from '@/utils/supabase/entitlements'
+import { supabase } from '@/utils/supabase/client'
 import classes from './Account.module.css'
 
 interface AccountProps {
@@ -49,7 +50,7 @@ export const Account = ({ userData, reloadUserData }: AccountProps) => {
       if (!userData?.user_id) return
       setIsLoadingEntitlements(true)
       try {
-        const userEntitlements = await getUserEntitlements(userData.user_id)
+        const userEntitlements = await getUserEntitlements(supabase, userData.user_id)
         setEntitlements(userEntitlements)
       } catch (error) {
         console.error('Error loading entitlements:', error)

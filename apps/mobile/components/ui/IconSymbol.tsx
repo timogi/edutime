@@ -24,6 +24,7 @@ const MAPPING = {
   'square.and.arrow.down': 'save',
   'stopwatch': 'timer',
   'arrow.clockwise': 'refresh',
+  'arrow.up.right.square': 'open-in-new',
   'envelope': 'email',
   'gear': 'settings',
   'shield': 'lock',

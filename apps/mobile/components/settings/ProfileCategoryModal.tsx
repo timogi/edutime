@@ -51,7 +51,6 @@ interface ProfileCategoryModalProps {
 const DEFAULT_CATEGORY: ProfileCategoryData = {
   id: '',
   title: '',
-  subtitle: '',
   color: '#845ef7',
   weight: 0,
   order: null,
@@ -119,16 +118,6 @@ export const ProfileCategoryModal: React.FC<ProfileCategoryModalProps> = ({
               />
             </Input>
             {titleError ? <Text color="red">{titleError}</Text> : null}
-
-            <Input>
-              <InputField
-                value={local.subtitle}
-                onChangeText={(v) => setLocal({ ...local, subtitle: v })}
-                placeholder={t('Settings.subtitle')}
-                color={isDark ? 'white' : 'black'}
-                placeholderTextColor={isDark ? '#666' : '#999'}
-              />
-            </Input>
 
             <VStack space="sm">
               <Text color={isDark ? 'white' : 'black'}>{t('Settings.weight')} (%)</Text>

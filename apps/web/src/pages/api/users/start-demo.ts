@@ -157,18 +157,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       return res.status(403).json({ error: 'You can only start a demo for your own account' })
     }
 
-    // Call the secure Supabase function to start the demo
-    // The function handles all business logic and security checks:
-    // - Prevents demo if user already has active non-trial entitlement
-    // - Returns existing trial if one is already active
-    // - Creates new 30-day trial if none exists
-    // Note: Function is in the public schema, so it can be called via RPC
+    // Call the secure Supabase function to start the demo.
+    // The function resolves the user via auth.uid() and enforces business rules in SQL.
     console.log('Calling start_demo function for user:', authenticatedUserId)
 
-    // Use the authenticated Supabase client to call the function
-    const { data: entitlement, error: functionError } = await supabase.rpc('start_demo', {
-      p_user_id: authenticatedUserId,
-    })
+    // Function lives in license schema and takes no arguments.
+    const { data: entitlement, error: functionError } = await supabase
+      .schema('license')
+      .rpc('start_demo')
 
     if (entitlement) {
       console.log('Demo started successfully, entitlement:', entitlement)
@@ -186,8 +182,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       console.error('No entitlement returned from function')
       return res.status(500).json({ error: 'No entitlement returned from function' })
     }
-
-    const entitlementData = entitlement
 
     return res.status(200).json({
       entitlement: entitlement as ResponseData['entitlement'],

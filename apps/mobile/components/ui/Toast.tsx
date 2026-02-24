@@ -152,14 +152,14 @@ const ToastItem: React.FC<{ toast: ToastState; theme: typeof Colors.light }> = (
   const getToastColors = () => {
     switch (toast.type) {
       case 'success':
-        return { bg: theme.green[5], text: 'white' };
+        return { bg: theme.primary[6], text: 'white' };
       case 'error':
         return { bg: theme.red[5], text: 'white' };
       case 'warning':
-        return { bg: theme.yellow[5], text: 'black' };
+        return { bg: theme.gray[5], text: 'white' };
       case 'info':
       default:
-        return { bg: theme.blue[5], text: 'white' };
+        return { bg: theme.primary[4], text: 'white' };
     }
   };
 

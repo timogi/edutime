@@ -309,10 +309,13 @@ export type Database = {
           billing_subscription_id: string | null
           created_at: string
           id: string
-          kind: string
+          kind: Database["license"]["Enums"]["entitlement_kind"]
           organization_id: number | null
-          source: string
-          status: string
+          revocation_reason:
+            | Database["license"]["Enums"]["entitlement_revocation_reason"]
+            | null
+          source: Database["license"]["Enums"]["entitlement_source"]
+          status: Database["license"]["Enums"]["entitlement_status"]
           updated_at: string
           user_id: string | null
           valid_from: string
@@ -322,10 +325,13 @@ export type Database = {
           billing_subscription_id?: string | null
           created_at?: string
           id?: string
-          kind: string
+          kind: Database["license"]["Enums"]["entitlement_kind"]
           organization_id?: number | null
-          source: string
-          status?: string
+          revocation_reason?:
+            | Database["license"]["Enums"]["entitlement_revocation_reason"]
+            | null
+          source: Database["license"]["Enums"]["entitlement_source"]
+          status?: Database["license"]["Enums"]["entitlement_status"]
           updated_at?: string
           user_id?: string | null
           valid_from?: string
@@ -335,10 +341,13 @@ export type Database = {
           billing_subscription_id?: string | null
           created_at?: string
           id?: string
-          kind?: string
+          kind?: Database["license"]["Enums"]["entitlement_kind"]
           organization_id?: number | null
-          source?: string
-          status?: string
+          revocation_reason?:
+            | Database["license"]["Enums"]["entitlement_revocation_reason"]
+            | null
+          source?: Database["license"]["Enums"]["entitlement_source"]
+          status?: Database["license"]["Enums"]["entitlement_status"]
           updated_at?: string
           user_id?: string | null
           valid_from?: string
@@ -423,7 +432,17 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      entitlement_kind: "trial" | "personal" | "org_seat" | "student"
+      entitlement_revocation_reason:
+        | "subscription_canceled"
+        | "payment_failed"
+        | "org_admin_removed"
+        | "student_not_eligible"
+        | "support_action"
+        | "fraud"
+        | "other"
+      entitlement_source: "system" | "payrexx" | "manual" | "eduid"
+      entitlement_status: "pending" | "active" | "revoked" | "expired"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -741,7 +760,6 @@ export type Database = {
           created_at: string
           id: string
           order: number | null
-          subtitle: string
           title: string
           user_id: string
           weight: number
@@ -752,7 +770,6 @@ export type Database = {
           created_at?: string
           id?: string
           order?: number | null
-          subtitle?: string
           title: string
           user_id: string
           weight?: number
@@ -763,7 +780,6 @@ export type Database = {
           created_at?: string
           id?: string
           order?: number | null
-          subtitle?: string
           title?: string
           user_id?: string
           weight?: number
@@ -1060,16 +1076,6 @@ export type Database = {
           version_label: string
         }[]
       }
-      start_demo: {
-        Args: { p_user_id: string }
-        Returns: Database["license"]["Tables"]["entitlements"]["Row"]
-        SetofOptions: {
-          from: "*"
-          to: "entitlements"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
     }
     Enums: {
       education_level:
@@ -1217,7 +1223,20 @@ export const Constants = {
     },
   },
   license: {
-    Enums: {},
+    Enums: {
+      entitlement_kind: ["trial", "personal", "org_seat", "student"],
+      entitlement_revocation_reason: [
+        "subscription_canceled",
+        "payment_failed",
+        "org_admin_removed",
+        "student_not_eligible",
+        "support_action",
+        "fraud",
+        "other",
+      ],
+      entitlement_source: ["system", "payrexx", "manual", "eduid"],
+      entitlement_status: ["pending", "active", "revoked", "expired"],
+    },
   },
   public: {
     Enums: {

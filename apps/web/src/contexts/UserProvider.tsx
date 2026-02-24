@@ -6,10 +6,10 @@ import { supabase } from '@/utils/supabase/client'
 import { getUserData } from '@/utils/supabase/user'
 import { getAllCategories } from '@/utils/supabase/categories'
 import { getMemberships, getOrganizations } from '@/utils/supabase/organizations'
-import { hasActiveEntitlement } from '@/utils/supabase/entitlements'
 import { getConfigProfile, getProfileCategories } from '@/utils/supabase/config_profiles'
-import { UserData, Category, Membership, Organization } from '@/types/globals'
 import { ConfigMode, getConfigMode, ConfigProfileData, ProfileCategoryData } from '@edutime/shared'
+import { hasActiveEntitlement } from '@edutime/shared'
+import { UserData, Category, Membership, Organization } from '@/types/globals'
 
 type UserContextType = {
   isLoading: boolean
@@ -57,6 +57,15 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
   const [configMode, setConfigMode] = useState<ConfigMode>('default')
   const [configProfile, setConfigProfile] = useState<ConfigProfileData | null>(null)
   const [profileCategories, setProfileCategories] = useState<ProfileCategoryData[]>([])
+  const mapAdditionalCategories = (cats: { id: number; title: string; subtitle: string; color: string | null }[]): Category[] =>
+    cats.map((cat) => ({
+      id: cat.id,
+      title: cat.title,
+      subtitle: cat.subtitle,
+      color: cat.color,
+      category_set_title: 'furtherEmployment',
+    }))
+
   const [currentSession, setCurrentSession] = useState<{ user: User; event: string } | null>(null)
   const router = useRouter()
   const { colorScheme, toggleColorScheme } = useMantineColorScheme()
@@ -143,12 +152,13 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
         const categoryResults: Category[] = profCats.map((pc) => ({
           id: pc.id as unknown as number,
           title: pc.title,
-          subtitle: pc.subtitle,
+          subtitle: '',
           color: pc.color,
           category_set_title: 'custom',
           profile_category_id: pc.id,
         }))
-        setCategories(categoryResults)
+        const additionalCategories = mapAdditionalCategories(userData.user_categories || [])
+        setCategories([...categoryResults, ...additionalCategories])
         setOrganizations(fetchedOrganizations || [])
       } else {
         setConfigProfile(null)
@@ -171,7 +181,7 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
 
       // Check entitlements for active license
       try {
-        const hasActive = await hasActiveEntitlement(userData.user_id)
+        const hasActive = await hasActiveEntitlement(supabase, userData.user_id)
         setHasActiveSubscription(hasActive)
       } catch (error) {
         console.error('Error checking entitlements:', error)

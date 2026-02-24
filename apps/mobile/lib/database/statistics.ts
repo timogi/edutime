@@ -432,6 +432,7 @@ export interface CategoryStatistics {
     end: Date,
     user_id: string,
     profileCategories: ProfileCategoryData[],
+  configProfile: ConfigProfileData,
     t_cat: (key: string) => string,
   ): Promise<{ rows: RemainingCategoryStatisticsProps[] }> => {
     const startISO = getIsoDate(start)
@@ -439,8 +440,33 @@ export interface CategoryStatistics {
     const data = await fetchCategoryStatistics(startISO, endISO, user_id)
 
     const rows: RemainingCategoryStatisticsProps[] = []
+  const userCategories = await getUserCategories(user_id)
+  const aggregation = aggregateStatistics(data)
 
     const profileCatIds = new Set(profileCategories.map(pc => pc.id))
+  const userCategoryIds = new Set(userCategories.map((category) => category.id))
+
+  userCategories.forEach((category) => {
+    const effectiveDuration =
+      aggregation[`user_cat_${category.id}`]?.duration ||
+      aggregation[`cat_${category.id}`]?.duration ||
+      0
+
+    rows.push({
+      title: category.title,
+      effectiveDuration,
+      targetDuration: calculateCustomRequiredHours(
+        configProfile.annual_work_hours,
+        100,
+        start,
+        end,
+        category.workload,
+      ),
+      color: category.color,
+      categoryId: category.id,
+      isUserCategory: true,
+    })
+  })
 
     const noCategoryDuration = data
       .filter((r) => !r.category_id && !r.user_category_id && !r.profile_category_id)
@@ -458,7 +484,8 @@ export interface CategoryStatistics {
     const unmatchedDuration = data
       .filter((r) => {
         if (r.profile_category_id && !profileCatIds.has(r.profile_category_id)) return true
-        if (!r.profile_category_id && (r.category_id || r.user_category_id)) return true
+      if (r.user_category_id && !userCategoryIds.has(r.user_category_id)) return true
+      if (!r.profile_category_id && r.category_id) return true
         return false
       })
       .reduce((sum, r) => sum + (r.duration || 0), 0)

@@ -20,6 +20,7 @@ import { useRouter } from 'next/router'
 import { supabase } from '@/utils/supabase/client'
 import { showNotification } from '@mantine/notifications'
 import { OrgPriceCalculatorModal } from './OrgPriceCalculatorModal'
+import { INDIVIDUAL_ANNUAL_PRICE_CHF } from '@/utils/payments/pricing'
 import classes from './Pricing.module.css'
 
 export function Pricing() {
@@ -30,8 +31,6 @@ export function Pricing() {
   const [orgModalOpened, setOrgModalOpened] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const isSmallScreen = useMediaQuery('(max-width: 768px)')
-
-  const yearlyPrice = 39
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -200,7 +199,7 @@ export function Pricing() {
                   <div className={classes.priceSection}>
                     <Group gap='xs' align='flex-start' justify='center' wrap='nowrap'>
                       <Text size='3.5rem' fw={700} className={classes.price} lh={1}>
-                        {yearlyPrice}
+                        {INDIVIDUAL_ANNUAL_PRICE_CHF}
                       </Text>
                       <Text size='lg' c='dimmed' mt='md' lh={1}>
                         CHF

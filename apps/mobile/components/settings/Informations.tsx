@@ -12,6 +12,13 @@ import Constants from 'expo-constants';
 import { TouchableOpacity } from 'react-native';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
+const DOCUMENT_LINKS = {
+  privacy: 'https://edutime.ch/docs/privacy',
+  terms: 'https://edutime.ch/docs/terms',
+  agb: 'https://edutime.ch/docs/agb',
+  imprint: 'https://edutime.ch/docs/imprint',
+} as const;
+
 export default function Informations() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
@@ -28,14 +35,32 @@ export default function Informations() {
 
   const iconColor = isDark ? '#888' : '#666';
 
+  const openExternalUrl = (url: string) => {
+    Linking.openURL(url).catch((error: unknown) => {
+      console.error('Failed to open external URL:', error);
+    });
+  };
+
   const handleEmailPress = () => {
-    Linking.openURL(
+    openExternalUrl(
       `mailto:info@edutime.ch?body=\n\n\n------------------\nApp Information:\nPlatform: ${Platform.OS}\nVersion: ${Constants.expoConfig?.version}`
     );
   };
 
   const handlePrivacyPress = () => {
-    Linking.openURL("https://edutime.ch/privacy");
+    openExternalUrl(DOCUMENT_LINKS.privacy);
+  };
+
+  const handleTermsPress = () => {
+    openExternalUrl(DOCUMENT_LINKS.terms);
+  };
+
+  const handleAgbPress = () => {
+    openExternalUrl(DOCUMENT_LINKS.agb);
+  };
+
+  const handleImprintPress = () => {
+    openExternalUrl(DOCUMENT_LINKS.imprint);
   };
 
   return (
@@ -43,17 +68,38 @@ export default function Informations() {
       <VStack space="md" style={styles.container}>
         <Text size="xl" style={textStyle}>{t('Settings.information')}</Text>
 
+        <TouchableOpacity onPress={handlePrivacyPress}>
+          <HStack space="sm" style={styles.row}>
+            <IconSymbol name="shield" size={20} color={iconColor} />
+            <Text style={textStyle}>{t('Settings.privacy')}</Text>
+          </HStack>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={handleTermsPress}>
+          <HStack space="sm" style={styles.row}>
+            <IconSymbol name="doc.text" size={20} color={iconColor} />
+            <Text style={textStyle}>{t('Settings.termsOfService')}</Text>
+          </HStack>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={handleAgbPress}>
+          <HStack space="sm" style={styles.row}>
+            <IconSymbol name="doc.text" size={20} color={iconColor} />
+            <Text style={textStyle}>{t('Settings.agb')}</Text>
+          </HStack>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={handleImprintPress}>
+          <HStack space="sm" style={styles.row}>
+            <IconSymbol name="doc.text" size={20} color={iconColor} />
+            <Text style={textStyle}>{t('Settings.imprint')}</Text>
+          </HStack>
+        </TouchableOpacity>
+
         <TouchableOpacity onPress={handleEmailPress}>
           <HStack space="sm" style={styles.row}>
             <IconSymbol name="envelope" size={20} color={iconColor} />
             <Text style={textStyle}>{t('Settings.contact')}</Text>
-          </HStack>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={handlePrivacyPress}>
-          <HStack space="sm" style={styles.row}>
-            <IconSymbol name="shield" size={20} color={iconColor} />
-            <Text style={textStyle}>{t('Index.privacy')}</Text>
           </HStack>
         </TouchableOpacity>
       </VStack>

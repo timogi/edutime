@@ -15,29 +15,6 @@ export async function getUser(userId: string): Promise<Database['public']['Table
   return data;
 }
 
-
-
-export async function isSubscribed(userEmail: string): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('organization_members')
-    .select(`
-      organization_id,
-      organizations!inner (
-        is_active
-      )
-    `)
-    .ilike('user_email', userEmail.toLowerCase())
-    .eq('organizations.is_active', true)
-    .eq('status', 'active');
-
-  if (error) {
-    throw error;
-  }
-
-  return data.length > 0;
-}
-
-
 export async function updateUserData(
   userId: string,
   userData: Partial<Database['public']['Tables']['users']['Update']>

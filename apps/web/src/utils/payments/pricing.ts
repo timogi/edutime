@@ -32,7 +32,7 @@ export interface PriceCalculation {
 }
 
 /** Individual annual license price in CHF */
-export const INDIVIDUAL_ANNUAL_PRICE_CHF = 30
+export const INDIVIDUAL_ANNUAL_PRICE_CHF = 39
 
 /** Individual annual license price in cents */
 export const INDIVIDUAL_ANNUAL_PRICE_CENTS = INDIVIDUAL_ANNUAL_PRICE_CHF * 100

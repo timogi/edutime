@@ -248,7 +248,6 @@ export const EmploymentInput: React.FC<EmploymentInputProps> = ({
     if (selectedProfileCategory) {
       await onEditProfileCategory?.(selectedProfileCategory.id, {
         title: category.title,
-        subtitle: category.subtitle,
         color: category.color,
         weight: category.weight,
         order: category.order,
@@ -256,7 +255,6 @@ export const EmploymentInput: React.FC<EmploymentInputProps> = ({
     } else {
       await onCreateProfileCategory?.({
         title: category.title,
-        subtitle: category.subtitle,
         color: category.color,
         weight: category.weight,
         order: category.order,
@@ -331,6 +329,7 @@ export const EmploymentInput: React.FC<EmploymentInputProps> = ({
 
         {isCustom ? (
           <VStack space="sm">
+            <Text size="sm" style={textStyle}>{t('Settings.annualWorkHours')}</Text>
             <YearlyHoursInput
               initialValue={customAnnualHours}
               onChange={(value) => setCustomAnnualHours(value)}
@@ -339,15 +338,12 @@ export const EmploymentInput: React.FC<EmploymentInputProps> = ({
 
             <Card style={[styles.profileCategoryCard, isDark && styles.profileCategoryCardDark]}>
               <VStack space="md">
-                <HStack space="sm" style={styles.headerContainer}>
-                  <Text size="lg" bold style={textStyle}>{t('Settings.customCategories')}</Text>
-                  <Text size="sm" style={{ color: Math.abs(totalProfileWeight - 100) > 0.01 ? '#FF9800' : theme.gray[6] }}>
-                    {totalProfileWeight.toFixed(0)}%
-                  </Text>
-                </HStack>
+                <Text size="lg" bold style={textStyle}>{t('Settings.customCategoriesTitle')}</Text>
+                <Text size="sm" style={{ color: theme.gray[6] }}>
+                  {t('Settings.customCategoriesInfo')}
+                </Text>
 
-                {profileCategories.length > 0 && (
-                  <View style={styles.tableContainer}>
+                <View style={styles.tableContainer}>
                     <View style={[styles.tableHeader, isDark && styles.tableHeaderDark]}>
                       <View style={styles.columnTitle}>
                         <Text style={[styles.headerCell, textStyle]}>{t('Settings.title')}</Text>
@@ -378,9 +374,25 @@ export const EmploymentInput: React.FC<EmploymentInputProps> = ({
                           </View>
                         </TouchableOpacity>
                       ))}
+                      <View style={[styles.tableRow, isDark && styles.tableRowDark]}>
+                        <View style={styles.columnTitle}>
+                          <Text style={[styles.cell, styles.totalCell, textStyle]}>{t('Settings.total')}</Text>
+                        </View>
+                        <View style={styles.columnColor} />
+                        <View style={styles.columnWeight}>
+                          <Text
+                            style={[
+                              styles.cell,
+                              styles.totalCell,
+                              { color: Math.abs(totalProfileWeight - 100) > 0.01 ? '#FF9800' : textStyle.color },
+                            ]}
+                          >
+                            {totalProfileWeight.toFixed(0)}%
+                          </Text>
+                        </View>
+                      </View>
                     </View>
                   </View>
-                )}
 
                 <Button onPress={handleCreateProfileCategoryPress} style={styles.addCategoryButton}>
                   <IconSymbol name="plus" size={20} color="white" />
@@ -573,6 +585,9 @@ const styles = StyleSheet.create({
   },
   cell: {
     paddingHorizontal: 8,
+  },
+  totalCell: {
+    fontWeight: '700',
   },
   colorCell: {
     width: 16,

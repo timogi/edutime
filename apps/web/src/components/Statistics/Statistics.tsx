@@ -122,6 +122,8 @@ const Statistics: React.FC<StatisticsProps> = ({ userData, categories, reloadUse
             endDate,
             userData.user_id,
             profileCategories,
+            configProfile,
+            userData,
             t_cat,
           )
           setRemainingCategoryStatistics(stats)

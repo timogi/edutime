@@ -65,7 +65,6 @@ export const ProfileCategoryInput: React.FC<ProfileCategoryInputProps> = ({
     if (selectedCategory) {
       await onEditCategory(selectedCategory.id, {
         title: category.title,
-        subtitle: category.subtitle,
         color: category.color,
         weight: category.weight,
         order: category.order,
@@ -73,7 +72,6 @@ export const ProfileCategoryInput: React.FC<ProfileCategoryInputProps> = ({
     } else {
       await onCreateCategory({
         title: category.title,
-        subtitle: category.subtitle,
         color: category.color,
         weight: category.weight,
         order: category.order,

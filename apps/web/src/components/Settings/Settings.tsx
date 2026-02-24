@@ -50,6 +50,7 @@ import {
   createProfileCategory,
   updateProfileCategory,
   deleteProfileCategory,
+  countRecordsForProfileCategory,
 } from '@/utils/supabase/config_profiles'
 import { useUser } from '@/contexts/UserProvider'
 import classes from './Settings.module.css'
@@ -390,14 +391,12 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
       if (currentProfileCategory) {
         await updateProfileCategory(currentProfileCategory.id, {
           title: category.title,
-          subtitle: category.subtitle,
           color: category.color,
           weight: category.weight,
         })
       } else {
         await createProfileCategory(userData.user_id, configProfile.id, {
           title: category.title,
-          subtitle: category.subtitle,
           color: category.color,
           weight: category.weight,
         })
@@ -412,6 +411,16 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
 
   const handleDeleteProfileCategory = async (id: string) => {
     try {
+      const linkedCount = await countRecordsForProfileCategory(id, userData.user_id)
+      const confirmationMessage =
+        linkedCount > 0
+          ? `${t('confirmDeleteProfileCategoryWithCount', { count: linkedCount })}\n\n${t('deleteProfileCategoryRecordsInfo')}`
+          : t('confirmDeleteProfileCategory')
+
+      if (!window.confirm(confirmationMessage)) {
+        return
+      }
+
       await deleteProfileCategory(id)
       closeProfileCategoryModal()
       await reloadUserData()
@@ -603,52 +612,53 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
               {configMode === 'custom' && (
                 <Card radius='md' withBorder style={{ gridColumn: '1 / -1' }}>
                   <Stack gap='sm' p='lg'>
-                    <Group justify='space-between'>
-                      <Text size='lg' fw={500}>{t('customCategories')}</Text>
-                      <Text size='sm' c={Math.abs(totalProfileWeight - 100) > 0.01 ? 'orange' : 'dimmed'}>
-                        {totalProfileWeight.toFixed(0)}%
-                      </Text>
-                    </Group>
+                    <Text size='lg' fw={500}>{t('customCategoriesTitle')}</Text>
+                    <Text size='sm' c='dimmed'>
+                      {t('customCategoriesInfo')}
+                    </Text>
 
-                    {profileCategories.length > 0 && (
-                      <Table.ScrollContainer minWidth={400}>
-                        <Table
-                          striped
-                          highlightOnHover
-                          withColumnBorders
-                          withTableBorder
-                          horizontalSpacing='md'
-                          verticalSpacing='sm'
-                        >
-                          <Table.Thead>
-                            <Table.Tr>
-                              <Table.Th w='40%'>{t('Title')}</Table.Th>
-                              <Table.Th w='30%'>{t('subtitle')}</Table.Th>
-                              <Table.Th w='10%'>{t('color')}</Table.Th>
-                              <Table.Th w='20%'>{t('weight')}</Table.Th>
+                    <Table.ScrollContainer minWidth={400}>
+                      <Table
+                        striped
+                        highlightOnHover
+                        withColumnBorders
+                        withTableBorder
+                        horizontalSpacing='md'
+                        verticalSpacing='sm'
+                      >
+                        <Table.Thead>
+                          <Table.Tr>
+                            <Table.Th w='70%'>{t('Title')}</Table.Th>
+                            <Table.Th w='10%'>{t('color')}</Table.Th>
+                            <Table.Th w='20%'>{t('weight')}</Table.Th>
+                          </Table.Tr>
+                        </Table.Thead>
+                        <Table.Tbody>
+                          {profileCategories.map((category) => (
+                            <Table.Tr
+                              key={category.id}
+                              onClick={() => handleEditProfileCategory(category)}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              <Table.Td>{category.title}</Table.Td>
+                              <Table.Td>
+                                <IconCircleFilled
+                                  style={{ color: category.color ?? undefined, width: 16, opacity: 0.5 }}
+                                />
+                              </Table.Td>
+                              <Table.Td>{category.weight}%</Table.Td>
                             </Table.Tr>
-                          </Table.Thead>
-                          <Table.Tbody>
-                            {profileCategories.map((category) => (
-                              <Table.Tr
-                                key={category.id}
-                                onClick={() => handleEditProfileCategory(category)}
-                                style={{ cursor: 'pointer' }}
-                              >
-                                <Table.Td>{category.title}</Table.Td>
-                                <Table.Td>{category.subtitle}</Table.Td>
-                                <Table.Td>
-                                  <IconCircleFilled
-                                    style={{ color: category.color ?? undefined, width: 16, opacity: 0.5 }}
-                                  />
-                                </Table.Td>
-                                <Table.Td>{category.weight}%</Table.Td>
-                              </Table.Tr>
-                            ))}
-                          </Table.Tbody>
-                        </Table>
-                      </Table.ScrollContainer>
-                    )}
+                          ))}
+                          <Table.Tr>
+                            <Table.Td fw={600}>{t('total')}</Table.Td>
+                            <Table.Td />
+                            <Table.Td fw={600} c={Math.abs(totalProfileWeight - 100) > 0.01 ? 'orange' : undefined}>
+                              {totalProfileWeight.toFixed(0)}%
+                            </Table.Td>
+                          </Table.Tr>
+                        </Table.Tbody>
+                      </Table>
+                    </Table.ScrollContainer>
 
                     <Group justify='flex-start'>
                       <Button onClick={handleCreateProfileCategory} leftSection={<IconPlus />}>
@@ -670,58 +680,56 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
           </Stack>
         </Card>
 
-        {configMode === 'default' && (
-          <Card radius='md' withBorder>
-            <Stack gap='sm'>
-              <Text size='xl'>{t('additionalCategories')}</Text>
+        <Card radius='md' withBorder>
+          <Stack gap='sm'>
+            <Text size='xl'>{t('additionalCategories')}</Text>
 
-              {userData.user_categories.length > 0 && (
-                <Table.ScrollContainer minWidth={500}>
-                  <Table
-                    striped
-                    highlightOnHover
-                    withColumnBorders
-                    withTableBorder
-                    horizontalSpacing='md'
-                    verticalSpacing='sm'
-                  >
-                    <Table.Thead>
-                      <Table.Tr>
-                        <Table.Th w='40%'>{t('Title')}</Table.Th>
-                        <Table.Th w='40%'>{t('subtitle')}</Table.Th>
-                        <Table.Th w='10%'>{t('color')}</Table.Th>
-                        <Table.Th w='10%'>{t('workload')}</Table.Th>
+            {userData.user_categories.length > 0 && (
+              <Table.ScrollContainer minWidth={500}>
+                <Table
+                  striped
+                  highlightOnHover
+                  withColumnBorders
+                  withTableBorder
+                  horizontalSpacing='md'
+                  verticalSpacing='sm'
+                >
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th w='40%'>{t('Title')}</Table.Th>
+                      <Table.Th w='40%'>{t('subtitle')}</Table.Th>
+                      <Table.Th w='10%'>{t('color')}</Table.Th>
+                      <Table.Th w='10%'>{t('workload')}</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {userData.user_categories.map((category) => (
+                      <Table.Tr
+                        key={category.id}
+                        onClick={() => handleEditCategory(category)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <Table.Td>{category.title}</Table.Td>
+                        <Table.Td>{category.subtitle}</Table.Td>
+                        <Table.Td>
+                          <IconCircleFilled
+                            style={{ color: category.color ?? undefined, width: 16, opacity: 0.5 }}
+                          />
+                        </Table.Td>
+                        <Table.Td>{category.workload}%</Table.Td>
                       </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                      {userData.user_categories.map((category) => (
-                        <Table.Tr
-                          key={category.id}
-                          onClick={() => handleEditCategory(category)}
-                          style={{ cursor: 'pointer' }}
-                        >
-                          <Table.Td>{category.title}</Table.Td>
-                          <Table.Td>{category.subtitle}</Table.Td>
-                          <Table.Td>
-                            <IconCircleFilled
-                              style={{ color: category.color ?? undefined, width: 16, opacity: 0.5 }}
-                            />
-                          </Table.Td>
-                          <Table.Td>{category.workload}%</Table.Td>
-                        </Table.Tr>
-                      ))}
-                    </Table.Tbody>
-                  </Table>
-                </Table.ScrollContainer>
-              )}
-              <Group justify='flex-start'>
-                <Button onClick={handleCreateCategory} leftSection={<IconPlus />}>
-                  {t('createCategory')}
-                </Button>
-              </Group>
-            </Stack>
-          </Card>
-        )}
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Table.ScrollContainer>
+            )}
+            <Group justify='flex-start'>
+              <Button onClick={handleCreateCategory} leftSection={<IconPlus />}>
+                {t('createCategory')}
+              </Button>
+            </Group>
+          </Stack>
+        </Card>
         {configMode === 'default' && canton === 'BE' && (
           <Card radius='md' withBorder>
             <Stack gap='sm'>

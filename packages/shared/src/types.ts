@@ -34,7 +34,6 @@ export const getConfigMode = (user: { active_config_profile_id: string | null })
 export interface ProfileCategoryData {
   id: string
   title: string
-  subtitle: string
   color: string
   weight: number
   order: number | null

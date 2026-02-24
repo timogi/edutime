@@ -23,7 +23,7 @@ import { Footer } from '@/components/Footer/Footer'
 import { OrgPriceCalculatorModal } from '@/components/Main/OrgPriceCalculatorModal'
 import { updateMembership } from '@/utils/supabase/organizations'
 import { supabase } from '@/utils/supabase/client'
-import { hasActiveEntitlement, hasEverHadTrial } from '@/utils/supabase/entitlements'
+import { hasActiveEntitlement, hasEverHadTrial } from '@edutime/shared'
 import { INDIVIDUAL_ANNUAL_PRICE_CHF } from '@/utils/payments/pricing'
 import classes from './NoLicenseView.module.css'
 import pricingClasses from '../Main/Pricing.module.css'
@@ -49,7 +49,7 @@ export function NoLicenseView() {
     const checkTrialStatus = async () => {
       if (user?.user_id) {
         try {
-          const hasTrial = await hasEverHadTrial(user.user_id)
+          const hasTrial = await hasEverHadTrial(supabase, user.user_id)
           setHasUsedDemo(hasTrial)
         } catch (error) {
           console.error('Error checking trial status:', error)
@@ -183,7 +183,7 @@ export function NoLicenseView() {
         await new Promise((resolve) => setTimeout(resolve, 200))
 
         try {
-          isActive = await hasActiveEntitlement(user.user_id)
+          isActive = await hasActiveEntitlement(supabase, user.user_id)
           if (isActive) {
             break
           }

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { StyleSheet, ScrollView, RefreshControl } from "react-native";
+import { StyleSheet, ScrollView, RefreshControl, Alert } from "react-native";
 import { ThemedView } from "@/components/ThemedView";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useUser } from "@/contexts/UserContext";
@@ -22,6 +22,7 @@ import {
   createProfileCategory,
   updateProfileCategory,
   deleteProfileCategory,
+  countRecordsForProfileCategory,
 } from "@/lib/database/config_profiles";
 import { Database } from "@edutime/shared";
 import { Spacing, LayoutStyles } from "@/constants/Styles";
@@ -220,8 +221,32 @@ export default function SettingsScreen() {
 
   const handleDeleteProfileCategory = async (id: string) => {
     try {
-      await deleteProfileCategory(id);
-      await refreshUserData();
+      if (!user?.user_id) return;
+      const linkedCount = await countRecordsForProfileCategory(id, user.user_id);
+      const message =
+        linkedCount > 0
+          ? `${t('Settings.confirmDeleteProfileCategoryWithCount', { count: linkedCount })}\n\n${t('Settings.deleteProfileCategoryRecordsInfo')}`
+          : t('Settings.confirmDeleteProfileCategory');
+
+      Alert.alert(
+        t('Settings.delete'),
+        message,
+        [
+          { text: t('Settings.cancel'), style: 'cancel' },
+          {
+            text: t('Settings.delete'),
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await deleteProfileCategory(id);
+                await refreshUserData();
+              } catch (error) {
+                console.error('Error deleting profile category:', error);
+              }
+            },
+          },
+        ],
+      );
     } catch (error) {
       console.error('Error deleting profile category:', error);
     }
@@ -274,14 +299,12 @@ export default function SettingsScreen() {
               onDeleteProfileCategory={handleDeleteProfileCategory}
             />
           )}
-          {configMode === 'default' && (
-            <FurtherEmploymentInput
-              userCategories={userCategories}
-              onEditCategory={handleEditCategory}
-              onCreateCategory={handleCreateCategory}
-              onDeleteCategory={handleDeleteCategory}
-            />
-          )}
+          <FurtherEmploymentInput
+            userCategories={userCategories}
+            onEditCategory={handleEditCategory}
+            onCreateCategory={handleCreateCategory}
+            onDeleteCategory={handleDeleteCategory}
+          />
           <Informations />
           <LogoutButton />
           <DeleteAccount onDeleteAccount={handleDeleteAccount} />

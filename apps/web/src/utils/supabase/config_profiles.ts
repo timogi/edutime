@@ -67,7 +67,7 @@ export async function updateConfigProfile(
 export async function getProfileCategories(profileId: string): Promise<ProfileCategoryData[]> {
   const { data, error } = await supabase
     .from('profile_categories')
-    .select('id, title, subtitle, color, weight, order, config_profile_id')
+    .select('id, title, color, weight, order, config_profile_id')
     .eq('config_profile_id', profileId)
     .order('order')
 
@@ -82,7 +82,7 @@ export async function getProfileCategories(profileId: string): Promise<ProfileCa
 export async function createProfileCategory(
   userId: string,
   profileId: string,
-  category: { title: string; subtitle?: string; color?: string; weight?: number; order?: number | null },
+  category: { title: string; color?: string; weight?: number; order?: number | null },
 ): Promise<ProfileCategoryRow> {
   const { data, error } = await supabase
     .from('profile_categories')
@@ -90,7 +90,6 @@ export async function createProfileCategory(
       user_id: userId,
       config_profile_id: profileId,
       title: category.title,
-      subtitle: category.subtitle ?? '',
       color: category.color ?? '#845ef7',
       weight: category.weight ?? 0,
       order: category.order ?? null,
@@ -104,7 +103,7 @@ export async function createProfileCategory(
 
 export async function updateProfileCategory(
   id: string,
-  updates: { title?: string; subtitle?: string; color?: string; weight?: number; order?: number | null },
+  updates: { title?: string; color?: string; weight?: number; order?: number | null },
 ): Promise<void> {
   const { error } = await supabase
     .from('profile_categories')
@@ -115,12 +114,33 @@ export async function updateProfileCategory(
 }
 
 export async function deleteProfileCategory(id: string): Promise<void> {
+  const { error: recordsError } = await supabase
+    .from('records')
+    .update({ profile_category_id: null })
+    .eq('profile_category_id', id)
+
+  if (recordsError) throw recordsError
+
   const { error } = await supabase
     .from('profile_categories')
     .delete()
     .eq('id', id)
 
   if (error) throw error
+}
+
+export async function countRecordsForProfileCategory(
+  profileCategoryId: string,
+  userId: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from('records')
+    .select('*', { count: 'exact', head: true })
+    .eq('profile_category_id', profileCategoryId)
+    .eq('user_id', userId)
+
+  if (error) throw error
+  return count ?? 0
 }
 
 export async function activateCustomMode(userId: string, profileId: string): Promise<void> {

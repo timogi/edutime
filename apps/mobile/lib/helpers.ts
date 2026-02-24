@@ -112,7 +112,7 @@ export const translateCategoryTitle = (title: string | undefined): string => {
     "no_category": "Keine Kategorie",
     "other_canton": "Anderer Kanton",
     "others": "Weitere Einträge",
-    "furtherEmployment": "Weitere Anstellungen",
+    "furtherEmployment": "Zusätzliche Kategorien",
     "reporting": "Berichterstattung",
     "mainEmployment": "Hauptanstellung"
   };

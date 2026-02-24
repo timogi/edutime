@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { User } from "@supabase/supabase-js";
-import { getUser, isSubscribed } from "@/lib/database/user";
+import { getUser } from "@/lib/database/user";
 import { Database, ConfigMode, getConfigMode, ConfigProfileData, ProfileCategoryData } from "@edutime/shared";
+import { hasActiveEntitlement } from "@edutime/shared";
 import { supabase } from "@/lib/supabase";
 import { getAllCategories, CategoryResult, getUserCategories } from "@/lib/database/categories";
 import { EmploymentCategory, CantonData } from "@/lib/types";
@@ -102,9 +103,9 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  const fetchUserEntitlements = async (userEmail: string) => {
+  const fetchUserEntitlements = async (userId: string) => {
     try {
-      const subscriptionStatus = await isSubscribed(userEmail);
+      const subscriptionStatus = await hasActiveEntitlement(supabase, userId);
       setHasActiveSubscription(subscriptionStatus);
     } catch (error) {
       console.error("Error checking subscription:", error);
@@ -123,6 +124,17 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
       console.error("Error fetching categories", error);
     }
   };
+
+  const mapUserCategoriesToCategoryResults = (cats: EmploymentCategory[]): CategoryResult[] =>
+    cats.map((cat) => ({
+      id: cat.id,
+      title: cat.title,
+      subtitle: cat.subtitle,
+      color: cat.color ?? '#845ef7',
+      category_set_title: 'furtherEmployment',
+      is_further_employment: true,
+      order: null,
+    }));
 
   const fetchUserCategories = async (userId: string) => {
     try {
@@ -147,8 +159,8 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
     try {
       if (sessionUser.email) {
         setUserEmail(sessionUser.email);
-        await fetchUserEntitlements(sessionUser.email);
       }
+      await fetchUserEntitlements(sessionUser.id);
       const userData = await getUser(sessionUser.id);
       setUser(userData);
 
@@ -162,8 +174,12 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
         const profCats = await getProfileCategories(userData.active_config_profile_id);
         setProfileCategories(profCats);
 
-        const categoryResults = profileCategoriesToCategoryResults(profCats);
-        setCategories(categoryResults);
+        const fetchedUserCategories = await getUserCategories(userData.user_id);
+        setUserCategories(fetchedUserCategories);
+
+        const profileCategoryResults = profileCategoriesToCategoryResults(profCats);
+        const additionalCategoryResults = mapUserCategoriesToCategoryResults(fetchedUserCategories);
+        setCategories([...profileCategoryResults, ...additionalCategoryResults]);
 
         if (userData.canton_code) {
           await fetchCantonData(userData.canton_code, userData.user_id);
@@ -220,8 +236,8 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const reloadSubscription = async () => {
-    if (userEmail) {
-      await fetchUserEntitlements(userEmail);
+    if (user?.user_id) {
+      await fetchUserEntitlements(user.user_id);
     }
   };
 
@@ -250,8 +266,12 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
         const profCats = await getProfileCategories(userData.active_config_profile_id);
         setProfileCategories(profCats);
 
-        const categoryResults = profileCategoriesToCategoryResults(profCats);
-        setCategories(categoryResults);
+        const fetchedUserCategories = await getUserCategories(userData.user_id);
+        setUserCategories(fetchedUserCategories);
+
+        const profileCategoryResults = profileCategoriesToCategoryResults(profCats);
+        const additionalCategoryResults = mapUserCategoriesToCategoryResults(fetchedUserCategories);
+        setCategories([...profileCategoryResults, ...additionalCategoryResults]);
 
         if (userData.canton_code) {
           await fetchCantonData(userData.canton_code, userData.user_id);
@@ -267,9 +287,7 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
       }
 
       await fetchUserCategories(user.user_id);
-      if (userEmail) {
-        await fetchUserEntitlements(userEmail);
-      }
+      await fetchUserEntitlements(user.user_id);
     } catch (error) {
       console.error("Error refreshing user data:", error);
     }

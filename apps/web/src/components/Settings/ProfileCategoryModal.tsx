@@ -23,7 +23,6 @@ interface ProfileCategoryModalProps {
 const DEFAULT_CATEGORY: ProfileCategoryData = {
   id: '',
   title: '',
-  subtitle: '',
   color: 'rgb(132, 94, 247)',
   weight: 0,
   order: null,
@@ -79,13 +78,6 @@ export const ProfileCategoryModal: React.FC<ProfileCategoryModalProps> = ({
           placeholder={t('Title')}
           label={t('Title')}
           error={titleError}
-          size='md'
-        />
-        <TextInput
-          value={local.subtitle}
-          onChange={(e) => setLocal({ ...local, subtitle: e.currentTarget.value })}
-          placeholder={t('subtitle')}
-          label={t('subtitle')}
           size='md'
         />
         <NumberInput

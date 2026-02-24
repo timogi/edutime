@@ -422,6 +422,8 @@ export const getCustomRemainingCategoryStatisticsData = async (
   end: Date,
   user_id: string,
   profileCategories: ProfileCategoryData[],
+  configProfile: ConfigProfileData,
+  userData: UserData,
   t_cat: (key: string) => string,
 ): Promise<{ rows: RemainingCategoryStatisticsProps[] }> => {
   const startISO = getIsoDate(start)
@@ -430,6 +432,35 @@ export const getCustomRemainingCategoryStatisticsData = async (
 
   const rows: RemainingCategoryStatisticsProps[] = []
   const profileCatIds = new Set(profileCategories.map(pc => pc.id))
+  const userCategories = await getUserCategories(user_id)
+  const userCategoryById = new Map(userCategories.map((cat) => [cat.id, cat]))
+
+  const userCategoryAggregation: { [key: number]: number } = {}
+  for (const record of data) {
+    if (record.is_user_category && record.user_category_id) {
+      userCategoryAggregation[record.user_category_id] =
+        (userCategoryAggregation[record.user_category_id] || 0) + (record.duration || 0)
+    }
+  }
+
+  const isLeapYear = (year: number) => new Date(year, 1, 29).getMonth() === 1
+  const daysInYear = isLeapYear(end.getFullYear()) ? 366 : 365
+  const workingDays = (end.getTime() - start.getTime()) / (1000 * 3600 * 24) + 1
+  const adjustedAnnualWorkMinutes = ((configProfile.annual_work_hours * 60) / daysInYear) * workingDays
+
+  userCategories.forEach((category) => {
+    const effectiveDuration = userCategoryAggregation[category.id] || 0
+    const targetDuration = Math.round(
+      adjustedAnnualWorkMinutes * ((category.workload || 0) / 100) * ((userData.workload || 0) / 100),
+    )
+
+    rows.push({
+      title: category.title,
+      effectiveDuration,
+      targetDuration,
+      color: category.color,
+    })
+  })
 
   const noCategoryDuration = data
     .filter((r: any) => !r.category_id && !r.user_category_id && !r.profile_category_id)
@@ -447,7 +478,8 @@ export const getCustomRemainingCategoryStatisticsData = async (
   const unmatchedDuration = data
     .filter((r: any) => {
       if (r.profile_category_id && !profileCatIds.has(r.profile_category_id)) return true
-      if (!r.profile_category_id && (r.category_id || r.user_category_id)) return true
+      if (r.category_id) return true
+      if (r.is_user_category && r.user_category_id && !userCategoryById.has(r.user_category_id)) return true
       return false
     })
     .reduce((sum: number, r: any) => sum + (r.duration || 0), 0)

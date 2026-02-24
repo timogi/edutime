@@ -42,7 +42,14 @@ export default function Statistics() {
       }
 
       try {
-        const remainingStats = await getCustomRemainingStatisticsData(startDate, endDate, user.user_id, profileCategories, t);
+        const remainingStats = await getCustomRemainingStatisticsData(
+          startDate,
+          endDate,
+          user.user_id,
+          profileCategories,
+          configProfile,
+          t,
+        );
         setRemainingCategoryStatistics(remainingStats.rows);
       } catch (error) {
         console.error('Error fetching custom remaining statistics:', error);
@@ -104,7 +111,7 @@ export default function Statistics() {
         </ThemedView>
 
         <ThemedText style={styles.subtitle}>
-          {t('Categories.furtherEmployment')}:
+          {t('Statistics.otherEmployments')}:
         </ThemedText>
 
         <ThemedView>
