@@ -8,13 +8,12 @@
 
 import { mockPaymentProvider } from './mockProvider'
 import { PaymentProvider } from './paymentProvider'
+import { PayrexxProvider } from './payrexxProvider'
 
 function resolveProvider(): PaymentProvider {
   const hasPayrexx = process.env.PAYREXX_INSTANCE && process.env.PAYREXX_API_SECRET
 
   if (hasPayrexx) {
-    // Dynamic import to avoid loading Payrexx dependencies when not needed
-    const { PayrexxProvider } = require('./payrexxProvider')
     return new PayrexxProvider()
   }
 

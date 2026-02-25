@@ -38,6 +38,77 @@ export type Database = {
         }
         Relationships: []
       }
+      checkout_sessions: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: string
+          expires_at: string | null
+          id: string
+          metadata: Json
+          organization_id: number | null
+          payrexx_gateway_hash: string | null
+          payrexx_gateway_id: number | null
+          payrexx_gateway_link: string | null
+          payrexx_transaction_id: string | null
+          plan: string
+          quantity: number
+          reference_id: string
+          status: string
+          subscription_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          currency?: string
+          expires_at?: string | null
+          id?: string
+          metadata?: Json
+          organization_id?: number | null
+          payrexx_gateway_hash?: string | null
+          payrexx_gateway_id?: number | null
+          payrexx_gateway_link?: string | null
+          payrexx_transaction_id?: string | null
+          plan: string
+          quantity?: number
+          reference_id: string
+          status?: string
+          subscription_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          expires_at?: string | null
+          id?: string
+          metadata?: Json
+          organization_id?: number | null
+          payrexx_gateway_hash?: string | null
+          payrexx_gateway_id?: number | null
+          payrexx_gateway_link?: string | null
+          payrexx_transaction_id?: string | null
+          plan?: string
+          quantity?: number
+          reference_id?: string
+          status?: string
+          subscription_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checkout_sessions_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount_cents: number
@@ -150,12 +221,57 @@ export type Database = {
           },
         ]
       }
+      webhook_events: {
+        Row: {
+          created_at: string
+          event_key: string
+          event_type: string
+          id: string
+          payload: Json
+          processed: boolean
+          processed_at: string | null
+          processing_error: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_key: string
+          event_type: string
+          id?: string
+          payload: Json
+          processed?: boolean
+          processed_at?: string | null
+          processing_error?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_key?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          processed?: boolean
+          processed_at?: string | null
+          processing_error?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      fail_checkout_session: {
+        Args: { p_reason?: string; p_reference_id: string; p_status?: string }
+        Returns: undefined
+      }
+      process_payrexx_payment: {
+        Args: {
+          p_payrexx_gateway_id?: number
+          p_payrexx_transaction_id: string
+          p_raw_payload?: Json
+          p_reference_id: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
@@ -429,7 +545,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      start_demo: {
+        Args: never
+        Returns: {
+          billing_subscription_id: string | null
+          created_at: string
+          id: string
+          kind: Database["license"]["Enums"]["entitlement_kind"]
+          organization_id: number | null
+          revocation_reason:
+            | Database["license"]["Enums"]["entitlement_revocation_reason"]
+            | null
+          source: Database["license"]["Enums"]["entitlement_source"]
+          status: Database["license"]["Enums"]["entitlement_status"]
+          updated_at: string
+          user_id: string | null
+          valid_from: string
+          valid_until: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "entitlements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       entitlement_kind: "trial" | "personal" | "org_seat" | "student"

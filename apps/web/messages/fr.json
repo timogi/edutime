@@ -857,6 +857,10 @@
     "org-feature-custom": "Configurations personnalisées possibles",
     "org-feature-all-included": "Toutes les fonctionnalités incluses",
     "org-checkout-button": "Acheter maintenant",
+    "activationPendingTitle": "Activation en attente",
+    "activationPendingMessage": "Votre paiement a ete recu. La licence sera activee des que le webhook de paiement sera traite.",
+    "activationRefreshFailed": "Impossible d'actualiser le statut de la licence. Veuillez reessayer.",
+    "refreshActivation": "Verifier l'activation",
     "account-management": "Gestion du compte",
     "profile": "Profil",
     "settings": "Paramètres",
@@ -957,7 +961,13 @@
     "tryAgain": "Réessayer",
     "backToHome": "Retour à l'accueil",
     "goToApp": "Aller à l'application",
+    "goToNoLicense": "Aller a la page de licence",
     "redirecting": "Redirection vers le paiement...",
-    "redirectingDescription": "Vous serez redirigé vers la page de paiement sous peu."
+    "redirectingDescription": "Vous serez redirigé vers la page de paiement sous peu.",
+    "activationPendingTitle": "Paiement recu",
+    "activationPendingDescription": "Nous verifions votre paiement et activons automatiquement votre licence.",
+    "activationPendingNote": "Cela peut prendre quelques secondes. Vous pouvez actualiser le statut a tout moment.",
+    "activationFailedNote": "Le paiement n'a pas pu etre finalise. Veuillez reessayer l'achat.",
+    "refreshStatus": "Actualiser le statut"
   }
 }

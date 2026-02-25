@@ -856,6 +856,10 @@
     "org-feature-custom": "Individuelle Anpassungen möglich",
     "org-feature-all-included": "Alle Funktionen inklusive",
     "org-checkout-button": "Jetzt kaufen",
+    "activationPendingTitle": "Aktivierung ausstehend",
+    "activationPendingMessage": "Ihre Zahlung wurde registriert. Die Lizenz wird aktiviert, sobald das Zahlungsevent verarbeitet wurde.",
+    "activationRefreshFailed": "Der Lizenzstatus konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut.",
+    "refreshActivation": "Aktivierung erneut prüfen",
     "account-management": "Kontoverwaltung",
     "profile": "Profil",
     "settings": "Einstellungen",
@@ -956,7 +960,13 @@
     "tryAgain": "Erneut versuchen",
     "backToHome": "Zurueck zur Startseite",
     "goToApp": "Zur App",
+    "goToNoLicense": "Zur Lizenzseite",
     "redirecting": "Weiterleitung zur Zahlung...",
-    "redirectingDescription": "Sie werden in Kuerze zur Zahlungsseite weitergeleitet."
+    "redirectingDescription": "Sie werden in Kuerze zur Zahlungsseite weitergeleitet.",
+    "activationPendingTitle": "Zahlung eingegangen",
+    "activationPendingDescription": "Wir pruefen Ihre Zahlung und aktivieren Ihre Lizenz automatisch.",
+    "activationPendingNote": "Dieser Vorgang kann einige Sekunden dauern. Sie koennen den Status jederzeit aktualisieren.",
+    "activationFailedNote": "Die Zahlung konnte nicht abgeschlossen werden. Bitte versuchen Sie den Kauf erneut.",
+    "refreshStatus": "Status aktualisieren"
   }
 }

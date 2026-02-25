@@ -30,6 +30,8 @@ const LANGUAGE_MAP: Record<string, string> = {
 
 /** Default gateway validity in minutes (2 hours) */
 const GATEWAY_VALIDITY_MINUTES = 120
+/** Payrexx subscription interval format (PHP DateInterval) */
+const ONE_YEAR_PHP_INTERVAL = 'P1Y'
 
 export class PayrexxProvider implements PaymentProvider {
   private client: PayrexxClient
@@ -74,6 +76,7 @@ export class PayrexxProvider implements PaymentProvider {
 
     const referenceId = `cs_${crypto.randomUUID()}`
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://edutime.ch'
+    const environment = process.env.NODE_ENV === 'production' ? 'prod' : 'nonprod'
     const successUrl = `${appUrl}/checkout/success?ref=${referenceId}`
     const failedUrl = `${appUrl}/checkout/failed?ref=${referenceId}`
     const cancelUrl = `${appUrl}/checkout/cancel?ref=${referenceId}`
@@ -89,7 +92,9 @@ export class PayrexxProvider implements PaymentProvider {
       amount: amountCents,
       currency: CURRENCY,
       purpose:
-        plan === 'annual' ? 'EduTime Annual License' : `EduTime Organization Licenses (${qty}x)`,
+        plan === 'annual'
+          ? `EduTime Annual License (${environment})`
+          : `EduTime Organization Licenses (${qty}x, ${environment})`,
       successRedirectUrl: encodeURI(successUrl),
       failedRedirectUrl: encodeURI(failedUrl),
       cancelRedirectUrl: encodeURI(cancelUrl),
@@ -99,6 +104,10 @@ export class PayrexxProvider implements PaymentProvider {
       language: LANGUAGE_MAP[language || 'de'] || 'de',
       skipResultPage: false,
       validity: GATEWAY_VALIDITY_MINUTES,
+      subscriptionState: plan === 'annual',
+      // Payrexx expects PHP interval spec, e.g. P1M / P1Y.
+      subscriptionInterval: plan === 'annual' ? ONE_YEAR_PHP_INTERVAL : undefined,
+      subscriptionPeriod: plan === 'annual' ? ONE_YEAR_PHP_INTERVAL : undefined,
     })
 
     if (gatewayResponse.status !== 'success' || !gatewayResponse.data?.[0]) {

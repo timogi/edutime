@@ -843,6 +843,10 @@
     "org-feature-custom": "Custom configurations available",
     "org-feature-all-included": "All features included",
     "org-checkout-button": "Purchase now",
+    "activationPendingTitle": "Activation pending",
+    "activationPendingMessage": "Your payment was received. The license will activate as soon as the payment webhook is processed.",
+    "activationRefreshFailed": "Could not refresh license status. Please try again.",
+    "refreshActivation": "Check activation again",
     "account-management": "Account management",
     "profile": "Profile",
     "settings": "Settings",
@@ -943,7 +947,13 @@
     "tryAgain": "Try Again",
     "backToHome": "Back to Home",
     "goToApp": "Go to App",
+    "goToNoLicense": "Go to license page",
     "redirecting": "Redirecting to payment...",
-    "redirectingDescription": "You will be redirected to the payment page shortly."
+    "redirectingDescription": "You will be redirected to the payment page shortly.",
+    "activationPendingTitle": "Payment received",
+    "activationPendingDescription": "We are verifying your payment and activating your license automatically.",
+    "activationPendingNote": "This can take a few seconds. You can refresh the status at any time.",
+    "activationFailedNote": "Payment could not be completed. Please try the purchase again.",
+    "refreshStatus": "Refresh status"
   }
 }

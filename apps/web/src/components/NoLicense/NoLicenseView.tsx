@@ -39,6 +39,7 @@ export function NoLicenseView() {
   const [processingInvitation, setProcessingInvitation] = useState<number | null>(null)
   const [isStartingDemo, setIsStartingDemo] = useState(false)
   const [hasUsedDemo, setHasUsedDemo] = useState<boolean | null>(null)
+  const [isRefreshingLicense, setIsRefreshingLicense] = useState(false)
   const [orgModalOpened, setOrgModalOpened] = useState(false)
 
   // Check if user is an administrator
@@ -227,6 +228,34 @@ export function NoLicenseView() {
     router.push('/checkout?plan=annual')
   }
 
+  const handleRefreshLicenseStatus = async () => {
+    setIsRefreshingLicense(true)
+    try {
+      await refreshUserData()
+      const isActive = await hasActiveEntitlement(supabase, user.user_id)
+
+      if (isActive) {
+        router.replace('/app/time-tracking')
+        return
+      }
+
+      showNotification({
+        title: t_noLicense('activationPendingTitle'),
+        message: t_noLicense('activationPendingMessage'),
+        color: 'orange',
+      })
+    } catch (error) {
+      console.error('Error refreshing license status:', error)
+      showNotification({
+        title: t('error') || 'Fehler',
+        message: t_noLicense('activationRefreshFailed'),
+        color: 'red',
+      })
+    } finally {
+      setIsRefreshingLicense(false)
+    }
+  }
+
   const handleLogout = async () => {
     try {
       await logout()
@@ -281,6 +310,22 @@ export function NoLicenseView() {
               {isAdministrator ? t_noLicense('description-admin') : t_noLicense('description')}
             </Text>
           </div>
+
+          {router.query.checkout === 'pending' && (
+            <Alert icon={<IconInfoCircle size={16} />} color='orange' variant='light' w='100%' maw={800}>
+              <Stack gap='xs'>
+                <Text size='sm'>{t_noLicense('activationPendingMessage')}</Text>
+                <Button
+                  variant='light'
+                  onClick={handleRefreshLicenseStatus}
+                  loading={isRefreshingLicense}
+                  disabled={isRefreshingLicense}
+                >
+                  {t_noLicense('refreshActivation')}
+                </Button>
+              </Stack>
+            </Alert>
+          )}
 
           {/* Administrator Member Management */}
           {isAdministrator && (

@@ -8,6 +8,18 @@ import { LoadingScreen } from '@/components/LoadingScreen'
 import { CheckoutLegalGate } from '@/components/CheckoutLegalGate'
 import { IconAlertCircle } from '@tabler/icons-react'
 
+type CheckoutApiResponse = {
+  checkoutUrl?: string
+  sessionId?: string
+  error?: string
+}
+
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  return 'An unexpected error occurred'
+}
+
 export default function CheckoutPage() {
   const router = useRouter()
   const t = useTranslations('Index')
@@ -128,14 +140,42 @@ export default function CheckoutPage() {
         }),
       })
 
-      const data = await response.json()
+      const contentType = response.headers.get('content-type') || ''
+      const rawBody = await response.text()
+      let data: CheckoutApiResponse = {}
+
+      if (rawBody) {
+        if (contentType.includes('application/json')) {
+          try {
+            data = JSON.parse(rawBody) as CheckoutApiResponse
+          } catch (parseError) {
+            console.error('Checkout API returned invalid JSON:', {
+              status: response.status,
+              contentType,
+              rawBodyPreview: rawBody.slice(0, 300),
+              parseError,
+            })
+            throw new Error('Checkout API returned invalid JSON')
+          }
+        } else {
+          // Useful in development when Next.js returns an HTML error page instead of JSON.
+          console.error('Checkout API returned non-JSON response:', {
+            status: response.status,
+            contentType,
+            rawBodyPreview: rawBody.slice(0, 300),
+          })
+          throw new Error(
+            `Checkout API returned non-JSON response (status ${response.status}). Check server logs.`,
+          )
+        }
+      }
 
       if (!response.ok) {
         if (response.status === 401) {
           redirectToRegister()
           return
         }
-        throw new Error(data.error || 'Failed to create checkout session')
+        throw new Error(data.error || `Failed to create checkout session (status ${response.status})`)
       }
 
       setCheckoutUrl(data.checkoutUrl)
@@ -146,9 +186,9 @@ export default function CheckoutPage() {
           window.location.href = data.checkoutUrl
         }
       }, 2000)
-    } catch (err: any) {
-      console.error('Error creating checkout session:', err)
-      setError(err.message || 'An error occurred')
+    } catch (error: unknown) {
+      console.error('Error creating checkout session:', error)
+      setError(getErrorMessage(error))
     }
   }
 
