@@ -294,7 +294,21 @@
     "weight": "Weight",
     "createCategory": "Create category",
     "editCategory": "Edit category",
-    "version": "Version"
+    "version": "Version",
+    "license": "License",
+    "loading": "Loading...",
+    "noLicenses": "No licenses found",
+    "licenseValidFrom": "Valid from",
+    "licenseValidUntil": "Valid until",
+    "licenseUnlimited": "Unlimited",
+    "licenseKindTrial": "Trial",
+    "licenseKindPersonal": "Personal",
+    "licenseKindOrgSeat": "Organization seat",
+    "licenseKindStudent": "Student",
+    "licenseStatusPending": "Pending",
+    "licenseStatusActive": "Active",
+    "licenseStatusRevoked": "Revoked",
+    "licenseStatusExpired": "Expired"
   },
   "Legal": {
     "title": "Legal Documents",

@@ -293,7 +293,21 @@
     "weight": "Gewicht",
     "createCategory": "Kategorie erstellen",
     "editCategory": "Kategorie bearbeiten",
-    "version": "Version"
+    "version": "Version",
+    "license": "Lizenz",
+    "loading": "Laden...",
+    "noLicenses": "Keine Lizenzen gefunden",
+    "licenseValidFrom": "Gültig ab",
+    "licenseValidUntil": "Gültig bis",
+    "licenseUnlimited": "Unbegrenzt",
+    "licenseKindTrial": "Testversion",
+    "licenseKindPersonal": "Persönlich",
+    "licenseKindOrgSeat": "Organisationsplatz",
+    "licenseKindStudent": "Student",
+    "licenseStatusPending": "Ausstehend",
+    "licenseStatusActive": "Aktiv",
+    "licenseStatusRevoked": "Widerrufen",
+    "licenseStatusExpired": "Abgelaufen"
   },
   "Legal": {
     "title": "Rechtliche Dokumente",

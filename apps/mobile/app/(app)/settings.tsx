@@ -10,6 +10,7 @@ import { FurtherEmploymentInput } from "@/components/settings/FurtherEmploymentI
 import { DeleteAccount } from "@/components/settings/DeleteAccount";
 import { LogoutButton } from "@/components/settings/LogoutButton";
 import Informations from "@/components/settings/Informations";
+import LicenseOverview from "@/components/settings/LicenseOverview";
 import { updateUserData } from "@/lib/database/user";
 import { createUserCategory, updateUserCategory, deleteUserCategory } from "@/lib/database/user_categories";
 import { deleteAccount } from "@/lib/database/user";
@@ -305,6 +306,7 @@ export default function SettingsScreen() {
             onCreateCategory={handleCreateCategory}
             onDeleteCategory={handleDeleteCategory}
           />
+          <LicenseOverview />
           <Informations />
           <LogoutButton />
           <DeleteAccount onDeleteAccount={handleDeleteAccount} />

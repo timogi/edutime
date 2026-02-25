@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { TextInput, Button, Stack, Text, Card, Modal, Group, Badge, Table } from '@mantine/core'
+import { TextInput, Button, Stack, Text, Card, Modal, Group, Badge, SimpleGrid, Paper } from '@mantine/core'
 import { useTranslations } from 'next-intl'
 import { updateUserData } from '@/utils/supabase/user'
 import { useRouter } from 'next/router'
@@ -28,6 +28,13 @@ export const Account = ({ userData, reloadUserData }: AccountProps) => {
   const [entitlements, setEntitlements] = useState<Entitlement[]>([])
   const [isLoadingEntitlements, setIsLoadingEntitlements] = useState(false)
   const t = useTranslations('Index')
+
+  const getLicenseStatusColor = (status: Entitlement['status']) => {
+    if (status === 'active') return 'green'
+    if (status === 'pending') return 'yellow'
+    if (status === 'expired') return 'gray'
+    return 'red'
+  }
 
   const handleUpdateUserData = async () => {
     setIsUserDataUpdating(true)
@@ -93,57 +100,29 @@ export const Account = ({ userData, reloadUserData }: AccountProps) => {
               ) : entitlements.length === 0 ? (
                 <Text c='dimmed'>{t('no-licenses')}</Text>
               ) : (
-                <Table.ScrollContainer minWidth={500}>
-                  <Table
-                    striped
-                    highlightOnHover
-                    withColumnBorders
-                    withTableBorder
-                    horizontalSpacing='md'
-                    verticalSpacing='sm'
-                  >
-                    <Table.Thead>
-                      <Table.Tr>
-                        <Table.Th>{t('license-kind')}</Table.Th>
-                        <Table.Th>{t('license-source')}</Table.Th>
-                        <Table.Th>{t('license-status')}</Table.Th>
-                        <Table.Th>{t('license-valid-from')}</Table.Th>
-                        <Table.Th>{t('license-valid-until')}</Table.Th>
-                      </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                      {entitlements.map((entitlement) => (
-                        <Table.Tr key={entitlement.id}>
-                          <Table.Td>{t(`license-kind-${entitlement.kind}`)}</Table.Td>
-                          <Table.Td>{t(`license-source-${entitlement.source}`)}</Table.Td>
-                          <Table.Td>
-                            <Badge
-                              color={
-                                entitlement.status === 'active'
-                                  ? 'green'
-                                  : entitlement.status === 'pending'
-                                    ? 'yellow'
-                                    : entitlement.status === 'expired'
-                                      ? 'gray'
-                                      : 'red'
-                              }
-                            >
-                              {t(`license-status-${entitlement.status}`)}
-                            </Badge>
-                          </Table.Td>
-                          <Table.Td>
-                            {new Date(entitlement.valid_from).toLocaleDateString()}
-                          </Table.Td>
-                          <Table.Td>
-                            {entitlement.valid_until
-                              ? new Date(entitlement.valid_until).toLocaleDateString()
-                              : t('license-unlimited')}
-                          </Table.Td>
-                        </Table.Tr>
-                      ))}
-                    </Table.Tbody>
-                  </Table>
-                </Table.ScrollContainer>
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing='sm'>
+                  {entitlements.map((entitlement) => (
+                    <Paper key={entitlement.id} withBorder radius='md' p='md'>
+                      <Stack gap='xs'>
+                        <Group justify='space-between' align='flex-start' gap='xs'>
+                          <Text fw={600}>{t(`license-kind-${entitlement.kind}`)}</Text>
+                          <Badge color={getLicenseStatusColor(entitlement.status)} variant='light'>
+                            {t(`license-status-${entitlement.status}`)}
+                          </Badge>
+                        </Group>
+                        <Text size='sm' c='dimmed'>
+                          {t('license-valid-from')}: {new Date(entitlement.valid_from).toLocaleDateString()}
+                        </Text>
+                        <Text size='sm' c='dimmed'>
+                          {t('license-valid-until')}:{' '}
+                          {entitlement.valid_until
+                            ? new Date(entitlement.valid_until).toLocaleDateString()
+                            : t('license-unlimited')}
+                        </Text>
+                      </Stack>
+                    </Paper>
+                  ))}
+                </SimpleGrid>
               )}
             </Stack>
           </div>
