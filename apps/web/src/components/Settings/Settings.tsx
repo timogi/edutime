@@ -683,6 +683,9 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
         <Card radius='md' withBorder>
           <Stack gap='sm'>
             <Text size='xl'>{t('additionalCategories')}</Text>
+            <Text size='sm' c='dimmed'>
+              {t('additionalCategoriesDescription')}
+            </Text>
 
             {userData.user_categories.length > 0 && (
               <Table.ScrollContainer minWidth={500}>
@@ -725,7 +728,7 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
             )}
             <Group justify='flex-start'>
               <Button onClick={handleCreateCategory} leftSection={<IconPlus />}>
-                {t('createCategory')}
+                {t('createAdditionalTask')}
               </Button>
             </Group>
           </Stack>

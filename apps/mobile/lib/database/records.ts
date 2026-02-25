@@ -208,10 +208,13 @@ export const getRecordsForOtherCanton = async (
 // Helper function to check if title matches user categories
 const isUserCategoriesTitle = (title: string): boolean => {
   return title.includes('Weitere Anstellungen') || 
+         title.includes('Zusätzliche Aufgaben') ||
          title.includes('Zusätzliche Kategorien') ||
          title.includes('Further employments') || 
+         title.includes('Additional tasks') ||
          title.includes('Additional categories') ||
          title.includes('Autres emplois') ||
+         title.includes('Tâches supplémentaires') ||
          title.includes('Catégories supplémentaires');
 };
 

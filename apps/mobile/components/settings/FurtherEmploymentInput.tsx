@@ -70,6 +70,7 @@ export const FurtherEmploymentInput: React.FC<FurtherEmploymentInputProps> = ({
     <Card style={cardStyle} variant="outline">
       <VStack space="md" style={styles.container}>
         <Text size="xl" style={textStyle}>{t('Settings.furtherEmployment')}</Text>
+        <Text size="sm" style={textStyle}>{t('Settings.furtherEmploymentDescription')}</Text>
 
         {userCategories.length > 0 && (
           <View style={styles.tableContainer}>
@@ -112,7 +113,7 @@ export const FurtherEmploymentInput: React.FC<FurtherEmploymentInputProps> = ({
           style={styles.button}
         >
           <IconSymbol name="plus" size={20} color="white" />
-          <ButtonText>{t('Settings.createEmployment')}</ButtonText>
+          <ButtonText>{t('Settings.createAdditionalTask')}</ButtonText>
         </Button>
 
         <CategoryModal

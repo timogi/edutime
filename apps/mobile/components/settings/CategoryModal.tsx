@@ -136,7 +136,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
       <ModalContent style={[styles.modalContent, isDark && styles.modalContentDark]}>
         <ModalHeader>
           <Text size="lg" color={isDark ? 'white' : 'black'}>
-            {localCategory.id ? t('Settings.editEmployment') : t('Settings.createEmployment')}
+            {localCategory.id ? t('Settings.editAdditionalTask') : t('Settings.createAdditionalTask')}
           </Text>
           <ModalCloseButton />
         </ModalHeader>

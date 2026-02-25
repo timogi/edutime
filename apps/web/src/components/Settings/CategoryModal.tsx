@@ -65,7 +65,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
     <Modal
       opened={opened}
       onClose={onClose}
-      title={localCategory.id ? t('editEmployment') : t('additionalCategories')}
+      title={localCategory.id ? t('editAdditionalTask') : t('createAdditionalTask')}
       size='md'
       styles={{
         title: {

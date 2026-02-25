@@ -1,9 +1,19 @@
-const { getDefaultConfig } = require('expo/metro-config');
-const { withNativeWind } = require("nativewind/metro");
-
 const path = require('path');
+const Module = require('module');
 const projectRoot = __dirname;
 const monorepoRoot = path.resolve(projectRoot, '../..');
+
+// Ensure hoisted packages can resolve react-native from the mobile workspace.
+process.env.NODE_PATH = [
+  path.resolve(projectRoot, 'node_modules'),
+  process.env.NODE_PATH,
+]
+  .filter(Boolean)
+  .join(path.delimiter);
+Module._initPaths();
+
+const { getDefaultConfig } = require('expo/metro-config');
+const { withNativeWind } = require("nativewind/metro");
 
 const config = getDefaultConfig(projectRoot);
 
