@@ -15,6 +15,34 @@
   flex: 1;
 }
 
+.section {
+  margin-top: var(--mantine-spacing-md);
+  padding-top: var(--mantine-spacing-md);
+  border-top: 1px solid var(--mantine-color-gray-3);
+}
+
+[data-mantine-color-scheme='dark'] .section {
+  border-top-color: var(--mantine-color-dark-4);
+}
+
+.sectionHeader {
+  padding: 0 var(--mantine-spacing-sm) var(--mantine-spacing-xs);
+}
+
+.sectionTitle {
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mantine-color-text);
+}
+
+.sectionDescription {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--mantine-color-dimmed);
+}
+
 .footer {
   padding-top: var(--mantine-spacing-md);
   margin-top: var(--mantine-spacing-md);

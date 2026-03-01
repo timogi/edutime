@@ -9,7 +9,8 @@ type PayrexxTransaction = {
   gateway?: { id?: number } | null
 }
 
-const PAYREXX_API_BASE = 'https://api.payrexx.com/v1.0'
+const PAYREXX_API_DEFAULT_VERSION = '1.14'
+const PAYREXX_API_BASE = `https://api.payrexx.com/v${(Deno.env.get('PAYREXX_API_VERSION') || PAYREXX_API_DEFAULT_VERSION).replace(/^v/i, '')}`
 const SUCCESS_STATUSES = new Set(['confirmed', 'authorized', 'paid'])
 const FAILURE_STATUSES = new Set(['failed', 'cancelled', 'expired'])
 
@@ -367,8 +368,8 @@ Deno.serve(async (req) => {
     const normalizedStatus = String(
       verifiedTx?.status || transactionPayload?.status || payload.status || '',
     ).toLowerCase()
-    const referenceId = extractReferenceId(payload, verifiedTx)
-    const gatewayId = extractGatewayId(payload, verifiedTx)
+    const referenceId = extractReferenceId(payload, verifiedTx || undefined)
+    const gatewayId = extractGatewayId(payload, verifiedTx || undefined)
 
     if (!referenceId) {
       // Ignore events that are not linked to a checkout session reference.
@@ -388,8 +389,21 @@ Deno.serve(async (req) => {
       return new Response('ok (ignored: missing reference_id)', { status: 200 })
     }
 
+    const { data: checkoutSession, error: checkoutLookupError } = await admin
+      .from('checkout_sessions')
+      .select('plan')
+      .eq('reference_id', referenceId)
+      .maybeSingle()
+
+    if (checkoutLookupError) {
+      throw new Error(`Failed to load checkout session for reference ${referenceId}`)
+    }
+
+    const checkoutPlan = checkoutSession?.plan
+
     if (SUCCESS_STATUSES.has(normalizedStatus)) {
-      const { error: rpcError } = await admin.rpc('process_payrexx_payment', {
+      const rpcName = checkoutPlan === 'org' ? 'process_payrexx_org_payment' : 'process_payrexx_payment'
+      const { error: rpcError } = await admin.rpc(rpcName, {
         p_reference_id: referenceId,
         p_payrexx_transaction_id: String(verifiedTx?.id || transactionId || eventKey),
         p_payrexx_gateway_id: gatewayId,
@@ -397,7 +411,7 @@ Deno.serve(async (req) => {
       })
 
       if (rpcError) {
-        throw new Error(`process_payrexx_payment failed: ${rpcError.message}`)
+        throw new Error(`${rpcName} failed: ${rpcError.message}`)
       }
     } else if (FAILURE_STATUSES.has(normalizedStatus)) {
       const { error: failError } = await admin.rpc('fail_checkout_session', {

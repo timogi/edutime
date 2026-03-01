@@ -12,6 +12,7 @@ import {
   SimpleGrid,
   Select,
   SegmentedControl,
+  Divider,
 } from '@mantine/core'
 import { GetStaticPropsContext } from 'next/types'
 import { ThemeDropdown } from './ThemeDropdown'
@@ -457,83 +458,76 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
             />
 
             <div className={classes.employmentCardContent}>
-              <div className={classes.inputsGrid}>
+              <NumberInput
+                value={workload}
+                onChange={(value) => setWorkload(typeof value === 'number' ? value : 0)}
+                placeholder={t('workload')}
+                min={0}
+                max={500}
+                decimalScale={2}
+                label={t('workload')}
+                size='md'
+              />
+
+              {configMode === 'custom' && (
                 <NumberInput
-                  value={workload}
-                  onChange={(value) => setWorkload(typeof value === 'number' ? value : 0)}
-                  placeholder={t('workload')}
+                  value={customAnnualHours}
+                  onChange={(value) => setCustomAnnualHours(typeof value === 'number' ? value : 1930)}
+                  placeholder={t('annualWorkHours')}
                   min={0}
-                  max={500}
-                  decimalScale={2}
-                  label={t('workload')}
+                  max={10000}
+                  decimalScale={0}
+                  label={t('annualWorkHours')}
                   size='md'
                 />
-
-                {configMode === 'custom' && (
-                  <NumberInput
-                    value={customAnnualHours}
-                    onChange={(value) => setCustomAnnualHours(typeof value === 'number' ? value : 1930)}
-                    placeholder={t('annualWorkHours')}
-                    min={0}
-                    max={10000}
-                    decimalScale={0}
-                    label={t('annualWorkHours')}
-                    size='md'
-                  />
-                )}
-
-                {configMode === 'default' && canton === 'TG_S' && (
-                  <NumberInput
-                    value={classSize}
-                    onChange={(value) => setClassSize(typeof value === 'number' ? value : 0)}
-                    placeholder={t('class_size')}
-                    min={0}
-                    max={50}
-                    decimalScale={0}
-                    label={t('class_size')}
-                    size='md'
-                  />
-                )}
-
-                {configMode === 'default' && canton === 'TG_S' && (
-                  <Select
-                    value={educationLevel}
-                    onChange={(value) => setEducationLevel(value as string)}
-                    placeholder={t('education_level_placeholder')}
-                    label={t('education_level')}
-                    size='md'
-                    data={[
-                      { value: 'kindergarten', label: t('kindergarten') },
-                      { value: 'foundation_stage', label: t('foundation_stage') },
-                      { value: 'lower_primary', label: t('lower_primary') },
-                      { value: 'grade_3_4', label: t('grade_3_4') },
-                      { value: 'middle_primary', label: t('middle_primary') },
-                      { value: 'lower_secondary', label: t('lower_secondary') },
-                      { value: 'special_class', label: t('special_class') },
-                      { value: 'special_school', label: t('special_school') },
-                      { value: 'vocational_school', label: t('vocational_school') },
-                      { value: 'upper_secondary', label: t('upper_secondary') },
-                    ]}
-                  />
-                )}
-              </div>
-
-              {configMode === 'default' && (
-                <div className={classes.cantonPickerWrapper}>
-                  <CantonPicker canton={canton} setCanton={handleCantonChange} required={false} />
-                </div>
               )}
 
-              {configMode === 'default' && cantonData && (
-                <Card radius='md' withBorder style={{ gridColumn: '1 / -1' }}>
-                  <Stack gap='sm' p='lg'>
-                    {cantonData.title && (
-                      <Text size='lg' fw={500}>
-                        {cantonData.title}
-                      </Text>
-                    )}
+              {configMode === 'default' && (
+                <Card radius='md' withBorder>
+                  <Stack gap='md' p='lg'>
+                    <Text size='lg' fw={500}>
+                      {t('cantonConfigureTitle')}
+                    </Text>
+                    <CantonPicker canton={canton} setCanton={handleCantonChange} required={false} />
+                    <Divider />
+                    <Text size='sm' fw={500}>
+                      {t('cantonSpecificConfiguration')}
+                    </Text>
                     <Stack gap='md'>
-                      {cantonData.annual_work_hours != null &&
+                      {canton === 'TG_S' && (
+                        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing='md'>
+                          <NumberInput
+                            value={classSize}
+                            onChange={(value) => setClassSize(typeof value === 'number' ? value : 0)}
+                            placeholder={t('class_size')}
+                            min={0}
+                            max={50}
+                            decimalScale={0}
+                            label={t('class_size')}
+                            size='md'
+                          />
+                          <Select
+                            value={educationLevel}
+                            onChange={(value) => setEducationLevel(value as string)}
+                            placeholder={t('education_level_placeholder')}
+                            label={t('education_level')}
+                            size='md'
+                            data={[
+                              { value: 'kindergarten', label: t('kindergarten') },
+                              { value: 'foundation_stage', label: t('foundation_stage') },
+                              { value: 'lower_primary', label: t('lower_primary') },
+                              { value: 'grade_3_4', label: t('grade_3_4') },
+                              { value: 'middle_primary', label: t('middle_primary') },
+                              { value: 'lower_secondary', label: t('lower_secondary') },
+                              { value: 'special_class', label: t('special_class') },
+                              { value: 'special_school', label: t('special_school') },
+                              { value: 'vocational_school', label: t('vocational_school') },
+                              { value: 'upper_secondary', label: t('upper_secondary') },
+                            ]}
+                          />
+                        </SimpleGrid>
+                      )}
+                      {cantonData?.annual_work_hours != null &&
                         cantonData.annual_work_hours > 0 &&
                         !cantonData.use_custom_work_hours &&
                         !cantonData.is_working_hours_disabled && (
@@ -542,7 +536,7 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
                             {formatSwissNumber(cantonData.annual_work_hours)} {t('hours')}
                           </Text>
                         )}
-                      {cantonData.use_custom_work_hours && (
+                      {cantonData?.use_custom_work_hours && (
                         <NumberInput
                           value={customWorkHours}
                           onChange={(value) =>
@@ -566,12 +560,12 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
                           rightSectionWidth={40}
                         />
                       )}
-                      {cantonData.use_custom_work_hours && (
+                      {cantonData?.use_custom_work_hours && (
                         <Text size='sm' c='dimmed'>
                           {t('actual_workload')}: {calculateActualWorkload()} {t('hours')}
                         </Text>
                       )}
-                      {cantonData.is_configurable && (
+                      {cantonData?.is_configurable && (
                         <div className={classes.flexRow}>
                           {cantonData.category_sets.map((categorySet) => (
                             <NumberInput
@@ -610,7 +604,7 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
               )}
 
               {configMode === 'custom' && (
-                <Card radius='md' withBorder style={{ gridColumn: '1 / -1' }}>
+                <Card radius='md' withBorder>
                   <Stack gap='sm' p='lg'>
                     <Text size='lg' fw={500}>{t('customCategoriesTitle')}</Text>
                     <Text size='sm' c='dimmed'>

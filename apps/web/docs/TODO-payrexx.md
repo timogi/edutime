@@ -90,7 +90,7 @@ PAYREXX_INSTANCE=edutime
 
 |                     |                                                           |
 | ------------------- | --------------------------------------------------------- |
-| **Base URL**        | `https://api.payrexx.com/v1.0/`                           |
+| **Base URL**        | `https://api.payrexx.com/v1.14/`                          |
 | **Auth**            | HMAC-SHA256 signature                                     |
 | **Create Gateway**  | `POST /Gateway/?instance=NAME`                            |
 | **Get Gateway**     | `GET /Gateway/{id}/?instance=NAME`                        |

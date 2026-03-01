@@ -1,5 +1,16 @@
-import React, { useState, useEffect } from 'react'
-import { TextInput, Button, Stack, Text, Card, Modal, Group, Badge, SimpleGrid, Paper } from '@mantine/core'
+import React, { useState, useEffect, useCallback } from 'react'
+import {
+  TextInput,
+  Button,
+  Stack,
+  Text,
+  Card,
+  Modal,
+  Group,
+  Badge,
+  SimpleGrid,
+  Paper,
+} from '@mantine/core'
 import { useTranslations } from 'next-intl'
 import { updateUserData } from '@/utils/supabase/user'
 import { useRouter } from 'next/router'
@@ -11,11 +22,24 @@ import LocaleSwitcher from '../Settings/LocaleSwitcher'
 import { getUserEntitlements } from '@edutime/shared'
 import { UserData, Entitlement } from '@/types/globals'
 import { supabase } from '@/utils/supabase/client'
+import { getMemberships, getOrganizations } from '@/utils/supabase/organizations'
 import classes from './Account.module.css'
+import { notifications } from '@mantine/notifications'
 
 interface AccountProps {
   userData: UserData
   reloadUserData: () => void
+}
+
+interface LicenseManagementSubscription {
+  id: string
+  cancel_at_period_end: boolean
+  canceled_at: string | null
+  current_period_end: string | null
+}
+
+interface LicenseManagementData {
+  subscription: LicenseManagementSubscription | null
 }
 
 export const Account = ({ userData, reloadUserData }: AccountProps) => {
@@ -26,7 +50,10 @@ export const Account = ({ userData, reloadUserData }: AccountProps) => {
   const [isUserDataUpdating, setIsUserDataUpdating] = useState(false)
   const [opened, { open, close }] = useDisclosure(false)
   const [entitlements, setEntitlements] = useState<Entitlement[]>([])
+  const [organizationNamesById, setOrganizationNamesById] = useState<Record<number, string>>({})
   const [isLoadingEntitlements, setIsLoadingEntitlements] = useState(false)
+  const [licenseManagementData, setLicenseManagementData] = useState<LicenseManagementData | null>(null)
+  const [isLoadingLicenseManagement, setIsLoadingLicenseManagement] = useState(false)
   const t = useTranslations('Index')
 
   const getLicenseStatusColor = (status: Entitlement['status']) => {
@@ -35,6 +62,54 @@ export const Account = ({ userData, reloadUserData }: AccountProps) => {
     if (status === 'expired') return 'gray'
     return 'red'
   }
+
+  const formatDate = (value: string | null) => {
+    if (!value) return t('license-unlimited')
+    return new Date(value).toLocaleDateString(router.locale || 'de')
+  }
+
+  const getAuthenticatedRequestInit = async (
+    init?: Omit<RequestInit, 'headers' | 'credentials'>,
+  ): Promise<RequestInit> => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+    }
+
+    return {
+      ...init,
+      headers,
+      credentials: 'include',
+    }
+  }
+
+  const loadLicenseManagementData = useCallback(async () => {
+    setIsLoadingLicenseManagement(true)
+    try {
+      const requestInit = await getAuthenticatedRequestInit()
+      const response = await fetch('/api/billing/personal-subscription', requestInit)
+      const payload = (await response.json()) as LicenseManagementData & { error?: string }
+
+      if (!response.ok) {
+        throw new Error(payload.error || 'Failed to fetch license management data')
+      }
+
+      setLicenseManagementData(payload)
+    } catch (error) {
+      console.error('Error loading license management data:', error)
+      notifications.show({
+        title: t('error'),
+        message: t('license-management-cancel-error'),
+        color: 'red',
+      })
+    } finally {
+      setIsLoadingLicenseManagement(false)
+    }
+  }, [t])
 
   const handleUpdateUserData = async () => {
     setIsUserDataUpdating(true)
@@ -59,6 +134,34 @@ export const Account = ({ userData, reloadUserData }: AccountProps) => {
       try {
         const userEntitlements = await getUserEntitlements(supabase, userData.user_id)
         setEntitlements(userEntitlements)
+        const orgEntitlementIds = Array.from(
+          new Set(
+            userEntitlements
+              .filter((entitlement) => entitlement.kind === 'org_seat' && entitlement.organization_id != null)
+              .map((entitlement) => entitlement.organization_id as number),
+          ),
+        )
+        if (orgEntitlementIds.length > 0) {
+          const [memberships, adminOrganizations] = await Promise.all([
+            getMemberships(userData.email),
+            getOrganizations(userData.user_id),
+          ])
+          const orgNames: Record<number, string> = {}
+          memberships.forEach((membership) => {
+            if (orgEntitlementIds.includes(membership.id)) {
+              orgNames[membership.id] = membership.name
+            }
+          })
+          adminOrganizations.forEach((organization) => {
+            if (orgEntitlementIds.includes(organization.id)) {
+              orgNames[organization.id] = organization.name
+            }
+          })
+          setOrganizationNamesById(orgNames)
+        } else {
+          setOrganizationNamesById({})
+        }
+        await loadLicenseManagementData()
       } catch (error) {
         console.error('Error loading entitlements:', error)
       } finally {
@@ -66,7 +169,7 @@ export const Account = ({ userData, reloadUserData }: AccountProps) => {
       }
     }
     loadEntitlements()
-  }, [userData.user_id])
+  }, [userData.user_id, loadLicenseManagementData])
 
   return (
     <>
@@ -100,29 +203,56 @@ export const Account = ({ userData, reloadUserData }: AccountProps) => {
               ) : entitlements.length === 0 ? (
                 <Text c='dimmed'>{t('no-licenses')}</Text>
               ) : (
-                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing='sm'>
-                  {entitlements.map((entitlement) => (
-                    <Paper key={entitlement.id} withBorder radius='md' p='md'>
-                      <Stack gap='xs'>
-                        <Group justify='space-between' align='flex-start' gap='xs'>
-                          <Text fw={600}>{t(`license-kind-${entitlement.kind}`)}</Text>
-                          <Badge color={getLicenseStatusColor(entitlement.status)} variant='light'>
-                            {t(`license-status-${entitlement.status}`)}
-                          </Badge>
-                        </Group>
-                        <Text size='sm' c='dimmed'>
-                          {t('license-valid-from')}: {new Date(entitlement.valid_from).toLocaleDateString()}
-                        </Text>
-                        <Text size='sm' c='dimmed'>
-                          {t('license-valid-until')}:{' '}
-                          {entitlement.valid_until
-                            ? new Date(entitlement.valid_until).toLocaleDateString()
-                            : t('license-unlimited')}
-                        </Text>
-                      </Stack>
-                    </Paper>
-                  ))}
-                </SimpleGrid>
+                <Stack gap='sm'>
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing='sm'>
+                    {entitlements.map((entitlement) => (
+                      <Paper key={entitlement.id} withBorder radius='md' p='md'>
+                        <Stack gap='xs'>
+                          <Group justify='space-between' align='flex-start' gap='xs'>
+                            <Text fw={600}>{t(`license-kind-${entitlement.kind}`)}</Text>
+                            {entitlement.kind === 'personal' &&
+                            licenseManagementData?.subscription?.cancel_at_period_end ? (
+                              <Badge color='orange' variant='light'>
+                                {t('license-management-status-cancel-at-period-end')}
+                              </Badge>
+                            ) : (
+                              <Badge color={getLicenseStatusColor(entitlement.status)} variant='light'>
+                                {t(`license-status-${entitlement.status}`)}
+                              </Badge>
+                            )}
+                          </Group>
+                          <Text size='sm' c='dimmed'>
+                            {entitlement.kind === 'org_seat'
+                              ? t('license-managed-by-organization')
+                              : entitlement.kind === 'personal' &&
+                                  !licenseManagementData?.subscription?.cancel_at_period_end &&
+                                  licenseManagementData?.subscription?.current_period_end
+                                ? `${t('license-renews-on')}: ${formatDate(
+                                    licenseManagementData.subscription.current_period_end,
+                                  )}`
+                                : `${t('license-valid-until')}: ${formatDate(entitlement.valid_until)}`}
+                          </Text>
+                          {entitlement.kind === 'org_seat' ? (
+                            <Text size='sm' c='dimmed'>
+                              {t('license-organization')}:&nbsp;
+                              {entitlement.organization_id != null
+                                ? (organizationNamesById[entitlement.organization_id] ??
+                                  `#${entitlement.organization_id}`)
+                                : '-'}
+                            </Text>
+                          ) : null}
+                        </Stack>
+                      </Paper>
+                    ))}
+                  </SimpleGrid>
+                  {entitlements.some((entitlement) => entitlement.kind === 'personal') ? (
+                    <Group justify='flex-start'>
+                      <Button variant='light' onClick={() => router.push('/app/settings/license-management')}>
+                        {t('license-management-open-page')}
+                      </Button>
+                    </Group>
+                  ) : null}
+                </Stack>
               )}
             </Stack>
           </div>

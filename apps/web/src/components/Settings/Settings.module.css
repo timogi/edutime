@@ -187,25 +187,6 @@
   transform: scale(1.02);
 }
 
-.inputsGrid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--mantine-spacing-md);
-  align-items: start;
-  width: 100%;
-  overflow: hidden;
-}
-
-@media (min-width: 768px) {
-  .inputsGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-.conditionalCell {
-  /* Each conditional cell automatically takes up one grid cell */
-}
-
 .employmentCardContent {
   display: flex;
   flex-direction: column;
@@ -214,28 +195,6 @@
   overflow: hidden;
 }
 
-@media (min-width: 768px) {
-  .employmentCardContent {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--mantine-spacing-md);
-    align-items: start;
-    width: 100%;
-    overflow: hidden;
-  }
-
-  .inputsGrid {
-    grid-column: 1;
-    min-width: 0; /* Prevent grid overflow */
-  }
-
-  .cantonPickerWrapper {
-    grid-column: 2;
-    grid-row: 1;
-    min-width: 0; /* Prevent grid overflow */
-  }
-
-  .saveButtonWrapper {
-    grid-column: 1 / -1;
-  }
+.saveButtonWrapper {
+  padding-top: var(--mantine-spacing-xs);
 }

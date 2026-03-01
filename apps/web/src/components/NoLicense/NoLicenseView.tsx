@@ -21,7 +21,7 @@ import { Account } from '@/components/Account/Account'
 import { Members } from '@/components/Members/Members'
 import { Footer } from '@/components/Footer/Footer'
 import { OrgPriceCalculatorModal } from '@/components/Main/OrgPriceCalculatorModal'
-import { updateMembership } from '@/utils/supabase/organizations'
+import { acceptOrganizationInvite, rejectOrganizationInvite } from '@/utils/supabase/organizations'
 import { supabase } from '@/utils/supabase/client'
 import { hasActiveEntitlement, hasEverHadTrial } from '@edutime/shared'
 import { INDIVIDUAL_ANNUAL_PRICE_CHF } from '@/utils/payments/pricing'
@@ -71,7 +71,7 @@ export function NoLicenseView() {
   const handleAcceptInvitation = async (organizationId: number) => {
     setProcessingInvitation(organizationId)
     try {
-      await updateMembership(organizationId, userEmail || user.email || '', 'active', null)
+      await acceptOrganizationInvite(organizationId)
       await refreshUserData()
       showNotification({
         title: t('success') || 'Erfolg',
@@ -93,7 +93,7 @@ export function NoLicenseView() {
   const handleRejectInvitation = async (organizationId: number) => {
     setProcessingInvitation(organizationId)
     try {
-      await updateMembership(organizationId, userEmail || user.email || '', 'rejected', null)
+      await rejectOrganizationInvite(organizationId)
       await refreshUserData()
       showNotification({
         title: t('success') || 'Erfolg',
@@ -228,6 +228,10 @@ export function NoLicenseView() {
     router.push('/checkout?plan=annual')
   }
 
+  const handleOpenOrganizationManagement = () => {
+    router.push('/app/organization-management')
+  }
+
   const handleRefreshLicenseStatus = async () => {
     setIsRefreshingLicense(true)
     try {
@@ -343,15 +347,24 @@ export function NoLicenseView() {
                       'Sie sind Administrator einer Organisation. Verwalten Sie die Mitglieder Ihrer Organisation.'}
                   </Text>
                 </Alert>
-                <Button
-                  variant='filled'
-                  leftSection={<IconUsers size={18} />}
-                  onClick={() => setActiveSection('members')}
-                  fullWidth
-                  mt='md'
-                >
-                  {t('manage-members') || 'Mitglieder verwalten'}
-                </Button>
+                <Stack gap='sm' mt='md'>
+                  <Button
+                    variant='filled'
+                    leftSection={<IconUsers size={18} />}
+                    onClick={() => setActiveSection('members')}
+                    fullWidth
+                  >
+                    {t('manage-members') || 'Mitglieder verwalten'}
+                  </Button>
+                  <Button
+                    variant='light'
+                    leftSection={<IconSettings size={18} />}
+                    onClick={handleOpenOrganizationManagement}
+                    fullWidth
+                  >
+                    {t('Organization Management') || 'Organisation verwalten'}
+                  </Button>
+                </Stack>
               </Stack>
             </Card>
           )}

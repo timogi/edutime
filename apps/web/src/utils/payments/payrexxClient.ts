@@ -15,11 +15,20 @@ import qs from 'qs'
 import Base64 from 'crypto-js/enc-base64'
 import hmacSHA256 from 'crypto-js/hmac-sha256'
 
-const PAYREXX_API_BASE = 'https://api.payrexx.com/v1.0/'
+const PAYREXX_API_DEFAULT_VERSION = '1.14'
+
+function normalizeApiVersion(version: string): string {
+  return version.trim().replace(/^v/i, '')
+}
+
+function buildPayrexxApiBase(version: string): string {
+  return `https://api.payrexx.com/v${normalizeApiVersion(version)}/`
+}
 
 export interface PayrexxConfig {
   instance: string
   apiSecret: string
+  apiVersion?: string
   baseUrl?: string
 }
 
@@ -77,6 +86,14 @@ export interface PayrexxTransactionResponse {
   }>
 }
 
+export interface PayrexxSubscriptionResponse {
+  status: string
+  data: Array<{
+    id: number
+    status: string
+  }>
+}
+
 export class PayrexxClient {
   private instance: string
   private secret: string
@@ -85,7 +102,8 @@ export class PayrexxClient {
   constructor(config: PayrexxConfig) {
     this.instance = config.instance
     this.secret = config.apiSecret
-    this.baseUrl = config.baseUrl || PAYREXX_API_BASE
+    this.baseUrl =
+      config.baseUrl || buildPayrexxApiBase(config.apiVersion || PAYREXX_API_DEFAULT_VERSION)
   }
 
   /**
@@ -189,6 +207,56 @@ export class PayrexxClient {
       throw error
     }
   }
+
+  /**
+   * Cancel a managed Payrexx subscription.
+   * Uses the subscription endpoint auth expected by newer API versions.
+   * Falls back to ApiSignature auth if needed.
+   */
+  async cancelSubscription(id: number): Promise<void> {
+    const headerAuthUrl = this.buildUrl(`Subscription/${id}/`)
+    const signatureAuthUrl = `${headerAuthUrl}&ApiSignature=${encodeURIComponent(this.buildSignature())}`
+
+    try {
+      await axios.delete(headerAuthUrl, {
+        headers: {
+          'X-API-KEY': this.secret,
+        },
+      })
+    } catch (error: unknown) {
+      // Fallback for instances expecting classic ApiSignature auth on subscription endpoint.
+      if (axios.isAxiosError(error) && error.response?.status) {
+        try {
+          await axios.delete(signatureAuthUrl)
+          return
+        } catch (fallbackError: unknown) {
+          if (axios.isAxiosError(fallbackError) && fallbackError.response) {
+            throw new Error(
+              `Payrexx Subscription API error: ${fallbackError.response.status} - ${JSON.stringify(fallbackError.response.data)}`,
+            )
+          }
+          throw fallbackError
+        }
+      }
+      throw error
+    }
+  }
+
+  async getSubscription(id: number): Promise<PayrexxSubscriptionResponse> {
+    const url = `${this.buildUrl(`Subscription/${id}/`)}&ApiSignature=${encodeURIComponent(this.buildSignature())}`
+
+    try {
+      const response = await axios.get(url)
+      return response.data
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response) {
+        throw new Error(
+          `Payrexx Subscription API error: ${error.response.status} - ${JSON.stringify(error.response.data)}`,
+        )
+      }
+      throw error
+    }
+  }
 }
 
 /**
@@ -198,10 +266,11 @@ export class PayrexxClient {
 export function createPayrexxClientFromEnv(): PayrexxClient | null {
   const instance = process.env.PAYREXX_INSTANCE
   const apiSecret = process.env.PAYREXX_API_SECRET
+  const apiVersion = process.env.PAYREXX_API_VERSION
 
   if (!instance || !apiSecret) {
     return null
   }
 
-  return new PayrexxClient({ instance, apiSecret })
+  return new PayrexxClient({ instance, apiSecret, apiVersion })
 }

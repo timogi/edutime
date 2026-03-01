@@ -37,13 +37,12 @@ import {
 } from '@tabler/icons-react'
 import { useDisclosure, useMediaQuery, useClipboard } from '@mantine/hooks'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useRouter } from 'next/router'
 import {
   getOrganizationMembers,
-  OrganizationMember as User,
-  removeOrganizationMember,
-  updateMembershipById,
   addOrganizationMember,
   updateMembership,
+  releaseOrganizationMemberSeat,
 } from '@/utils/supabase/organizations'
 import Progress from './Progress'
 import InviteModal from './InviteModal'
@@ -53,6 +52,7 @@ import classes from './TableSelection.module.css'
 
 interface TableSelectionProps {
   organizations: Organization[]
+  currentUserEmail: string | null
   onMembersChanged: () => Promise<void>
   activePage: number
   setActivePage: (page: number) => void
@@ -70,6 +70,7 @@ interface SortState {
 
 const TableSelection = ({
   organizations,
+  currentUserEmail,
   onMembersChanged,
   activePage,
   setActivePage,
@@ -90,6 +91,7 @@ const TableSelection = ({
   const [copiedId, setCopiedId] = useState<number | null>(null)
 
   const t = useTranslations('Index')
+  const router = useRouter()
   const isSmallScreen = useMediaQuery('(max-width: 768px)')
   const queryClient = useQueryClient()
 
@@ -131,7 +133,7 @@ const TableSelection = ({
   const removeMemberMutation = useMutation({
     mutationFn: (memberId: number) => {
       if (!currentOrg?.id) throw new Error('No organization selected')
-      return removeOrganizationMember(currentOrg.id, memberId)
+      return releaseOrganizationMemberSeat(currentOrg.id, memberId)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['organizationMembers', currentOrg?.id] })
@@ -144,7 +146,7 @@ const TableSelection = ({
   const removeMultipleMembersMutation = useMutation({
     mutationFn: (memberIds: number[]) => {
       if (!currentOrg?.id) throw new Error('No organization selected')
-      return Promise.all(memberIds.map((id) => removeOrganizationMember(currentOrg.id, id)))
+      return Promise.all(memberIds.map((id) => releaseOrganizationMemberSeat(currentOrg.id, id)))
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['organizationMembers', currentOrg?.id] })
@@ -179,15 +181,26 @@ const TableSelection = ({
 
   // React Query: Resend invitation mutation
   const resendInvitationMutation = useMutation({
-    mutationFn: (membershipId: number) => updateMembershipById(membershipId, 'invited'),
+    mutationFn: (membershipId: number) => {
+      if (!currentOrg?.id) throw new Error('No organization selected')
+      const member = users.find((user) => user.id === membershipId)
+      if (!member) throw new Error('Member not found')
+      return addOrganizationMember(currentOrg.id, member.email, member.comment || undefined)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['organizationMembers', currentOrg?.id] })
     },
   })
 
   const itemsPerPage = 10
-  const takenSeats = users.length
+  const takenSeats = users.filter((user) => user.status === 'active').length
   const totalSeats = currentOrg?.seats || 0
+  const normalizedCurrentUserEmail = (currentUserEmail || '').trim().toLowerCase()
+  const hasOwnActiveLicense =
+    normalizedCurrentUserEmail.length > 0 &&
+    users.some(
+      (user) => user.status === 'active' && user.email.trim().toLowerCase() === normalizedCurrentUserEmail,
+    )
 
   // Filter and sort users
   const filteredAndSortedUsers = useMemo(() => {
@@ -292,6 +305,12 @@ const TableSelection = ({
     if (takenSeats < totalSeats) {
       addMemberMutation.mutate({ email: inviteEmail, comment })
     }
+  }
+
+  const handleAssignSelfLicense = () => {
+    if (!normalizedCurrentUserEmail) return
+    setInviteEmail(normalizedCurrentUserEmail)
+    open()
   }
 
   const handleRemove = async () => {
@@ -458,7 +477,7 @@ const TableSelection = ({
               </Button>
             </Menu.Target>
             <Menu.Dropdown>
-              {(item.status === 'invited' || item.status === 'rejected') && (
+              {(item.status === 'invited' || item.status === 'rejected' || item.status === 'canceled') && (
                 <Menu.Item
                   leftSection={<IconRefresh size='0.875rem' />}
                   onClick={() => handleResendInvitation(item.id)}
@@ -526,6 +545,27 @@ const TableSelection = ({
               >
                 {t('Add Member')}
               </Button>
+              {!hasOwnActiveLicense && normalizedCurrentUserEmail ? (
+                <Button
+                  onClick={handleAssignSelfLicense}
+                  radius={0}
+                  variant='subtle'
+                  disabled={takenSeats >= totalSeats}
+                >
+                  {t('Assign License To Myself')}
+                </Button>
+              ) : null}
+              {currentOrg?.id ? (
+                <Button
+                  radius={0}
+                  variant='subtle'
+                  onClick={() =>
+                    router.push(`/app/organization-management?organizationId=${encodeURIComponent(String(currentOrg.id))}`)
+                  }
+                >
+                  {t('Organization Management')}
+                </Button>
+              ) : null}
             </Stack>
           </Card>
         </Stack>
@@ -722,7 +762,7 @@ const TableSelection = ({
           </Text>
           <Group justify='flex-end' mt='md'>
             <Button variant='subtle' onClick={() => setDeleteConfirmModalOpened(false)}>
-              {t('Cancel')}
+              {t('cancel')}
             </Button>
             <Button
               color='red'

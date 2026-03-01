@@ -26,6 +26,7 @@ export const Members = ({ organizations, userData, onMembersChanged }: MembersPr
   return (
     <TableSelection
       organizations={organizations}
+      currentUserEmail={userData.email}
       onMembersChanged={onMembersChanged}
       activePage={activePage}
       setActivePage={setActivePage}

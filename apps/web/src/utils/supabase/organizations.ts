@@ -1,6 +1,25 @@
 import { Membership, Organization } from '@/types/globals'
 import { supabase } from './client'
 
+const getAuthenticatedRequestInit = async (
+  init?: Omit<RequestInit, 'headers' | 'credentials'>,
+): Promise<RequestInit> => {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+  }
+
+  return {
+    ...init,
+    headers,
+    credentials: 'include',
+  }
+}
+
 export const getOrganizations = async (userId: string): Promise<Organization[]> => {
   const { data, error } = await supabase
     .from('organization_administrators')
@@ -34,7 +53,7 @@ export const getOrganizations = async (userId: string): Promise<Organization[]> 
 export interface OrganizationMember {
   id: number
   email: string
-  status: 'invited' | 'active' | 'rejected'
+  status: 'invited' | 'active' | 'rejected' | 'canceled'
   created_at: Date
   comment: string | null
 }
@@ -76,19 +95,23 @@ export const addOrganizationMember = async (
   email: string,
   comment?: string,
 ) => {
-  const { data, error } = await supabase.from('organization_members').insert({
-    organization_id: organizationId,
-    user_email: email,
-    status: 'invited',
-    comment: comment || null,
+  const requestInit = await getAuthenticatedRequestInit({
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'invite',
+      organizationId,
+      email,
+      comment: comment || null,
+    }),
   })
+  const response = await fetch('/api/billing/org-license/members', requestInit)
+  const payload = (await response.json()) as { inviteId?: string; error?: string }
 
-  if (error) {
-    console.error('error', error)
-    return
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to invite member')
   }
 
-  return data
+  return payload
 }
 
 export const removeOrganizationMember = async (organizationId: number, memberId: number) => {
@@ -170,4 +193,57 @@ export const updateMembershipById = async (
     console.error('error', error)
     return
   }
+}
+
+export const acceptOrganizationInvite = async (organizationId: number) => {
+  const requestInit = await getAuthenticatedRequestInit({
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'accept',
+      organizationId,
+    }),
+  })
+  const response = await fetch('/api/billing/org-license/members', requestInit)
+  const payload = (await response.json()) as { entitlementId?: string; error?: string }
+
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to accept organization invite')
+  }
+
+  return payload
+}
+
+export const rejectOrganizationInvite = async (organizationId: number) => {
+  const requestInit = await getAuthenticatedRequestInit({
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'reject',
+      organizationId,
+    }),
+  })
+  const response = await fetch('/api/billing/org-license/members', requestInit)
+  const payload = (await response.json()) as { error?: string }
+
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to reject organization invite')
+  }
+}
+
+export const releaseOrganizationMemberSeat = async (organizationId: number, membershipId: number) => {
+  const requestInit = await getAuthenticatedRequestInit({
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'release',
+      organizationId,
+      membershipId,
+    }),
+  })
+  const response = await fetch('/api/billing/org-license/members', requestInit)
+  const payload = (await response.json()) as { releasedEntitlementId?: string | null; error?: string }
+
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to release organization seat')
+  }
+
+  return payload
 }

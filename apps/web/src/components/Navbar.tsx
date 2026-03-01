@@ -1,9 +1,8 @@
-import { AppShell, Group, rem, Tooltip, Loader } from '@mantine/core'
+import { Group, Tooltip, Loader } from '@mantine/core'
 import {
   IconSettings,
   IconLogout,
   IconClock,
-  IconUserCircle,
   IconChartDots,
   IconCalendar,
   IconUsers,
@@ -13,7 +12,6 @@ import { supabase } from '@/utils/supabase/client'
 import { useTranslations } from 'next-intl'
 import { GetStaticPropsContext } from 'next'
 import { useRouter } from 'next/router'
-import { useMediaQuery } from '@mantine/hooks'
 import { Organization, UserData } from '@/types/globals'
 import classes from './Navbar.module.css'
 
@@ -29,15 +27,20 @@ export function AppNavbar({
   currentView,
   subscriptionActive,
   loaded,
-  userData,
+  userData: _userData,
   organizations,
 }: AppNavbarProps) {
   const t = useTranslations('Index')
   const router = useRouter()
 
-  const isSmallScreen = useMediaQuery('(max-width: 768px)')
+  type NavItem = {
+    view: string
+    label: string
+    icon: typeof IconClock
+    isMembershipRequired: boolean
+  }
 
-  const data = [
+  const primaryData: NavItem[] = [
     {
       view: 'time-tracking',
       label: t('time-recording'),
@@ -55,46 +58,74 @@ export function AppNavbar({
     },
   ]
 
-  if (organizations.length > 0) {
-    data.push({
-      view: 'members',
-      label: t('members'),
-      icon: IconUsers,
-      isMembershipRequired: false,
-    })
-  }
+  const orgAdminData: NavItem[] =
+    organizations.length > 0
+      ? [
+          {
+            view: 'members',
+            label: t('members'),
+            icon: IconUsers,
+            isMembershipRequired: false,
+          },
+          {
+            view: 'organization-management',
+            label: t('Organization Management'),
+            icon: IconSettings,
+            isMembershipRequired: false,
+          },
+        ]
+      : []
 
-  const links = data.map((item) => (
-    <Tooltip
-      c='gray'
-      label={item.isMembershipRequired && !subscriptionActive ? t('membership_required') : ''}
-      key={item.label}
-      position='left'
-      withArrow
-      disabled={!item.isMembershipRequired || subscriptionActive}
-    >
-      <div
-        className={`${classes.link} ${item.view === currentView ? classes.linkActive : ''} ${item.isMembershipRequired && !subscriptionActive ? classes.linkDisabled : ''}`}
-        key={item.label}
-        onClick={(event) => {
-          event.preventDefault()
-          if (item.isMembershipRequired && !subscriptionActive) {
-            return
-          }
-          router.push(`/app/${item.view}`)
-        }}
-      >
-        <item.icon className={classes.linkIcon} stroke={1.5} />
-        <span>{item.label}</span>
-      </div>
-    </Tooltip>
-  ))
+  const renderLinks = (items: NavItem[]) =>
+    items.map((item) => {
+      const tooltipLabel = item.isMembershipRequired && !subscriptionActive ? t('membership_required') : ''
+      return (
+        <Tooltip
+          c='gray'
+          label={tooltipLabel}
+          key={item.view}
+          position='left'
+          withArrow
+          disabled={!tooltipLabel}
+        >
+          <div
+            className={`${classes.link} ${item.view === currentView ? classes.linkActive : ''} ${item.isMembershipRequired && !subscriptionActive ? classes.linkDisabled : ''}`}
+            key={item.label}
+            onClick={(event) => {
+              event.preventDefault()
+              if (item.isMembershipRequired && !subscriptionActive) {
+                return
+              }
+              router.push(`/app/${item.view}`)
+            }}
+          >
+            <item.icon className={classes.linkIcon} stroke={1.5} />
+            <span>{item.label}</span>
+          </div>
+        </Tooltip>
+      )
+    })
+
+  const links = renderLinks(primaryData)
+
+  const orgAdminLinks = renderLinks(orgAdminData)
 
   return (
     <nav className={classes.navbar}>
       <div className={classes.navbarMain}>
         {loaded ? (
-          links
+          <>
+            {links}
+            {orgAdminLinks.length > 0 ? (
+              <div className={classes.section}>
+                <div className={classes.sectionHeader}>
+                  <div className={classes.sectionTitle}>{t('org-admin-section-title')}</div>
+                  <div className={classes.sectionDescription}>{t('org-admin-section-description')}</div>
+                </div>
+                {orgAdminLinks}
+              </div>
+            ) : null}
+          </>
         ) : (
           <Group justify='center' mt={'xl'}>
             <Loader size={'md'} />

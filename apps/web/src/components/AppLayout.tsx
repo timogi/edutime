@@ -25,6 +25,12 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   // Derive the current view from the URL path
   const currentView = router.pathname.replace('/app/', '').replace('/app', '') || 'time-tracking'
+  const normalizedCurrentView = currentView.replace(/\//g, '-')
+  const isNoLicensePage = router.pathname === '/app/no-license'
+  const canAccessOrgManagementWithoutSubscription =
+    router.pathname === '/app/organization-management' && organizations.length > 0
+  const allowWithoutSubscription = isNoLicensePage || canAccessOrgManagementWithoutSubscription
+  const isNoLicenseModeOrgManagement = canAccessOrgManagementWithoutSubscription && !hasActiveSubscription
 
   // Close mobile nav when view changes
   const [prevView, setPrevView] = useState(currentView)
@@ -35,24 +41,24 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   // Get page title based on current view
   const getPageTitle = () => {
-    const titleKey = `page-title-${currentView}`
+    const titleKey = `page-title-${normalizedCurrentView}`
     const pageTitle = t(titleKey as any)
     return pageTitle ? `EduTime - ${pageTitle}` : 'EduTime'
   }
 
   // Redirect to /app/no-license if user doesn't have an active subscription
   useEffect(() => {
-    if (isInitialized && user && !hasActiveSubscription && router.pathname !== '/app/no-license') {
+    if (isInitialized && user && !hasActiveSubscription && !allowWithoutSubscription) {
       router.replace('/app/no-license')
     }
-  }, [isInitialized, user, hasActiveSubscription, router])
+  }, [isInitialized, user, hasActiveSubscription, allowWithoutSubscription, router])
 
   // Redirect to app if user has active subscription and is on /app/no-license
   useEffect(() => {
-    if (isInitialized && user && hasActiveSubscription && router.pathname === '/app/no-license') {
+    if (isInitialized && user && hasActiveSubscription && isNoLicensePage) {
       router.replace('/app/time-tracking')
     }
-  }, [isInitialized, user, hasActiveSubscription, router])
+  }, [isInitialized, user, hasActiveSubscription, isNoLicensePage, router])
 
   // Before initialization completes we have no user data for the shell
   if (!isInitialized) {
@@ -68,11 +74,11 @@ export function AppLayout({ children }: AppLayoutProps) {
   // All other loading / redirect states use an inline loader inside the
   // content area so the header + sidebar stay visible.
 
-  const showSidebar = router.pathname !== '/app/no-license'
+  const showSidebar = !isNoLicensePage && !isNoLicenseModeOrgManagement
 
   const renderContent = () => {
     // Subscription redirect in progress — keep shell, show inline loader
-    if (!hasActiveSubscription && router.pathname !== '/app/no-license') {
+    if (!hasActiveSubscription && !allowWithoutSubscription) {
       return (
         <Center h='100%'>
           <Loader size='lg' />

@@ -112,10 +112,12 @@ export type Database = {
       invoices: {
         Row: {
           amount_cents: number
+          checkout_session_id: string | null
           created_at: string
           currency: string
           due_date: string | null
           id: string
+          issued_at: string
           paid_at: string | null
           provider_invoice_id: string | null
           status: string
@@ -123,10 +125,12 @@ export type Database = {
         }
         Insert: {
           amount_cents: number
+          checkout_session_id?: string | null
           created_at?: string
           currency: string
           due_date?: string | null
           id?: string
+          issued_at?: string
           paid_at?: string | null
           provider_invoice_id?: string | null
           status: string
@@ -134,10 +138,12 @@ export type Database = {
         }
         Update: {
           amount_cents?: number
+          checkout_session_id?: string | null
           created_at?: string
           currency?: string
           due_date?: string | null
           id?: string
+          issued_at?: string
           paid_at?: string | null
           provider_invoice_id?: string | null
           status?: string
@@ -145,7 +151,67 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "invoices_checkout_session_id_fkey"
+            columns: ["checkout_session_id"]
+            isOneToOne: false
+            referencedRelation: "checkout_sessions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "invoices_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_renewal_reminders: {
+        Row: {
+          created_at: string
+          id: string
+          last_error: string | null
+          organization_id: number
+          recipient_email: string
+          recipient_user_id: string | null
+          reminder_type: string
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+          subscription_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          organization_id: number
+          recipient_email: string
+          recipient_user_id?: string | null
+          reminder_type: string
+          scheduled_for: string
+          sent_at?: string | null
+          status?: string
+          subscription_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          organization_id?: number
+          recipient_email?: string
+          recipient_user_id?: string | null
+          reminder_type?: string
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          subscription_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_renewal_reminders_subscription_id_fkey"
             columns: ["subscription_id"]
             isOneToOne: false
             referencedRelation: "subscriptions"
@@ -163,6 +229,7 @@ export type Database = {
           currency: string
           current_period_end: string | null
           current_period_start: string | null
+          grace_days: number
           id: string
           interval: string
           metadata: Json | null
@@ -171,6 +238,7 @@ export type Database = {
           seat_count: number | null
           started_at: string
           status: string
+          suspend_at: string | null
           trial_end: string | null
         }
         Insert: {
@@ -182,6 +250,7 @@ export type Database = {
           currency: string
           current_period_end?: string | null
           current_period_start?: string | null
+          grace_days?: number
           id?: string
           interval: string
           metadata?: Json | null
@@ -190,6 +259,7 @@ export type Database = {
           seat_count?: number | null
           started_at?: string
           status: string
+          suspend_at?: string | null
           trial_end?: string | null
         }
         Update: {
@@ -201,6 +271,7 @@ export type Database = {
           currency?: string
           current_period_end?: string | null
           current_period_start?: string | null
+          grace_days?: number
           id?: string
           interval?: string
           metadata?: Json | null
@@ -209,6 +280,7 @@ export type Database = {
           seat_count?: number | null
           started_at?: string
           status?: string
+          suspend_at?: string | null
           trial_end?: string | null
         }
         Relationships: [
@@ -259,9 +331,75 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_org_member_invite: {
+        Args: { p_actor_user_id: string; p_organization_id: number }
+        Returns: string
+      }
+      create_org_checkout: {
+        Args: {
+          p_actor_user_id: string
+          p_amount_cents: number
+          p_currency: string
+          p_due_date?: string
+          p_expires_at?: string
+          p_metadata?: Json
+          p_organization_id: number
+          p_payrexx_gateway_hash?: string
+          p_payrexx_gateway_id?: number
+          p_payrexx_gateway_link?: string
+          p_quantity: number
+          p_reference_id: string
+        }
+        Returns: string
+      }
+      create_org_member_invite: {
+        Args: {
+          p_actor_user_id: string
+          p_comment?: string
+          p_email: string
+          p_expires_at?: string
+          p_organization_id: number
+          p_role?: string
+        }
+        Returns: string
+      }
+      ensure_org_actor_entitlement: {
+        Args: { p_actor_user_id: string; p_organization_id: number }
+        Returns: string
+      }
       fail_checkout_session: {
         Args: { p_reason?: string; p_reference_id: string; p_status?: string }
         Returns: undefined
+      }
+      get_org_billing_status: {
+        Args: { p_actor_user_id: string; p_organization_id: number }
+        Returns: {
+          amount_cents: number
+          checkout_reference_id: string
+          currency: string
+          current_period_end: string
+          current_period_start: string
+          grace_days: number
+          invoice_due_date: string
+          invoice_id: string
+          invoice_paid_at: string
+          invoice_status: string
+          payrexx_gateway_link: string
+          responsible_email: string
+          seat_count: number
+          subscription_id: string
+          subscription_status: string
+          suspend_at: string
+        }[]
+      }
+      process_payrexx_org_payment: {
+        Args: {
+          p_payrexx_gateway_id?: number
+          p_payrexx_transaction_id: string
+          p_raw_payload?: Json
+          p_reference_id: string
+        }
+        Returns: string
       }
       process_payrexx_payment: {
         Args: {
@@ -271,6 +409,26 @@ export type Database = {
           p_reference_id: string
         }
         Returns: string
+      }
+      reject_org_member_invite: {
+        Args: { p_actor_user_id: string; p_organization_id: number }
+        Returns: string
+      }
+      release_org_member_seat: {
+        Args: {
+          p_actor_user_id: string
+          p_membership_id: number
+          p_organization_id: number
+        }
+        Returns: string
+      }
+      run_org_delinquency_sweep: {
+        Args: { p_reference_time?: string }
+        Returns: Json
+      }
+      run_org_renewal_reminder_sweep: {
+        Args: { p_reference_time?: string }
+        Returns: Json
       }
     }
     Enums: {
@@ -1199,6 +1357,15 @@ export type Database = {
       check_organization_seats:
         | { Args: { org_id: number }; Returns: boolean }
         | { Args: { organization_id: number }; Returns: boolean }
+      create_organization_with_admin: {
+        Args: {
+          p_actor_user_id: string
+          p_max_organizations_per_user?: number
+          p_name: string
+          p_seats?: number
+        }
+        Returns: number
+      }
       is_org_admin: { Args: { p_organization_id: number }; Returns: boolean }
       legal_accept_document: {
         Args: { p_code: string; p_organization_id?: number; p_source?: string }

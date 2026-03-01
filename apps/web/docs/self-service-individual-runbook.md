@@ -57,6 +57,7 @@ supabase functions deploy payrexx-webhook
 
 - `PAYREXX_INSTANCE`
 - `PAYREXX_API_SECRET`
+- `PAYREXX_API_VERSION` (empfohlen: `1.14`)
 - `NEXT_PUBLIC_APP_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
@@ -64,6 +65,7 @@ supabase functions deploy payrexx-webhook
 
 - `PAYREXX_INSTANCE`
 - `PAYREXX_API_SECRET`
+- `PAYREXX_API_VERSION` (empfohlen: `1.14`)
 - `PAYREXX_WEBHOOK_SECRET`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
@@ -79,6 +81,8 @@ Folgende Web-Teile wurden angepasst:
 
 - Checkout API: `apps/web/src/pages/api/checkout/index.ts`
 - Checkout-Status API: `apps/web/src/pages/api/checkout/status.ts`
+- Lizenzverwaltung lesen: `apps/web/src/pages/api/billing/personal-subscription/index.ts`
+- Lizenz zum Laufzeitende kuendigen: `apps/web/src/pages/api/billing/personal-subscription/cancel.ts`
 - Success Polling UX: `apps/web/src/pages/checkout/success.tsx`
 - No-License Pending UX: `apps/web/src/components/NoLicense/NoLicenseView.tsx`
 - Payrexx Gateway Subscription-Setup: `apps/web/src/utils/payments/payrexxProvider.ts`
@@ -114,6 +118,25 @@ Nach Deployment ist der Flow:
 
 - Success-Seite zeigt pending Status bis Aktivierung
 - No-License zeigt "Aktivierung pruefen" bis Lizenz aktiv
+- Einstellungen zeigen "Einzellizenz" statt "Persoenlich"
+- Einstellungen zeigen "Lizenz verwalten" mit Zahlungsverlauf
+
+### E. Kuendigung zum Laufzeitende
+
+1. User mit aktiver Einzellizenz oeffnet Einstellungen -> Lizenzverwaltung
+2. User klickt "Zum Laufzeitende kuendigen" und bestaetigt den Dialog
+3. API `POST /api/billing/personal-subscription/cancel` liefert `200`
+4. In `billing.subscriptions`:
+   - `cancel_at_period_end = true`
+   - `canceled_at` gesetzt
+5. Zweiter Klick bleibt idempotent (`alreadyCanceled=true` in API-Response)
+
+### F. Lizenzverwaltung API pruefen
+
+- `GET /api/billing/personal-subscription` liefert:
+  - aktive persoenliche Subscription (falls vorhanden)
+  - Rechnungsverlauf (`billing.invoices`)
+  - aktives persoenliches Entitlement (falls vorhanden)
 
 ## 7) Monitoring nach Go-Live
 

@@ -46,7 +46,7 @@ npm install <package-name> -w @edutime/shared
 ### Web App (Next.js)
 
 ```bash
-npm run dev:web
+npm run dev
 ```
 
 Starts the Next.js dev server.

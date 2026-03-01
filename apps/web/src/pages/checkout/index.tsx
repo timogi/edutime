@@ -1,7 +1,18 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { GetStaticPropsContext } from 'next/types'
-import { Container, Paper, Stack, Text, Title, Button, Loader, Center, Alert } from '@mantine/core'
+import {
+  Container,
+  Paper,
+  Stack,
+  Text,
+  Title,
+  Button,
+  Loader,
+  Center,
+  Alert,
+  TextInput,
+} from '@mantine/core'
 import { useTranslations } from 'next-intl'
 import { supabase } from '@/utils/supabase/client'
 import { LoadingScreen } from '@/components/LoadingScreen'
@@ -29,8 +40,13 @@ export default function CheckoutPage() {
   const [plan, setPlan] = useState<'annual' | 'org' | null>(null)
   const [qty, setQty] = useState<number | null>(null)
   const [organizationId, setOrganizationId] = useState<number | undefined>(undefined)
+  const [needsOrganizationSetup, setNeedsOrganizationSetup] = useState(false)
+  const [organizationName, setOrganizationName] = useState('')
+  const [isCreatingOrganization, setIsCreatingOrganization] = useState(false)
   const [legalAccepted, setLegalAccepted] = useState(false)
   const [accessToken, setAccessToken] = useState<string | null>(null)
+  const isCheckoutRequestInFlightRef = useRef(false)
+  const hasCheckoutBeenStartedRef = useRef(false)
 
   const redirectToRegister = useCallback(() => {
     const planParam = router.query.plan as string
@@ -90,7 +106,35 @@ export default function CheckoutPage() {
         }
 
         if (planParam === 'org' && !orgIdParam) {
-          setError('Organization ID is required for org plan')
+          const { data: orgRows, error: orgError } = await supabase
+            .from('organization_administrators')
+            .select('organization_id, organizations(id, is_active)')
+            .eq('user_id', user.id)
+            .eq('organizations.is_active', true)
+            .limit(1)
+
+          if (orgError) {
+            setError(t('checkout-org-load-failed'))
+            setIsLoading(false)
+            return
+          }
+
+          if (orgRows && orgRows.length > 0) {
+            const selectedOrg = orgRows[0]?.organization_id
+            if (selectedOrg) {
+              setOrganizationId(selectedOrg)
+              setPlan(planParam)
+              setQty(qtyParam)
+              setNeedsOrganizationSetup(false)
+              setIsLoading(false)
+              return
+            }
+          }
+
+          setPlan(planParam)
+          setQty(qtyParam)
+          setOrganizationId(undefined)
+          setNeedsOrganizationSetup(true)
           setIsLoading(false)
           return
         }
@@ -98,6 +142,7 @@ export default function CheckoutPage() {
         setPlan(planParam)
         setQty(qtyParam)
         setOrganizationId(orgIdParam)
+        setNeedsOrganizationSetup(false)
 
         // Don't proceed to checkout until legal documents are accepted
         // The CheckoutLegalGate will call onAllAccepted when ready
@@ -112,14 +157,69 @@ export default function CheckoutPage() {
     if (router.isReady) {
       initializeCheckout()
     }
-  }, [router.isReady, router.query, router, redirectToRegister])
+  }, [router.isReady, router.query, router, redirectToRegister, t])
 
   const handleAuthError = useCallback(() => {
     redirectToRegister()
   }, [redirectToRegister])
 
+  const handleCreateOrganization = async () => {
+    if (!plan || plan !== 'org') return
+    if (!qty || qty < 3) {
+      setError(t('checkout-org-invalid-quantity'))
+      return
+    }
+    if (!organizationName.trim()) {
+      setError(t('checkout-org-name-required'))
+      return
+    }
+
+    setIsCreatingOrganization(true)
+    setError(null)
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`
+      }
+
+      const response = await fetch('/api/billing/org-license/create-organization', {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify({
+          name: organizationName.trim(),
+          seats: qty,
+        }),
+      })
+
+      const payload = (await response.json()) as {
+        organizationId?: number
+        error?: string
+      }
+
+      if (!response.ok || !payload.organizationId) {
+        throw new Error(payload.error || t('checkout-org-create-failed'))
+      }
+
+      setOrganizationId(payload.organizationId)
+      setNeedsOrganizationSetup(false)
+    } catch (creationError: unknown) {
+      console.error('Failed to create organization during checkout:', creationError)
+      setError(getErrorMessage(creationError))
+    } finally {
+      setIsCreatingOrganization(false)
+    }
+  }
+
   const handleLegalAccepted = async () => {
+    if (hasCheckoutBeenStartedRef.current || isCheckoutRequestInFlightRef.current) {
+      return
+    }
+
     setLegalAccepted(true)
+    isCheckoutRequestInFlightRef.current = true
     // Now create checkout session
     try {
       const headers: Record<string, string> = {
@@ -178,6 +278,7 @@ export default function CheckoutPage() {
         throw new Error(data.error || `Failed to create checkout session (status ${response.status})`)
       }
 
+      hasCheckoutBeenStartedRef.current = true
       setCheckoutUrl(data.checkoutUrl)
 
       // Auto-redirect to checkout URL after a short delay
@@ -188,7 +289,12 @@ export default function CheckoutPage() {
       }, 2000)
     } catch (error: unknown) {
       console.error('Error creating checkout session:', error)
-      setError(getErrorMessage(error))
+      if (!hasCheckoutBeenStartedRef.current) {
+        setError(getErrorMessage(error))
+      }
+    }
+    finally {
+      isCheckoutRequestInFlightRef.current = false
     }
   }
 
@@ -209,6 +315,33 @@ export default function CheckoutPage() {
               {error}
             </Text>
             <Button onClick={() => router.push('/')}>Go to Home</Button>
+          </Stack>
+        </Paper>
+      </Container>
+    )
+  }
+
+  if (plan === 'org' && needsOrganizationSetup) {
+    return (
+      <Container size={520} my={40}>
+        <Paper withBorder p={30} radius='md'>
+          <Stack gap='md'>
+            <Title order={3}>{t('checkout-org-setup-title')}</Title>
+            <Text c='dimmed' size='sm'>
+              {t('checkout-org-setup-description')}
+            </Text>
+            <TextInput
+              label={t('checkout-org-name-label')}
+              placeholder={t('checkout-org-name-placeholder')}
+              value={organizationName}
+              onChange={(event) => setOrganizationName(event.currentTarget.value)}
+            />
+            <Text c='dimmed' size='sm'>
+              {t('checkout-org-seat-count-info', { count: qty || 0 })}
+            </Text>
+            <Button onClick={handleCreateOrganization} loading={isCreatingOrganization}>
+              {t('checkout-org-create-button')}
+            </Button>
           </Stack>
         </Paper>
       </Container>

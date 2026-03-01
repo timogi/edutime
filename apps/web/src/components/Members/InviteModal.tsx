@@ -36,7 +36,13 @@ const InviteModal = ({
   const handleInviteClick = () => {
     if (validateEmail(inviteEmail)) {
       setEmailError(null)
-      if (users.some((user) => user.email === inviteEmail)) {
+      const existingMembership = users.find(
+        (user) => user.email.trim().toLowerCase() === inviteEmail.trim().toLowerCase(),
+      )
+      const blocksNewInvite =
+        existingMembership?.status === 'active' || existingMembership?.status === 'invited'
+
+      if (blocksNewInvite) {
         setUserExists(true)
       } else {
         setUserExists(false)
