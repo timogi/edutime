@@ -94,22 +94,6 @@ export default function RegistrationForm() {
       return
     }
 
-    // Store register intent in localStorage before submission
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(
-          'edutime_register_intent',
-          JSON.stringify({
-            timestamp: Date.now(),
-            termsAccepted: true,
-            privacyAccepted: true,
-          }),
-        )
-      } catch (e) {
-        console.error('Failed to store register intent:', e)
-      }
-    }
-
     setIsLoading(true)
     try {
       // Build email redirect URL with intent and qty
@@ -123,6 +107,9 @@ export default function RegistrationForm() {
         password,
         options: {
           emailRedirectTo,
+          data: {
+            register_legal_accepted_v1: true,
+          },
         },
       })
 

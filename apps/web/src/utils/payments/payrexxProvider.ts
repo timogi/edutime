@@ -56,13 +56,18 @@ export class PayrexxProvider implements PaymentProvider {
       firstName,
       lastName,
       language,
+      customAmountCents,
+      customPurpose,
+      customBasket,
+      customSubscriptionState,
     } = params
 
     if (plan === 'org' && qty < MIN_ORG_LICENSES) {
       throw new Error(`Organization plan requires at least ${MIN_ORG_LICENSES} licenses`)
     }
 
-    const { amountCents, requiresCustomPricing } = calculateCheckoutAmount(plan, qty)
+    const { amountCents: calculatedAmountCents, requiresCustomPricing } = calculateCheckoutAmount(plan, qty)
+    const amountCents = customAmountCents ?? calculatedAmountCents
 
     if (requiresCustomPricing) {
       throw new Error(
@@ -77,11 +82,11 @@ export class PayrexxProvider implements PaymentProvider {
     const referenceId = `cs_${crypto.randomUUID()}`
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://edutime.ch'
     const environment = process.env.NODE_ENV === 'production' ? 'prod' : 'nonprod'
-    const successUrl = `${appUrl}/checkout/success?ref=${referenceId}`
+    const successUrl = `${appUrl}/checkout/success?ref=${referenceId}&plan=${plan}`
     const failedUrl = `${appUrl}/checkout/failed?ref=${referenceId}`
     const cancelUrl = `${appUrl}/checkout/cancel?ref=${referenceId}`
 
-    const basket = buildBasket(plan, qty)
+    const basket = customBasket ?? buildBasket(plan, qty)
 
     const fields: Record<string, { value: string }> = {}
     if (userEmail) fields.email = { value: userEmail }
@@ -92,9 +97,10 @@ export class PayrexxProvider implements PaymentProvider {
       amount: amountCents,
       currency: CURRENCY,
       purpose:
-        plan === 'annual'
+        customPurpose ||
+        (plan === 'annual'
           ? `EduTime Annual License (${environment})`
-          : `EduTime Organization Licenses (${qty}x, ${environment})`,
+          : `EduTime Organization Licenses (${qty}x, ${environment})`),
       successRedirectUrl: encodeURI(successUrl),
       failedRedirectUrl: encodeURI(failedUrl),
       cancelRedirectUrl: encodeURI(cancelUrl),
@@ -104,7 +110,7 @@ export class PayrexxProvider implements PaymentProvider {
       language: LANGUAGE_MAP[language || 'de'] || 'de',
       skipResultPage: false,
       validity: GATEWAY_VALIDITY_MINUTES,
-      subscriptionState: plan === 'annual',
+      subscriptionState: customSubscriptionState ?? (plan === 'annual'),
       // Payrexx expects PHP interval spec, e.g. P1M / P1Y.
       subscriptionInterval: plan === 'annual' ? ONE_YEAR_PHP_INTERVAL : undefined,
       subscriptionPeriod: plan === 'annual' ? ONE_YEAR_PHP_INTERVAL : undefined,

@@ -7,8 +7,10 @@ import { calculateCheckoutAmount, CURRENCY } from './pricing'
  */
 export class MockPaymentProvider implements PaymentProvider {
   async createCheckoutSession(params: CheckoutSessionParams): Promise<CheckoutSessionResult> {
-    const { plan, qty = 1 } = params
-    const { amountCents, amountChf } = calculateCheckoutAmount(plan, qty)
+    const { plan, qty = 1, customAmountCents } = params
+    const { amountCents: calculatedAmountCents } = calculateCheckoutAmount(plan, qty)
+    const amountCents = customAmountCents ?? calculatedAmountCents
+    const amountChf = amountCents / 100
 
     const sessionId = `mock_session_${Date.now()}_${Math.random().toString(36).substring(7)}`
 

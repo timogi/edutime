@@ -23,14 +23,8 @@ import {
   type MissingDocument,
 } from '@edutime/shared'
 
-interface RegisterIntent {
-  timestamp: number
-  termsAccepted: boolean
-  privacyAccepted: boolean
-}
-
-const REGISTER_INTENT_KEY = 'edutime_register_intent'
-const REGISTER_INTENT_MAX_AGE = 24 * 60 * 60 * 1000
+const REGISTER_LEGAL_METADATA_KEY = 'register_legal_accepted_v1'
+const AUTO_ACCEPT_DOC_CODES = new Set(['terms_of_use', 'privacy_policy'])
 
 export function LegalGate({ children }: { children: React.ReactNode }) {
   const [missingDocs, setMissingDocs] = useState<MissingDocument[]>([])
@@ -39,31 +33,56 @@ export function LegalGate({ children }: { children: React.ReactNode }) {
   const [acceptedDocs, setAcceptedDocs] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = localStorage.getItem(REGISTER_INTENT_KEY)
-        if (stored) {
-          const intent: RegisterIntent = JSON.parse(stored)
-          if (Date.now() - intent.timestamp < REGISTER_INTENT_MAX_AGE) {
-            const preChecked = new Set<string>()
-            if (intent.termsAccepted) preChecked.add('terms_of_use')
-            if (intent.privacyAccepted) preChecked.add('privacy_policy')
-            setAcceptedDocs(preChecked)
-          } else {
-            localStorage.removeItem(REGISTER_INTENT_KEY)
-          }
-        }
-      } catch (e) {
-        console.error('Failed to read register intent:', e)
-      }
-    }
     checkMissingDocuments()
   }, [])
 
   const checkMissingDocuments = async () => {
     setIsLoading(true)
     try {
-      const docs = await getMissingUserDocuments(supabase, 'app')
+      let docs = await getMissingUserDocuments(supabase, 'app')
+
+      if (docs.length > 0) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+
+        const shouldAutoAcceptFromRegistration =
+          user?.user_metadata?.[REGISTER_LEGAL_METADATA_KEY] === true ||
+          user?.user_metadata?.[REGISTER_LEGAL_METADATA_KEY] === 'true'
+
+        if (shouldAutoAcceptFromRegistration) {
+          let autoAcceptSucceeded = false
+
+          try {
+            const docsToAccept = docs.filter(
+              (doc) => AUTO_ACCEPT_DOC_CODES.has(doc.code) && doc.can_accept,
+            )
+
+            for (const doc of docsToAccept) {
+              await acceptUserDocument(supabase, doc.code, 'register')
+            }
+
+            autoAcceptSucceeded = true
+          } catch (error) {
+            console.error('Error auto-accepting registration legal documents in gate:', error)
+          }
+
+          if (autoAcceptSucceeded) {
+            try {
+              await supabase.auth.updateUser({
+                data: {
+                  [REGISTER_LEGAL_METADATA_KEY]: false,
+                },
+              })
+            } catch (error) {
+              console.error('Error clearing registration legal marker in gate:', error)
+            }
+
+            docs = await getMissingUserDocuments(supabase, 'app')
+          }
+        }
+      }
+
       setMissingDocs(docs)
     } catch (error) {
       console.error('Error checking missing documents:', error)
@@ -95,15 +114,6 @@ export function LegalGate({ children }: { children: React.ReactNode }) {
           console.error(`Error accepting document ${doc.code}:`, error)
         }
       }
-
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.removeItem(REGISTER_INTENT_KEY)
-        } catch (e) {
-          console.error('Failed to remove register intent:', e)
-        }
-      }
-
       await checkMissingDocuments()
     } catch (error) {
       console.error('Error accepting documents:', error)

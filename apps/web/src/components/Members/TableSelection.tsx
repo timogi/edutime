@@ -37,7 +37,6 @@ import {
 } from '@tabler/icons-react'
 import { useDisclosure, useMediaQuery, useClipboard } from '@mantine/hooks'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useRouter } from 'next/router'
 import {
   getOrganizationMembers,
   addOrganizationMember,
@@ -91,7 +90,6 @@ const TableSelection = ({
   const [copiedId, setCopiedId] = useState<number | null>(null)
 
   const t = useTranslations('Index')
-  const router = useRouter()
   const isSmallScreen = useMediaQuery('(max-width: 768px)')
   const queryClient = useQueryClient()
 
@@ -193,7 +191,7 @@ const TableSelection = ({
   })
 
   const itemsPerPage = 10
-  const takenSeats = users.filter((user) => user.status === 'active').length
+  const takenSeats = users.filter((user) => user.status === 'active' || user.status === 'invited').length
   const totalSeats = currentOrg?.seats || 0
   const normalizedCurrentUserEmail = (currentUserEmail || '').trim().toLowerCase()
   const hasOwnActiveLicense =
@@ -553,17 +551,6 @@ const TableSelection = ({
                   disabled={takenSeats >= totalSeats}
                 >
                   {t('Assign License To Myself')}
-                </Button>
-              ) : null}
-              {currentOrg?.id ? (
-                <Button
-                  radius={0}
-                  variant='subtle'
-                  onClick={() =>
-                    router.push(`/app/organization-management?organizationId=${encodeURIComponent(String(currentOrg.id))}`)
-                  }
-                >
-                  {t('Organization Management')}
                 </Button>
               ) : null}
             </Stack>

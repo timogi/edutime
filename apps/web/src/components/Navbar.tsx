@@ -120,7 +120,6 @@ export function AppNavbar({
               <div className={classes.section}>
                 <div className={classes.sectionHeader}>
                   <div className={classes.sectionTitle}>{t('org-admin-section-title')}</div>
-                  <div className={classes.sectionDescription}>{t('org-admin-section-description')}</div>
                 </div>
                 {orgAdminLinks}
               </div>

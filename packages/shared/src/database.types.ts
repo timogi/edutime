@@ -121,7 +121,7 @@ export type Database = {
           paid_at: string | null
           provider_invoice_id: string | null
           status: string
-          subscription_id: string
+          subscription_id: string | null
         }
         Insert: {
           amount_cents: number
@@ -134,7 +134,7 @@ export type Database = {
           paid_at?: string | null
           provider_invoice_id?: string | null
           status: string
-          subscription_id: string
+          subscription_id?: string | null
         }
         Update: {
           amount_cents?: number
@@ -147,7 +147,7 @@ export type Database = {
           paid_at?: string | null
           provider_invoice_id?: string | null
           status?: string
-          subscription_id?: string
+          subscription_id?: string | null
         }
         Relationships: [
           {
@@ -165,6 +165,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      org_legacy_migration_plan: {
+        Row: {
+          actor_user_id: string | null
+          created_at: string
+          currency: string
+          custom_annual_amount_cents: number | null
+          custom_seat_count: number | null
+          due_date: string | null
+          metadata: Json
+          migrate: boolean
+          migrate_invites: boolean
+          note: string | null
+          organization_id: number
+          updated_at: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          created_at?: string
+          currency?: string
+          custom_annual_amount_cents?: number | null
+          custom_seat_count?: number | null
+          due_date?: string | null
+          metadata?: Json
+          migrate?: boolean
+          migrate_invites?: boolean
+          note?: string | null
+          organization_id: number
+          updated_at?: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          created_at?: string
+          currency?: string
+          custom_annual_amount_cents?: number | null
+          custom_seat_count?: number | null
+          due_date?: string | null
+          metadata?: Json
+          migrate?: boolean
+          migrate_invites?: boolean
+          note?: string | null
+          organization_id?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       org_renewal_reminders: {
         Row: {
@@ -335,6 +380,18 @@ export type Database = {
         Args: { p_actor_user_id: string; p_organization_id: number }
         Returns: string
       }
+      add_organization_admin_by_email: {
+        Args: {
+          p_actor_user_id: string
+          p_admin_email: string
+          p_organization_id: number
+        }
+        Returns: string
+      }
+      cancel_org_subscription_at_period_end: {
+        Args: { p_actor_user_id: string; p_organization_id: number }
+        Returns: string
+      }
       create_org_checkout: {
         Args: {
           p_actor_user_id: string
@@ -388,9 +445,25 @@ export type Database = {
           responsible_email: string
           seat_count: number
           subscription_id: string
-          subscription_status: string
+          subscription_status: Database["billing"]["Enums"]["org_subscription_status"]
           suspend_at: string
         }[]
+      }
+      list_organization_admins: {
+        Args: { p_actor_user_id: string; p_organization_id: number }
+        Returns: {
+          created_at: string
+          email: string
+          user_id: string
+        }[]
+      }
+      migrate_one_legacy_organization: {
+        Args: { p_organization_id: number }
+        Returns: Json
+      }
+      pick_org_migration_actor: {
+        Args: { p_organization_id: number }
+        Returns: string
       }
       process_payrexx_org_payment: {
         Args: {
@@ -410,6 +483,10 @@ export type Database = {
         }
         Returns: string
       }
+      reactivate_org_subscription: {
+        Args: { p_actor_user_id: string; p_organization_id: number }
+        Returns: string
+      }
       reject_org_member_invite: {
         Args: { p_actor_user_id: string; p_organization_id: number }
         Returns: string
@@ -422,17 +499,62 @@ export type Database = {
         }
         Returns: string
       }
+      remove_organization_admin: {
+        Args: {
+          p_actor_user_id: string
+          p_organization_id: number
+          p_remove_user_id: string
+        }
+        Returns: string
+      }
+      resolve_org_migration_amount: {
+        Args: { p_custom_amount_cents: number; p_organization_id: number }
+        Returns: number
+      }
       run_org_delinquency_sweep: {
         Args: { p_reference_time?: string }
+        Returns: Json
+      }
+      run_org_legacy_migration: {
+        Args: { p_organization_ids?: number[] }
         Returns: Json
       }
       run_org_renewal_reminder_sweep: {
         Args: { p_reference_time?: string }
         Returns: Json
       }
+      seed_org_legacy_migration_plan: { Args: never; Returns: number }
+      set_org_custom_price_and_seats: {
+        Args: {
+          p_amount_cents: number
+          p_currency?: string
+          p_organization_id: number
+          p_seat_count: number
+        }
+        Returns: string
+      }
+      update_org_seat_plan: {
+        Args: {
+          p_actor_user_id: string
+          p_apply_immediately?: boolean
+          p_metadata?: Json
+          p_next_annual_amount_cents?: number
+          p_organization_id: number
+          p_target_seat_count: number
+        }
+        Returns: string
+      }
+      update_organization_name: {
+        Args: {
+          p_actor_user_id: string
+          p_name: string
+          p_organization_id: number
+        }
+        Returns: string
+      }
     }
     Enums: {
-      [_ in never]: never
+      org_subscription_status: "active" | "active_unpaid" | "suspended"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1522,7 +1644,9 @@ export type CompositeTypes<
 
 export const Constants = {
   billing: {
-    Enums: {},
+    Enums: {
+      org_subscription_status: ["active", "active_unpaid", "suspended"],
+    },
   },
   legal: {
     Enums: {

@@ -15,7 +15,6 @@ import {
   Divider,
 } from '@mantine/core'
 import { GetStaticPropsContext } from 'next/types'
-import { ThemeDropdown } from './ThemeDropdown'
 import { CantonPicker } from './CantonPicker'
 import LocaleSwitcher from './LocaleSwitcher'
 import { useTranslations } from 'next-intl'
@@ -215,10 +214,9 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
   }, [loadCantonData, canton, userData.user_id])
 
   useEffect(() => {
-    if (userData.canton_code && userData.canton_code !== canton) {
-      setCanton(userData.canton_code)
-    }
-  }, [userData.canton_code, canton])
+    if (!userData.canton_code) return
+    setCanton((prev) => (prev === userData.canton_code ? prev : userData.canton_code))
+  }, [userData.canton_code])
 
   const handlePercentageChange = useCallback((categorySetId: number, value: number | null) => {
     setUserPercentages((prev) => ({
@@ -436,13 +434,6 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
   return (
     <>
       <Stack className={classes.wrapper} p={'lg'}>
-        <Card radius='md' withBorder>
-          <Stack gap='sm'>
-            <Text size='xl'>{t('view')}</Text>
-            <ThemeDropdown userData={userData} refreshUserData={reloadUserData} />
-          </Stack>
-        </Card>
-
         <Card radius='md' withBorder>
           <Stack gap='sm'>
             <Text size='xl'>{t('employment')}</Text>

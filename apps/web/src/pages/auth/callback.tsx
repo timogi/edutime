@@ -6,6 +6,10 @@ import Link from 'next/link'
 import { supabase } from '@/utils/supabase/client'
 import { getPostAuthRedirect, parseIntentFromQuery } from '@/utils/auth/intent'
 import { LoadingScreen } from '@/components/LoadingScreen'
+import { acceptUserDocument, getMissingUserDocuments } from '@edutime/shared'
+
+const REGISTER_LEGAL_METADATA_KEY = 'register_legal_accepted_v1'
+const AUTO_ACCEPT_DOC_CODES = new Set(['terms_of_use', 'privacy_policy'])
 
 export default function AuthCallback() {
   const router = useRouter()
@@ -43,6 +47,45 @@ export default function AuthCallback() {
             setError('No session found. Please try logging in again.')
             setIsProcessing(false)
             return
+          }
+        }
+
+        const {
+          data: { session: currentSession },
+        } = await supabase.auth.getSession()
+
+        const shouldAutoAcceptFromRegistration =
+          currentSession?.user?.user_metadata?.[REGISTER_LEGAL_METADATA_KEY] === true ||
+          currentSession?.user?.user_metadata?.[REGISTER_LEGAL_METADATA_KEY] === 'true'
+
+        if (shouldAutoAcceptFromRegistration) {
+          let shouldClearRegistrationMarker = false
+          try {
+            const missingDocuments = await getMissingUserDocuments(supabase, 'app')
+            const docsToAccept = missingDocuments.filter(
+              (doc) => AUTO_ACCEPT_DOC_CODES.has(doc.code) && doc.can_accept,
+            )
+
+            for (const doc of docsToAccept) {
+              await acceptUserDocument(supabase, doc.code, 'register')
+            }
+
+            shouldClearRegistrationMarker = true
+          } catch (legalError) {
+            console.error('Error auto-accepting registration legal documents:', legalError)
+          }
+
+          if (shouldClearRegistrationMarker) {
+            // Clear one-time marker so future logins never auto-accept new document versions.
+            try {
+              await supabase.auth.updateUser({
+                data: {
+                  [REGISTER_LEGAL_METADATA_KEY]: false,
+                },
+              })
+            } catch (metadataError) {
+              console.error('Error clearing registration legal marker:', metadataError)
+            }
           }
         }
 

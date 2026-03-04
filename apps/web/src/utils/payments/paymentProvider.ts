@@ -12,6 +12,10 @@ export interface CheckoutSessionParams {
   firstName?: string
   lastName?: string
   language?: string
+  customAmountCents?: number
+  customPurpose?: string
+  customBasket?: Array<{ name: string[]; description: string[]; quantity: number; amount: number }>
+  customSubscriptionState?: boolean
 }
 
 export interface CheckoutSessionResult {

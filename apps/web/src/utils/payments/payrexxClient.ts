@@ -83,6 +83,31 @@ export interface PayrexxTransactionResponse {
     referenceId: string
     amount: number
     currency: string
+    payment?: {
+      purchaseOnInvoiceInformation?: {
+        zip?: string
+        iban?: string
+        place?: string
+        swift?: string
+        address?: string
+        company?: string
+        bankName?: string
+        reference?: string
+      }
+    }
+    purchaseOnInvoiceInformation?: {
+      zip?: string
+      iban?: string
+      place?: string
+      swift?: string
+      address?: string
+      company?: string
+      bankName?: string
+      reference?: string
+    }
+    invoice?: {
+      paymentLink?: string
+    }
   }>
 }
 

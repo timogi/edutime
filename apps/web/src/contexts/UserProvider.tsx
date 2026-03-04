@@ -3,6 +3,7 @@ import { User } from '@supabase/supabase-js'
 import { useRouter } from 'next/router'
 import { useMantineColorScheme } from '@mantine/core'
 import { supabase } from '@/utils/supabase/client'
+import { getPostAuthRedirect, parseIntentFromQuery } from '@/utils/auth/intent'
 import { getUserData } from '@/utils/supabase/user'
 import { getAllCategories } from '@/utils/supabase/categories'
 import { getMemberships, getOrganizations } from '@/utils/supabase/organizations'
@@ -342,7 +343,9 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
           setIsLoading(false)
           // Redirect to app if on login page
           if (router.pathname === '/login' || router.pathname === '/register') {
-            router.replace('/app')
+            const { intent, qty } = parseIntentFromQuery(router.query)
+            const postAuthRedirect = getPostAuthRedirect(intent, qty)
+            router.replace(postAuthRedirect)
           }
         }
       } catch (error) {

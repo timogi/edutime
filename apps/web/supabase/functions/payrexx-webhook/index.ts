@@ -391,7 +391,7 @@ Deno.serve(async (req) => {
 
     const { data: checkoutSession, error: checkoutLookupError } = await admin
       .from('checkout_sessions')
-      .select('plan')
+      .select('id, plan')
       .eq('reference_id', referenceId)
       .maybeSingle()
 
@@ -422,6 +422,22 @@ Deno.serve(async (req) => {
 
       if (failError) {
         throw new Error(`fail_checkout_session failed: ${failError.message}`)
+      }
+    } else if (normalizedStatus === 'waiting') {
+      // Purchase-on-invoice payments are initialized but not yet settled.
+      // Keep the invoice open and attach the Payrexx transaction id for follow-up display/reconciliation.
+      const payrexxTransactionId = String(verifiedTx?.id || transactionId || '')
+      if (checkoutSession?.id && payrexxTransactionId) {
+        const { error: invoiceUpdateError } = await admin
+          .from('invoices')
+          .update({ provider_invoice_id: payrexxTransactionId })
+          .eq('checkout_session_id', checkoutSession.id)
+          .eq('status', 'open')
+          .is('provider_invoice_id', null)
+
+        if (invoiceUpdateError) {
+          throw new Error(`Failed to attach waiting transaction id to invoice: ${invoiceUpdateError.message}`)
+        }
       }
     } else {
       throw new Error(`Unhandled Payrexx transaction status: ${normalizedStatus || 'unknown'}`)

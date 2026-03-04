@@ -527,13 +527,6 @@ export default function LicenseManagementPage() {
                       </Alert>
                     ) : null}
                     <Group mt='xs'>
-                      <Button
-                        variant='filled'
-                        onClick={createOrRenewOrgCheckout}
-                        loading={isCreatingOrgCheckout}
-                      >
-                        {t('org-license-renew-button')}
-                      </Button>
                       {orgBillingStatus.payrexxGatewayLink ? (
                         <Button
                           component='a'

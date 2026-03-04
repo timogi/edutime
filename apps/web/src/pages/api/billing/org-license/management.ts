@@ -1,12 +1,27 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser } from '@/utils/supabase/api-auth'
+import { paymentProvider } from '@/utils/payments'
+import { createPayrexxClientFromEnv } from '@/utils/payments/payrexxClient'
+import {
+  calculateCheckoutAmount,
+  MAX_AUTO_PRICING_LICENSES,
+  MIN_ORG_LICENSES,
+} from '@/utils/payments/pricing'
 
 type OrgAdminRow = {
   user_id: string
   email: string | null
   created_at: string
 }
+
+type PayrexxInvoicePaymentInfo = {
+  iban: string | null
+  bankName: string | null
+  reference: string | null
+}
+
+type OrgSubscriptionStatus = 'active' | 'active_unpaid' | 'suspended'
 
 type OrgManagementGetResponse = {
   organization?: {
@@ -17,7 +32,7 @@ type OrgManagementGetResponse = {
   admins?: OrgAdminRow[]
   billing?: {
     subscriptionId: string
-    subscriptionStatus: string
+    subscriptionStatus: OrgSubscriptionStatus
     amountCents: number
     currency: string
     seatCount: number | null
@@ -32,8 +47,11 @@ type OrgManagementGetResponse = {
     invoiceDueDate: string | null
     invoicePaidAt: string | null
     payrexxGatewayLink: string | null
+    payrexxInvoicePaymentLink: string | null
+    payrexxInvoicePaymentInfo: PayrexxInvoicePaymentInfo | null
     checkoutReferenceId: string | null
     responsibleEmail: string | null
+    nextPeriodSeatCount: number | null
     invoices: Array<{
       id: string
       amount_cents: number
@@ -52,7 +70,108 @@ type OrgManagementMutationResponse = {
   organizationName?: string
   adminUserId?: string
   subscriptionId?: string
+  checkoutUrl?: string
+  seatAdjustmentPreview?: {
+    currentSeatCount: number
+    targetSeatCount: number
+    isIncrease: boolean
+    daysUntilPeriodEnd: number
+    currentAnnualAmountCents: number
+    nextAnnualAmountCents: number
+    annualDeltaCents: number
+    proratedAmountCents: number
+    paymentRequired: boolean
+    graceWindowApplied: boolean
+    autoRenewEnabled: boolean
+  }
+  paymentRequired?: boolean
+  proratedAmountCents?: number
+  graceWindowApplied?: boolean
   error?: string
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+const normalizeOrgSubscriptionStatus = (params: {
+  rawStatus: unknown
+  invoiceStatus: unknown
+  suspendAt: unknown
+}): OrgSubscriptionStatus => {
+  const rawStatus = typeof params.rawStatus === 'string' ? params.rawStatus.trim().toLowerCase() : ''
+  const invoiceStatus = typeof params.invoiceStatus === 'string' ? params.invoiceStatus.trim().toLowerCase() : ''
+  const suspendAt =
+    typeof params.suspendAt === 'string' && params.suspendAt.trim().length > 0 ? params.suspendAt : null
+
+  if (rawStatus === 'suspended' || rawStatus.includes('suspend')) {
+    return 'suspended'
+  }
+  if (
+    rawStatus === 'active_unpaid' ||
+    rawStatus === 'unpaid' ||
+    rawStatus === 'payment_pending' ||
+    rawStatus === 'pending_payment'
+  ) {
+    return 'active_unpaid'
+  }
+  if (rawStatus === 'active' || rawStatus === 'active_paid' || rawStatus === 'paid') {
+    return 'active'
+  }
+
+  if (suspendAt) {
+    const suspendAtMs = Date.parse(suspendAt)
+    if (Number.isFinite(suspendAtMs) && suspendAtMs <= Date.now()) {
+      return 'suspended'
+    }
+  }
+
+  if (invoiceStatus === 'open' || invoiceStatus === 'draft' || invoiceStatus === 'failed') {
+    return 'active_unpaid'
+  }
+
+  return 'active'
+}
+
+const roundDownToFiveRappen = (amountCents: number): number => {
+  if (!Number.isFinite(amountCents) || amountCents <= 0) return 0
+  return Math.floor(amountCents / 5) * 5
+}
+
+const buildSeatAdjustmentPreview = (params: {
+  currentSeatCount: number
+  targetSeatCount: number
+  periodStartMs: number
+  periodEndMs: number
+  autoRenewEnabled: boolean
+}) => {
+  const { currentSeatCount, targetSeatCount, periodStartMs, periodEndMs, autoRenewEnabled } = params
+  const nowMs = Date.now()
+  const remainingMs = Math.max(0, periodEndMs - nowMs)
+  const periodMs = periodEndMs - periodStartMs
+  const remainingRatio = Math.max(0, Math.min(1, remainingMs / periodMs))
+  const daysUntilPeriodEnd = Math.ceil(remainingMs / DAY_MS)
+  const isIncrease = targetSeatCount > currentSeatCount
+  const graceWindowApplied = isIncrease && daysUntilPeriodEnd <= 30
+
+  const annualCurrentAmount = calculateCheckoutAmount('org', currentSeatCount)
+  const annualTargetAmount = calculateCheckoutAmount('org', targetSeatCount)
+  const annualDeltaCents = Math.max(0, annualTargetAmount.amountCents - annualCurrentAmount.amountCents)
+  const proratedRawCents = annualDeltaCents * remainingRatio
+  const proratedAmountCents = isIncrease && !graceWindowApplied ? roundDownToFiveRappen(proratedRawCents) : 0
+  const paymentRequired = isIncrease && !graceWindowApplied && proratedAmountCents > 0
+
+  return {
+    currentSeatCount,
+    targetSeatCount,
+    isIncrease,
+    daysUntilPeriodEnd,
+    currentAnnualAmountCents: annualCurrentAmount.amountCents,
+    nextAnnualAmountCents: annualTargetAmount.amountCents,
+    annualDeltaCents,
+    proratedAmountCents,
+    paymentRequired,
+    graceWindowApplied,
+    autoRenewEnabled,
+  }
 }
 
 function createBillingClient() {
@@ -167,9 +286,10 @@ export default async function handler(
       let billing: OrgManagementGetResponse['billing'] = null
       if (billingRow) {
         const subscriptionId = String(billingRow.subscription_id || '')
+        const payrexxClient = createPayrexxClientFromEnv()
         const { data: subscriptionsRows, error: subscriptionError } = await billingClient
           .from('subscriptions')
-          .select('cancel_at_period_end, canceled_at')
+          .select('cancel_at_period_end, canceled_at, metadata')
           .eq('id', subscriptionId)
           .limit(1)
           .maybeSingle()
@@ -189,9 +309,42 @@ export default async function handler(
           return res.status(500).json({ error: 'Failed to load organization invoice history' })
         }
 
+        let payrexxInvoicePaymentLink: string | null = null
+        let payrexxInvoicePaymentInfo: PayrexxInvoicePaymentInfo | null = null
+        const openInvoice = (invoicesRows || []).find((invoice) => invoice.status === 'open')
+        const providerTransactionId = Number(openInvoice?.provider_invoice_id || '')
+
+        if (payrexxClient && Number.isFinite(providerTransactionId) && providerTransactionId > 0) {
+          try {
+            const txResponse = await payrexxClient.getTransaction(providerTransactionId)
+            const tx = txResponse.data?.[0]
+            if (tx) {
+              const invoiceInfo = tx.payment?.purchaseOnInvoiceInformation || tx.purchaseOnInvoiceInformation
+              payrexxInvoicePaymentLink =
+                typeof tx.invoice?.paymentLink === 'string' && tx.invoice.paymentLink.length > 0
+                  ? tx.invoice.paymentLink
+                  : null
+              payrexxInvoicePaymentInfo = {
+                iban: invoiceInfo?.iban || null,
+                bankName: invoiceInfo?.bankName || null,
+                reference: invoiceInfo?.reference || null,
+              }
+            }
+          } catch (error) {
+            console.error('Failed to load Payrexx transaction details for open invoice', {
+              providerTransactionId,
+              error,
+            })
+          }
+        }
+
         billing = {
           subscriptionId,
-          subscriptionStatus: String(billingRow.subscription_status || ''),
+          subscriptionStatus: normalizeOrgSubscriptionStatus({
+            rawStatus: billingRow.subscription_status,
+            invoiceStatus: billingRow.invoice_status,
+            suspendAt: billingRow.suspend_at,
+          }),
           amountCents: Number(billingRow.amount_cents || 0),
           currency: String(billingRow.currency || 'CHF'),
           seatCount: billingRow.seat_count == null ? null : Number(billingRow.seat_count),
@@ -208,9 +361,18 @@ export default async function handler(
           invoicePaidAt: typeof billingRow.invoice_paid_at === 'string' ? billingRow.invoice_paid_at : null,
           payrexxGatewayLink:
             typeof billingRow.payrexx_gateway_link === 'string' ? billingRow.payrexx_gateway_link : null,
+          payrexxInvoicePaymentLink,
+          payrexxInvoicePaymentInfo,
           checkoutReferenceId:
             typeof billingRow.checkout_reference_id === 'string' ? billingRow.checkout_reference_id : null,
           responsibleEmail: typeof billingRow.responsible_email === 'string' ? billingRow.responsible_email : null,
+          nextPeriodSeatCount:
+            subscriptionsRows?.metadata &&
+            typeof subscriptionsRows.metadata === 'object' &&
+            subscriptionsRows.metadata !== null &&
+            'next_period_seat_count' in subscriptionsRows.metadata
+              ? Number((subscriptionsRows.metadata as Record<string, unknown>).next_period_seat_count)
+              : null,
           invoices: invoicesRows || [],
         }
       }
@@ -295,6 +457,197 @@ export default async function handler(
         }
 
         return res.status(200).json({ success: true, adminUserId: String(data || removeUserId) })
+      }
+
+      if (action === 'adjustSeats') {
+        const targetSeatCount = Number(req.body?.targetSeatCount)
+        const confirm = Boolean(req.body?.confirm)
+        if (!Number.isInteger(targetSeatCount) || targetSeatCount < MIN_ORG_LICENSES) {
+          return res.status(400).json({
+            error: `Organization checkout requires at least ${MIN_ORG_LICENSES} licenses`,
+          })
+        }
+        if (targetSeatCount > MAX_AUTO_PRICING_LICENSES) {
+          return res.status(400).json({
+            error: `Quantities above ${MAX_AUTO_PRICING_LICENSES} require custom pricing`,
+          })
+        }
+
+        const { data: billingData, error: billingError } = await billingClient.rpc('get_org_billing_status', {
+          p_actor_user_id: auth.user.id,
+          p_organization_id: organizationId,
+        })
+        if (billingError) {
+          const mapped = mapRpcError(billingError, 'Failed to load org billing status')
+          return res.status(mapped.status).json({ error: mapped.error })
+        }
+
+        const billingRow =
+          Array.isArray(billingData) && billingData.length > 0 ? (billingData[0] as Record<string, unknown>) : null
+        if (!billingRow) {
+          return res.status(400).json({ error: 'No organization subscription found' })
+        }
+
+        const currentSeatCount = Number(billingRow.seat_count || 0)
+        if (currentSeatCount < MIN_ORG_LICENSES) {
+          return res.status(400).json({ error: 'Invalid current seat count' })
+        }
+        if (targetSeatCount === currentSeatCount) {
+          return res.status(400).json({ error: 'Seat count unchanged' })
+        }
+
+        const currentPeriodStart = String(billingRow.current_period_start || '')
+        const currentPeriodEnd = String(billingRow.current_period_end || '')
+        const periodStartMs = Date.parse(currentPeriodStart)
+        const periodEndMs = Date.parse(currentPeriodEnd)
+        if (!Number.isFinite(periodStartMs) || !Number.isFinite(periodEndMs) || periodEndMs <= periodStartMs) {
+          return res.status(400).json({ error: 'Invalid subscription period for seat adjustment' })
+        }
+
+        const subscriptionId = String(billingRow.subscription_id || '')
+        const { data: subscriptionLifecycle } = await billingClient
+          .from('subscriptions')
+          .select('cancel_at_period_end')
+          .eq('id', subscriptionId)
+          .maybeSingle()
+        const autoRenewEnabled = !Boolean(subscriptionLifecycle?.cancel_at_period_end)
+        const preview = buildSeatAdjustmentPreview({
+          currentSeatCount,
+          targetSeatCount,
+          periodStartMs,
+          periodEndMs,
+          autoRenewEnabled,
+        })
+
+        if (!confirm) {
+          return res.status(200).json({
+            success: true,
+            seatAdjustmentPreview: preview,
+            paymentRequired: preview.paymentRequired,
+            proratedAmountCents: preview.proratedAmountCents,
+            graceWindowApplied: preview.graceWindowApplied,
+          })
+        }
+
+        const annualTargetAmount = { amountCents: preview.nextAnnualAmountCents }
+
+        if (preview.paymentRequired) {
+          const { data: profile } = await auth.supabase
+            .from('users')
+            .select('first_name, last_name, language')
+            .eq('user_id', auth.user.id)
+            .maybeSingle()
+
+          const language =
+            profile?.language || req.headers['accept-language']?.split(',')[0]?.split('-')[0] || 'de'
+
+          const checkout = await paymentProvider.createCheckoutSession({
+            plan: 'org',
+            qty: targetSeatCount,
+            organizationId,
+            userId: auth.user.id,
+            userEmail: auth.user.email,
+            firstName: profile?.first_name || undefined,
+            lastName: profile?.last_name || undefined,
+            language,
+            customAmountCents: preview.proratedAmountCents,
+            customPurpose: `EduTime Organizationslizenzen Anpassung (+${targetSeatCount - currentSeatCount})`,
+            customSubscriptionState: false,
+            customBasket: [
+              {
+                name: [
+                  'EduTime Organisationslizenzen Anpassung',
+                  'EduTime Organization seat adjustment',
+                  'EduTime ajustement des licences organisation',
+                ],
+                description: [
+                  `+${targetSeatCount - currentSeatCount} Sitze, anteilig bis Periodenende`,
+                  `+${targetSeatCount - currentSeatCount} seats, prorated until period end`,
+                  `+${targetSeatCount - currentSeatCount} places, au prorata jusqu'a la fin de periode`,
+                ],
+                quantity: 1,
+                amount: preview.proratedAmountCents,
+              },
+            ],
+          })
+
+          const { error: createError } = await billingClient.rpc('create_org_checkout', {
+            p_actor_user_id: auth.user.id,
+            p_organization_id: organizationId,
+            p_quantity: targetSeatCount,
+            p_amount_cents: preview.proratedAmountCents,
+            p_currency: 'CHF',
+            p_reference_id: checkout.sessionId,
+            p_payrexx_gateway_id: checkout.gatewayId || null,
+            p_payrexx_gateway_link: checkout.checkoutUrl,
+            p_expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+            p_due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            p_metadata: {
+              source: 'org_management_seat_adjustment',
+              actor_user_id: auth.user.id,
+              current_seat_count: currentSeatCount,
+              target_seat_count: targetSeatCount,
+              annual_delta_cents: preview.annualDeltaCents,
+              prorated_amount_cents: preview.proratedAmountCents,
+              next_period_seat_count: targetSeatCount,
+            },
+          })
+          if (createError) {
+            const mapped = mapRpcError(createError, 'Failed to create seat adjustment checkout')
+            return res.status(mapped.status).json({ error: mapped.error })
+          }
+
+          // Keep annual subscription amount on target annual price while checkout is prorated.
+          const { error: planError } = await billingClient.rpc('update_org_seat_plan', {
+            p_actor_user_id: auth.user.id,
+            p_organization_id: organizationId,
+            p_target_seat_count: targetSeatCount,
+            p_apply_immediately: true,
+            p_next_annual_amount_cents: annualTargetAmount.amountCents,
+            p_metadata: {
+              source: 'org_management_seat_adjustment_checkout',
+            },
+          })
+          if (planError) {
+            const mapped = mapRpcError(planError, 'Failed to persist seat plan after checkout creation')
+            return res.status(mapped.status).json({ error: mapped.error })
+          }
+
+          return res.status(200).json({
+            success: true,
+            paymentRequired: true,
+            proratedAmountCents: preview.proratedAmountCents,
+            graceWindowApplied: false,
+            checkoutUrl: checkout.checkoutUrl,
+            seatAdjustmentPreview: preview,
+          })
+        }
+
+        const { error: planError } = await billingClient.rpc('update_org_seat_plan', {
+          p_actor_user_id: auth.user.id,
+          p_organization_id: organizationId,
+          p_target_seat_count: targetSeatCount,
+          p_apply_immediately: true,
+          p_next_annual_amount_cents: annualTargetAmount.amountCents,
+          p_metadata: {
+            source: 'org_management_seat_adjustment',
+            current_seat_count: currentSeatCount,
+            target_seat_count: targetSeatCount,
+            grace_window_applied: preview.graceWindowApplied,
+          },
+        })
+        if (planError) {
+          const mapped = mapRpcError(planError, 'Failed to update organization seat plan')
+          return res.status(mapped.status).json({ error: mapped.error })
+        }
+
+        return res.status(200).json({
+          success: true,
+          paymentRequired: false,
+          proratedAmountCents: 0,
+          graceWindowApplied: preview.graceWindowApplied,
+          seatAdjustmentPreview: preview,
+        })
       }
 
       if (action === 'cancel') {

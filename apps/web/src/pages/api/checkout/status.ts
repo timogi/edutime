@@ -10,9 +10,12 @@ type CheckoutStatus =
   | 'expired'
   | 'unknown'
 
+type CheckoutPlan = 'annual' | 'org'
+
 type ResponseData = {
   status?: CheckoutStatus
   hasActiveEntitlement?: boolean
+  plan?: CheckoutPlan
   error?: string
 }
 
@@ -72,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const { data: sessionRow, error: sessionError } = await billingClient
       .from('checkout_sessions')
-      .select('status, subscription_id')
+      .select('status, subscription_id, plan')
       .eq('reference_id', referenceId)
       .eq('user_id', auth.user.id)
       .maybeSingle()
@@ -103,8 +106,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const status = (sessionRow.status || 'unknown') as CheckoutStatus
     const hasActiveEntitlement = (activeEntitlements?.length ?? 0) > 0
+    const plan = sessionRow.plan === 'org' ? 'org' : sessionRow.plan === 'annual' ? 'annual' : undefined
 
-    return res.status(200).json({ status, hasActiveEntitlement })
+    return res.status(200).json({ status, hasActiveEntitlement, plan })
   } catch (error) {
     console.error('Failed to fetch checkout status:', error)
     return res.status(500).json({ error: 'Internal server error' })

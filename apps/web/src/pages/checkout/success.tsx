@@ -107,17 +107,8 @@ export default function CheckoutSuccessPage() {
 
           {isChecking && <Loader size='sm' />}
 
-          <Button
-            onClick={() => router.push(isActivated ? '/app' : '/app/no-license?checkout=pending')}
-            variant='filled'
-            fullWidth
-            mt='md'
-          >
-            {isActivated ? t('goToApp') : t('goToNoLicense')}
-          </Button>
-
-          <Button onClick={checkStatus} variant='light' fullWidth>
-            {t('refreshStatus')}
+          <Button onClick={() => router.push('/app')} variant='filled' fullWidth mt='md'>
+            {t('goToApp')}
           </Button>
         </Stack>
       </Paper>
