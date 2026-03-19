@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Button, Stack, Text, Group } from '@mantine/core'
+import React, { useCallback, useEffect, useState } from 'react'
+import { Button, Stack, Text, Group, Modal, Alert } from '@mantine/core'
 import { useRouter } from 'next/router'
 import { useTranslations } from 'next-intl'
 import { GetStaticPropsContext } from 'next/types'
@@ -9,17 +9,96 @@ interface DeleteAccountProps {
   user_id: string
 }
 
+type DeleteAccountApiResponse = {
+  message?: string
+  error?: string
+  code?: 'SOLE_ADMIN_BLOCKER' | 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED'
+  blockers?: Array<{ organizationId: number; organizationName: string }>
+}
+
+type PersonalSubscriptionResponse = {
+  subscription: {
+    id: string
+    cancel_at_period_end: boolean
+  } | null
+  error?: string
+}
+
 export const DeleteAccount: React.FC<DeleteAccountProps> = ({ user_id }) => {
   const t = useTranslations('Index')
   const [error, setError] = useState('')
+  const [blockedOrganizations, setBlockedOrganizations] = useState<
+    Array<{ organizationId: number; organizationName: string }>
+  >([])
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isCheckingEligibility, setIsCheckingEligibility] = useState(true)
+  const [showPersonalLicenseConfirm, setShowPersonalLicenseConfirm] = useState(false)
   const router = useRouter()
 
-  const handleDelete = async () => {
-    setIsDeleting(true)
+  const checkDeletionEligibility = useCallback(async () => {
+    setIsCheckingEligibility(true)
     setError('')
+    setBlockedOrganizations([])
 
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (!session || !session.access_token) {
+        setError('Unauthorized')
+        return false
+      }
+
+      const response = await fetch('/api/users/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({ user_id, checkOnly: true }),
+      })
+
+      const result = (await response.json()) as DeleteAccountApiResponse
+
+      if (!response.ok) {
+        setError(result.error || 'Failed to validate account deletion constraints')
+        return false
+      }
+
+      if (result.code === 'SOLE_ADMIN_BLOCKER' && Array.isArray(result.blockers)) {
+        setBlockedOrganizations(result.blockers)
+        setError(t('delete-account-blocked-admin-title'))
+        return false
+      }
+
+      return true
+    } catch (checkError: unknown) {
+      console.error('Deletion eligibility check error:', checkError)
+      setError(checkError instanceof Error ? checkError.message : 'An unexpected error occurred')
+      return false
+    } finally {
+      setIsCheckingEligibility(false)
+    }
+  }, [user_id])
+
+  useEffect(() => {
+    void checkDeletionEligibility()
+  }, [checkDeletionEligibility])
+
+  const handleDelete = async (skipPersonalLicenseConfirm = false) => {
+    setIsDeleting(true)
+    setError('')
+    setBlockedOrganizations([])
+
+    try {
+      const isEligible = await checkDeletionEligibility()
+      if (!isEligible) {
+        setIsDeleting(false)
+        return
+      }
+
       // Get the current session to use for authentication
       const {
         data: { session },
@@ -29,6 +108,28 @@ export const DeleteAccount: React.FC<DeleteAccountProps> = ({ user_id }) => {
         setError('Unauthorized')
         setIsDeleting(false)
         return
+      }
+
+      const subscriptionResponse = await fetch('/api/billing/personal-subscription', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        credentials: 'include',
+      })
+
+      if (subscriptionResponse.ok) {
+        const subscriptionPayload = (await subscriptionResponse.json()) as PersonalSubscriptionResponse
+        if (
+          subscriptionPayload.subscription &&
+          subscriptionPayload.subscription.cancel_at_period_end === false &&
+          !skipPersonalLicenseConfirm
+        ) {
+          setShowPersonalLicenseConfirm(true)
+          setIsDeleting(false)
+          return
+        }
       }
 
       // Call the API route to delete the account
@@ -43,9 +144,15 @@ export const DeleteAccount: React.FC<DeleteAccountProps> = ({ user_id }) => {
         body: JSON.stringify({ user_id }),
       })
 
-      const result = await response.json()
+      const result = (await response.json()) as DeleteAccountApiResponse
 
       if (!response.ok) {
+        if (result.code === 'SOLE_ADMIN_BLOCKER' && Array.isArray(result.blockers)) {
+          setBlockedOrganizations(result.blockers)
+          setError(t('delete-account-blocked-admin-title'))
+          setIsDeleting(false)
+          return
+        }
         throw new Error(result.error || 'Failed to delete account')
       }
 
@@ -67,15 +174,68 @@ export const DeleteAccount: React.FC<DeleteAccountProps> = ({ user_id }) => {
     <Stack>
       <Text c='dimmed'>{t('delete-account-info')}</Text>
       {error && (
-        <Text c='red' size='sm'>
-          {error}
-        </Text>
+        <Stack gap={4}>
+          <Text c='red' size='sm'>
+            {error}
+          </Text>
+          {blockedOrganizations.length > 0 ? (
+            <>
+              <Text size='sm'>{t('delete-account-blocked-admin-instruction')}</Text>
+              {blockedOrganizations.map((org) => (
+                <Text key={org.organizationId} size='sm' c='dimmed'>
+                  - {org.organizationName}
+                </Text>
+              ))}
+            </>
+          ) : null}
+        </Stack>
       )}
       <Group justify='flex-end' mt='md'>
-        <Button variant='filled' color='red' onClick={handleDelete} loading={isDeleting}>
+        {blockedOrganizations.length > 0 ? (
+          <Button
+            variant='light'
+            onClick={() => router.push(`/app/organization-management?organizationId=${blockedOrganizations[0].organizationId}`)}
+          >
+            {t('delete-account-open-org-settings')}
+          </Button>
+        ) : null}
+        <Button
+          variant='filled'
+          color='red'
+          onClick={handleDelete}
+          loading={isDeleting || isCheckingEligibility}
+          disabled={blockedOrganizations.length > 0 || isCheckingEligibility}
+        >
           {t('delete-account')}
         </Button>
       </Group>
+      <Modal
+        opened={showPersonalLicenseConfirm}
+        onClose={() => setShowPersonalLicenseConfirm(false)}
+        title={t('delete-account')}
+        centered
+      >
+        <Stack gap='md'>
+          <Alert color='orange' variant='light'>
+            {t('delete-account-personal-license-confirm')}
+          </Alert>
+          <Group justify='flex-end'>
+            <Button variant='subtle' onClick={() => setShowPersonalLicenseConfirm(false)}>
+              {t('cancel')}
+            </Button>
+            <Button
+              color='red'
+              variant='light'
+              onClick={async () => {
+                setShowPersonalLicenseConfirm(false)
+                await handleDelete(true)
+              }}
+            >
+              {t('delete-account')}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   )
 }

@@ -27,10 +27,13 @@ export function AppLayout({ children }: AppLayoutProps) {
   const currentView = router.pathname.replace('/app/', '').replace('/app', '') || 'time-tracking'
   const normalizedCurrentView = currentView.replace(/\//g, '-')
   const isNoLicensePage = router.pathname === '/app/no-license'
+  const isLicenseManagementPage = router.pathname === '/app/settings/license-management'
   const canAccessOrgManagementWithoutSubscription =
     router.pathname === '/app/organization-management' && organizations.length > 0
-  const allowWithoutSubscription = isNoLicensePage || canAccessOrgManagementWithoutSubscription
+  const allowWithoutSubscription =
+    isNoLicensePage || isLicenseManagementPage || canAccessOrgManagementWithoutSubscription
   const isNoLicenseModeOrgManagement = canAccessOrgManagementWithoutSubscription && !hasActiveSubscription
+  const isNoLicenseModeLicenseManagement = isLicenseManagementPage && !hasActiveSubscription
 
   // Close mobile nav when view changes
   const [prevView, setPrevView] = useState(currentView)
@@ -74,7 +77,8 @@ export function AppLayout({ children }: AppLayoutProps) {
   // All other loading / redirect states use an inline loader inside the
   // content area so the header + sidebar stay visible.
 
-  const showSidebar = !isNoLicensePage && !isNoLicenseModeOrgManagement
+  const showSidebar =
+    !isNoLicensePage && !isNoLicenseModeOrgManagement && !isNoLicenseModeLicenseManagement
 
   const renderContent = () => {
     // Subscription redirect in progress — keep shell, show inline loader

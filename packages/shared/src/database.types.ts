@@ -511,6 +511,14 @@ export type Database = {
         Args: { p_custom_amount_cents: number; p_organization_id: number }
         Returns: number
       }
+      run_individual_lifecycle_sweep: {
+        Args: { p_reference_time?: string }
+        Returns: Json
+      }
+      run_org_cancellation_finalization_sweep: {
+        Args: { p_reference_time?: string }
+        Returns: Json
+      }
       run_org_delinquency_sweep: {
         Args: { p_reference_time?: string }
         Returns: Json

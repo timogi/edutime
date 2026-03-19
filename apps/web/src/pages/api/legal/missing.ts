@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { getAuthenticatedUser } from '@/utils/supabase/api-auth'
-import { getMissingUserDocuments, type LegalContext } from '@edutime/shared'
+import { getMissingDocuments, type LegalContext } from '@edutime/shared'
 
 type MissingDocument = {
   document_code: string
@@ -15,7 +15,7 @@ type ResponseData = {
   error?: string
 }
 
-const VALID_CONTEXTS: LegalContext[] = ['app', 'checkout_individual']
+const VALID_CONTEXTS_WITH_ORG: LegalContext[] = ['app', 'checkout_individual', 'checkout_org']
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
   if (req.method !== 'POST') {
@@ -32,11 +32,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { supabase } = auth
     const { context } = req.body
 
-    if (!context || !VALID_CONTEXTS.includes(context)) {
+    if (!context || !VALID_CONTEXTS_WITH_ORG.includes(context)) {
       return res.status(400).json({ error: 'Invalid context' })
     }
 
-    const docs = await getMissingUserDocuments(supabase, context)
+    const organizationId =
+      typeof req.body?.organizationId === 'number'
+        ? req.body.organizationId
+        : Number.isInteger(Number(req.body?.organizationId))
+          ? Number(req.body.organizationId)
+          : undefined
+
+    const docs = await getMissingDocuments(supabase, context, {
+      organizationId: context === 'checkout_org' ? organizationId : undefined,
+    })
 
     const missing: MissingDocument[] = docs.map((doc) => ({
       document_code: doc.code,

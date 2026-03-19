@@ -25,6 +25,13 @@ type CheckoutApiResponse = {
   error?: string
 }
 
+type BillingCycle = 'annual' | 'daily_test'
+type OrganizationCheckoutOption = {
+  id: number
+  name: string
+  seats: number
+}
+
 const getErrorMessage = (error: unknown): string => {
   if (error instanceof Error) return error.message
   if (typeof error === 'string') return error
@@ -38,10 +45,14 @@ export default function CheckoutPage() {
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [plan, setPlan] = useState<'annual' | 'org' | null>(null)
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>('annual')
   const [qty, setQty] = useState<number | null>(null)
   const [organizationId, setOrganizationId] = useState<number | undefined>(undefined)
   const [needsOrganizationSetup, setNeedsOrganizationSetup] = useState(false)
   const [organizationName, setOrganizationName] = useState('')
+  const [autoSelectedOrganization, setAutoSelectedOrganization] =
+    useState<OrganizationCheckoutOption | null>(null)
+  const [existingUnlicensedOrgCount, setExistingUnlicensedOrgCount] = useState(0)
   const [isCreatingOrganization, setIsCreatingOrganization] = useState(false)
   const [legalAccepted, setLegalAccepted] = useState(false)
   const [accessToken, setAccessToken] = useState<string | null>(null)
@@ -88,6 +99,7 @@ export default function CheckoutPage() {
 
         // Get plan and qty from query params
         const planParam = router.query.plan as string
+        const billingCycleParam = router.query.billingCycle as string | undefined
         const qtyParam = router.query.qty ? parseInt(router.query.qty as string, 10) : null
         const orgIdParam = router.query.orgId
           ? parseInt(router.query.orgId as string, 10)
@@ -105,13 +117,20 @@ export default function CheckoutPage() {
           return
         }
 
+        const resolvedBillingCycle: BillingCycle =
+          billingCycleParam === 'daily_test' ? 'daily_test' : 'annual'
+        if (planParam === 'org' && resolvedBillingCycle !== 'annual') {
+          setError('Invalid billing cycle for org plan')
+          setIsLoading(false)
+          return
+        }
+
         if (planParam === 'org' && !orgIdParam) {
           const { data: orgRows, error: orgError } = await supabase
             .from('organization_administrators')
-            .select('organization_id, organizations(id, is_active)')
+            .select('organization_id, organizations(id, name, seats, is_active)')
             .eq('user_id', user.id)
             .eq('organizations.is_active', true)
-            .limit(1)
 
           if (orgError) {
             setError(t('checkout-org-load-failed'))
@@ -119,11 +138,69 @@ export default function CheckoutPage() {
             return
           }
 
-          if (orgRows && orgRows.length > 0) {
-            const selectedOrg = orgRows[0]?.organization_id
-            if (selectedOrg) {
-              setOrganizationId(selectedOrg)
+          const organizationOptions: OrganizationCheckoutOption[] = (orgRows || [])
+            .map((row) => {
+              const organization = row.organizations as {
+                id: number
+                name: string | null
+                seats: number | null
+              } | null
+              if (!organization?.id) return null
+
+              return {
+                id: organization.id,
+                name: organization.name || `${t('org-license-management-title')} #${organization.id}`,
+                seats: organization.seats ?? 3,
+              }
+            })
+            .filter((org): org is OrganizationCheckoutOption => org !== null)
+
+          if (organizationOptions.length > 0) {
+            const headers: Record<string, string> = {
+              'Content-Type': 'application/json',
+            }
+            if (session.access_token) {
+              headers['Authorization'] = `Bearer ${session.access_token}`
+            }
+
+            const orgLicenseChecks = await Promise.all(
+              organizationOptions.map(async (org) => {
+                try {
+                  const response = await fetch(
+                    `/api/billing/org-license?organizationId=${encodeURIComponent(String(org.id))}`,
+                    {
+                      method: 'GET',
+                      headers,
+                      credentials: 'include',
+                    },
+                  )
+                  const payload = (await response.json()) as {
+                    data?: { seatCount: number | null } | null
+                  }
+                  const hasExistingOrgLicense =
+                    response.ok &&
+                    payload.data != null &&
+                    typeof payload.data.seatCount === 'number' &&
+                    payload.data.seatCount >= 3
+                  return { org, hasExistingOrgLicense }
+                } catch {
+                  return { org, hasExistingOrgLicense: false }
+                }
+              }),
+            )
+
+            const licensedOrganizations = orgLicenseChecks
+              .filter((check) => check.hasExistingOrgLicense)
+              .map((check) => check.org)
+            const unlicensedCount = orgLicenseChecks.length - licensedOrganizations.length
+            setExistingUnlicensedOrgCount(unlicensedCount)
+
+            if (licensedOrganizations.length > 0) {
+              const selectedOrg = licensedOrganizations[0]
+              setOrganizationId(selectedOrg.id)
+              setAutoSelectedOrganization(selectedOrg)
               setPlan(planParam)
+              setBillingCycle(resolvedBillingCycle)
               setQty(qtyParam)
               setNeedsOrganizationSetup(false)
               setIsLoading(false)
@@ -132,16 +209,20 @@ export default function CheckoutPage() {
           }
 
           setPlan(planParam)
+          setBillingCycle(resolvedBillingCycle)
           setQty(qtyParam)
           setOrganizationId(undefined)
+          setAutoSelectedOrganization(null)
           setNeedsOrganizationSetup(true)
           setIsLoading(false)
           return
         }
 
         setPlan(planParam)
+        setBillingCycle(resolvedBillingCycle)
         setQty(qtyParam)
         setOrganizationId(orgIdParam)
+        setAutoSelectedOrganization(null)
         setNeedsOrganizationSetup(false)
 
         // Don't proceed to checkout until legal documents are accepted
@@ -162,6 +243,14 @@ export default function CheckoutPage() {
   const handleAuthError = useCallback(() => {
     redirectToRegister()
   }, [redirectToRegister])
+
+  const handleGoBack = useCallback(() => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back()
+      return
+    }
+    router.push('/')
+  }, [router])
 
   const handleCreateOrganization = async () => {
     if (!plan || plan !== 'org') return
@@ -204,6 +293,7 @@ export default function CheckoutPage() {
       }
 
       setOrganizationId(payload.organizationId)
+      setAutoSelectedOrganization(null)
       setNeedsOrganizationSetup(false)
     } catch (creationError: unknown) {
       console.error('Failed to create organization during checkout:', creationError)
@@ -220,6 +310,24 @@ export default function CheckoutPage() {
 
     setLegalAccepted(true)
     isCheckoutRequestInFlightRef.current = true
+
+    const handleCheckoutFailure = (message: string) => {
+      const normalizedMessage = message.toLowerCase()
+      const userFacingMessage =
+        normalizedMessage.includes('internal server error') ||
+        normalizedMessage.includes('status 5')
+          ? t('checkout-session-unavailable')
+          : normalizedMessage.includes('already have an active personal license')
+            ? t('checkout-personal-license-already-active')
+            : normalizedMessage.includes('organization legal documents must be accepted')
+              ? t('checkout-org-legal-required')
+          : message
+
+      // Stop auto-looping through legal acceptance and show a dedicated error state instead.
+      setCheckoutUrl(null)
+      setError(userFacingMessage)
+    }
+
     // Now create checkout session
     try {
       const headers: Record<string, string> = {
@@ -235,6 +343,7 @@ export default function CheckoutPage() {
         credentials: 'include',
         body: JSON.stringify({
           plan: plan!,
+          billingCycle,
           qty: qty!,
           organizationId: organizationId,
         }),
@@ -255,7 +364,8 @@ export default function CheckoutPage() {
               rawBodyPreview: rawBody.slice(0, 300),
               parseError,
             })
-            throw new Error('Checkout API returned invalid JSON')
+            handleCheckoutFailure('Checkout API returned invalid response. Please try again.')
+            return
           }
         } else {
           // Useful in development when Next.js returns an HTML error page instead of JSON.
@@ -264,9 +374,10 @@ export default function CheckoutPage() {
             contentType,
             rawBodyPreview: rawBody.slice(0, 300),
           })
-          throw new Error(
+          handleCheckoutFailure(
             `Checkout API returned non-JSON response (status ${response.status}). Check server logs.`,
           )
+          return
         }
       }
 
@@ -275,7 +386,8 @@ export default function CheckoutPage() {
           redirectToRegister()
           return
         }
-        throw new Error(data.error || `Failed to create checkout session (status ${response.status})`)
+        handleCheckoutFailure(data.error || `Failed to create checkout session (status ${response.status})`)
+        return
       }
 
       hasCheckoutBeenStartedRef.current = true
@@ -290,13 +402,21 @@ export default function CheckoutPage() {
     } catch (error: unknown) {
       console.error('Error creating checkout session:', error)
       if (!hasCheckoutBeenStartedRef.current) {
-        setError(getErrorMessage(error))
+        handleCheckoutFailure(getErrorMessage(error))
       }
     }
     finally {
       isCheckoutRequestInFlightRef.current = false
     }
   }
+
+  const handleSwitchToNewOrganization = useCallback(() => {
+    setOrganizationId(undefined)
+    setNeedsOrganizationSetup(true)
+    setAutoSelectedOrganization(null)
+    setLegalAccepted(false)
+    setError(null)
+  }, [])
 
   if (isLoading) {
     return <LoadingScreen />
@@ -309,12 +429,12 @@ export default function CheckoutPage() {
           <Stack gap='md' align='center'>
             <IconAlertCircle size={48} color='var(--mantine-color-red-6)' />
             <Title order={3} c='red'>
-              Error
+              {t('error')}
             </Title>
             <Text c='dimmed' ta='center'>
               {error}
             </Text>
-            <Button onClick={() => router.push('/')}>Go to Home</Button>
+            <Button onClick={handleGoBack}>{t('checkout-go-back')}</Button>
           </Stack>
         </Paper>
       </Container>
@@ -330,6 +450,11 @@ export default function CheckoutPage() {
             <Text c='dimmed' size='sm'>
               {t('checkout-org-setup-description')}
             </Text>
+            {existingUnlicensedOrgCount > 0 ? (
+              <Alert icon={<IconAlertCircle size='1rem' />} color='yellow' variant='light'>
+                {t('checkout-org-existing-no-license-note', { count: existingUnlicensedOrgCount })}
+              </Alert>
+            ) : null}
             <TextInput
               label={t('checkout-org-name-label')}
               placeholder={t('checkout-org-name-placeholder')}
@@ -350,12 +475,34 @@ export default function CheckoutPage() {
 
   // Show legal gate if plan is set and documents not yet accepted
   if (plan && !legalAccepted) {
+    const legalContext = plan === 'org' ? 'checkout_org' : 'checkout_individual'
     return (
-      <CheckoutLegalGate
-        accessToken={accessToken || undefined}
-        onAllAccepted={handleLegalAccepted}
-        onAuthError={handleAuthError}
-      />
+      <>
+        {plan === 'org' && autoSelectedOrganization ? (
+          <Container size={600} my='md'>
+            <Alert icon={<IconAlertCircle size='1rem' />} color='blue' variant='light'>
+              <Stack gap='xs'>
+                <Text size='sm'>
+                  {t('checkout-org-existing-org-info', { name: autoSelectedOrganization.name })}
+                </Text>
+                <Text size='sm' c='dimmed'>
+                  {t('checkout-org-seat-count-info', { count: qty || autoSelectedOrganization.seats })}
+                </Text>
+                <Button variant='light' size='xs' onClick={handleSwitchToNewOrganization}>
+                  {t('checkout-org-use-new-org-button')}
+                </Button>
+              </Stack>
+            </Alert>
+          </Container>
+        ) : null}
+        <CheckoutLegalGate
+          accessToken={accessToken || undefined}
+          legalContext={legalContext}
+          organizationId={plan === 'org' ? organizationId : undefined}
+          onAllAccepted={handleLegalAccepted}
+          onAuthError={handleAuthError}
+        />
+      </>
     )
   }
 

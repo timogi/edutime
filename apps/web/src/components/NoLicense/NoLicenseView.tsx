@@ -14,12 +14,12 @@ import {
 } from '@mantine/core'
 import { useTranslations } from 'next-intl'
 import { useUser } from '@/contexts/UserProvider'
-import { IconSettings, IconLogout, IconInfoCircle, IconUsers, IconCheck } from '@tabler/icons-react'
+import { IconSettings, IconLogout, IconInfoCircle, IconCheck } from '@tabler/icons-react'
 import { showNotification } from '@mantine/notifications'
 import { useRouter } from 'next/router'
 import { Account } from '@/components/Account/Account'
-import { Members } from '@/components/Members/Members'
 import { Footer } from '@/components/Footer/Footer'
+import { LicenseManagementEntry } from '@/components/LicenseManagement/LicenseManagementEntry'
 import { OrgPriceCalculatorModal } from '@/components/Main/OrgPriceCalculatorModal'
 import { acceptOrganizationInvite, rejectOrganizationInvite } from '@/utils/supabase/organizations'
 import { supabase } from '@/utils/supabase/client'
@@ -32,10 +32,18 @@ export function NoLicenseView() {
   const t = useTranslations('Index')
   const t_noLicense = useTranslations('NoLicense')
   const t_pricing = useTranslations('Pricing')
-  const { user, categories, refreshUserData, userEmail, logout, memberships, organizations } =
-    useUser()
+  const {
+    user,
+    categories,
+    refreshUserData,
+    userEmail,
+    logout,
+    memberships,
+    organizations,
+    hasActiveSubscription,
+  } = useUser()
   const router = useRouter()
-  const [activeSection, setActiveSection] = useState<'settings' | 'members' | null>(null)
+  const [activeSection, setActiveSection] = useState<'settings' | null>(null)
   const [processingInvitation, setProcessingInvitation] = useState<number | null>(null)
   const [isStartingDemo, setIsStartingDemo] = useState(false)
   const [hasUsedDemo, setHasUsedDemo] = useState<boolean | null>(null)
@@ -44,6 +52,9 @@ export function NoLicenseView() {
 
   // Check if user is an administrator
   const isAdministrator = organizations && organizations.length > 0
+  const isOrgAdminWithoutActiveSubscription = isAdministrator && !hasActiveSubscription
+  const primaryOrganization = organizations[0] || null
+  const organizationCheckoutQty = Math.max(primaryOrganization?.seats ?? 3, 3)
 
   // Check if user has ever had a trial on component mount
   useEffect(() => {
@@ -228,8 +239,8 @@ export function NoLicenseView() {
     router.push('/checkout?plan=annual')
   }
 
-  const handleOpenOrganizationManagement = () => {
-    router.push('/app/organization-management')
+  const handleStartDailyTestSubscription = () => {
+    router.push('/checkout?plan=annual&billingCycle=daily_test')
   }
 
   const handleRefreshLicenseStatus = async () => {
@@ -283,22 +294,75 @@ export function NoLicenseView() {
     )
   }
 
-  if (activeSection === 'members') {
+  const handleStartOrganizationCheckout = () => {
+    if (!primaryOrganization) return
+    router.push(`/checkout?plan=org&qty=${organizationCheckoutQty}&orgId=${primaryOrganization.id}`)
+  }
+
+  const handleOpenOrganizationManagement = () => {
+    if (!primaryOrganization) return
+    router.push(`/app/organization-management?organizationId=${primaryOrganization.id}`)
+  }
+
+  if (isOrgAdminWithoutActiveSubscription) {
     return (
-      <Container size={1200} py='xl'>
-        <Stack gap='xl'>
-          <Group>
-            <Button variant='subtle' onClick={() => setActiveSection(null)}>
-              ← {t_noLicense('back')}
-            </Button>
-          </Group>
-          <Members
-            organizations={organizations}
-            userData={user}
-            onMembersChanged={refreshUserData}
-          />
-        </Stack>
-      </Container>
+      <>
+        <Container size={1000} py='xl'>
+          <Stack gap='xl' align='center'>
+            <div className={classes.header}>
+              <Title order={1} ta='center' mb='md'>
+                {t_noLicense('title')}
+              </Title>
+              <Text size='lg' c='dimmed' ta='center' maw={700}>
+                {t_noLicense('org-no-license-description')}
+              </Text>
+            </div>
+
+            {router.query.checkout === 'pending' && router.query.plan === 'org' && (
+              <Alert
+                icon={<IconInfoCircle size={16} />}
+                color='orange'
+                variant='light'
+                w='100%'
+                maw={800}
+              >
+                <Stack gap='xs'>
+                  <Text size='sm'>{t_noLicense('activationPendingMessage')}</Text>
+                  <Button
+                    variant='light'
+                    onClick={handleRefreshLicenseStatus}
+                    loading={isRefreshingLicense}
+                    disabled={isRefreshingLicense}
+                  >
+                    {t_noLicense('refreshActivation')}
+                  </Button>
+                </Stack>
+              </Alert>
+            )}
+
+            <Card padding='xl' radius='md' withBorder w='100%' maw={800}>
+              <Stack gap='md'>
+                <Title order={3}>{t_noLicense('org-no-license-title')}</Title>
+                <Text size='sm' c='dimmed'>
+                  {primaryOrganization?.name || t('org-license-management-title')}
+                </Text>
+                <Text size='sm' c='dimmed'>
+                  {t('checkout-org-seat-count-info', { count: organizationCheckoutQty })}
+                </Text>
+                <Group>
+                  <Button variant='light' onClick={handleOpenOrganizationManagement}>
+                    {t('org-license-management-title')}
+                  </Button>
+                  <Button variant='filled' onClick={handleStartOrganizationCheckout}>
+                    {t_noLicense('org-no-license-checkout')}
+                  </Button>
+                </Group>
+              </Stack>
+            </Card>
+          </Stack>
+        </Container>
+        <Footer />
+      </>
     )
   }
 
@@ -332,7 +396,7 @@ export function NoLicenseView() {
           )}
 
           {/* Administrator Member Management */}
-          {isAdministrator && (
+          {isAdministrator && hasActiveSubscription && (
             <Card padding='xl' radius='md' withBorder w='100%' maw={800}>
               <Stack gap='md'>
                 <Group justify='space-between' align='center'>
@@ -347,27 +411,24 @@ export function NoLicenseView() {
                       'Sie sind Administrator einer Organisation. Verwalten Sie die Mitglieder Ihrer Organisation.'}
                   </Text>
                 </Alert>
-                <Stack gap='sm' mt='md'>
-                  <Button
-                    variant='filled'
-                    leftSection={<IconUsers size={18} />}
-                    onClick={() => setActiveSection('members')}
-                    fullWidth
-                  >
-                    {t('manage-members') || 'Mitglieder verwalten'}
-                  </Button>
-                  <Button
-                    variant='light'
-                    leftSection={<IconSettings size={18} />}
-                    onClick={handleOpenOrganizationManagement}
-                    fullWidth
-                  >
-                    {t('Organization Management') || 'Organisation verwalten'}
-                  </Button>
-                </Stack>
+                <LicenseManagementEntry
+                  showPersonalButton
+                  showOrganizationButton
+                  organizationId={organizations[0]?.id ?? null}
+                />
               </Stack>
             </Card>
           )}
+
+          <Card padding='xl' radius='md' withBorder w='100%' maw={800}>
+            <Stack gap='sm'>
+              <Title order={3}>{t('license-management-title')}</Title>
+              <Text size='sm' c='dimmed'>
+                {t_noLicense('licenseRequiredMessage')}
+              </Text>
+              <LicenseManagementEntry showPersonalButton />
+            </Stack>
+          </Card>
 
           {/* Pending Invitations */}
           {pendingInvitations.length > 0 && (
@@ -432,7 +493,7 @@ export function NoLicenseView() {
               />
 
               <SimpleGrid
-                cols={{ base: 1, md: hasUsedDemo === false ? 3 : 2 }}
+                cols={{ base: 1, md: 2, xl: hasUsedDemo === false ? 4 : 3 }}
                 spacing='lg'
                 w='100%'
               >
@@ -550,6 +611,74 @@ export function NoLicenseView() {
 
                     <Button onClick={handlePurchase} size='lg' variant='filled' fullWidth mt='auto'>
                       {t_noLicense('purchase-now')}
+                    </Button>
+                  </Stack>
+                </Card>
+
+                {/* Temporary Daily Test Subscription Card */}
+                <Card
+                  className={pricingClasses.pricingCard}
+                  padding='xl'
+                  radius='md'
+                  withBorder
+                  style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+                >
+                  <Stack gap='lg' h='100%' justify='space-between' style={{ flex: 1 }}>
+                    <div>
+                      <Badge size='lg' variant='light' color='violet' mb='sm'>
+                        {t_pricing('testRenewBadge')}
+                      </Badge>
+                      <Title order={3} className={pricingClasses.planTitle}>
+                        {t_pricing('testRenewTitle')}
+                      </Title>
+                      <Text size='sm' c='dimmed' mt='xs'>
+                        {t_pricing('testRenewSubtitle')}
+                      </Text>
+                    </div>
+
+                    <div className={pricingClasses.priceSection}>
+                      <Group gap='xs' align='flex-start' justify='center' wrap='nowrap'>
+                        <Text size='3rem' fw={700} className={pricingClasses.price} lh={1}>
+                          1
+                        </Text>
+                        <Text size='lg' c='dimmed' mt='md' lh={1}>
+                          CHF
+                        </Text>
+                      </Group>
+                      <Text size='sm' c='dimmed' mt='xs' ta='center'>
+                        {t_pricing('testRenewPerDay')}
+                      </Text>
+                    </div>
+
+                    <Divider />
+
+                    <Stack gap='sm' className={pricingClasses.features}>
+                      <Group gap='sm' align='flex-start'>
+                        <IconCheck size={20} className={pricingClasses.checkIcon} />
+                        <Text size='sm'>{t_pricing('testRenewFeature1')}</Text>
+                      </Group>
+                      <Group gap='sm' align='flex-start'>
+                        <IconCheck size={20} className={pricingClasses.checkIcon} />
+                        <Text size='sm'>{t_pricing('testRenewFeature2')}</Text>
+                      </Group>
+                      <Group gap='sm' align='flex-start'>
+                        <IconCheck size={20} className={pricingClasses.checkIcon} />
+                        <Text size='sm'>{t_pricing('testRenewFeature3')}</Text>
+                      </Group>
+                      <Group gap='sm' align='flex-start'>
+                        <IconCheck size={20} className={pricingClasses.checkIcon} />
+                        <Text size='sm'>{t_pricing('testRenewFeature4')}</Text>
+                      </Group>
+                    </Stack>
+
+                    <Button
+                      onClick={handleStartDailyTestSubscription}
+                      size='lg'
+                      variant='filled'
+                      fullWidth
+                      mt='auto'
+                    >
+                      {t_noLicense('start-test-renew')}
                     </Button>
                   </Stack>
                 </Card>

@@ -23,6 +23,7 @@ import { getUserEntitlements } from '@edutime/shared'
 import { UserData, Entitlement } from '@/types/globals'
 import { supabase } from '@/utils/supabase/client'
 import { getMemberships, getOrganizations } from '@/utils/supabase/organizations'
+import { LicenseManagementEntry } from '@/components/LicenseManagement/LicenseManagementEntry'
 import classes from './Account.module.css'
 import { notifications } from '@mantine/notifications'
 
@@ -52,6 +53,7 @@ export const Account = ({ userData, reloadUserData }: AccountProps) => {
   const [entitlements, setEntitlements] = useState<Entitlement[]>([])
   const [organizationNamesById, setOrganizationNamesById] = useState<Record<number, string>>({})
   const [orgCancelEntitlement, setOrgCancelEntitlement] = useState<Entitlement | null>(null)
+  const [trialCancelEntitlement, setTrialCancelEntitlement] = useState<Entitlement | null>(null)
   const [isLoadingEntitlements, setIsLoadingEntitlements] = useState(false)
   const [licenseActionLoadingById, setLicenseActionLoadingById] = useState<Record<string, boolean>>({})
   const [licenseManagementData, setLicenseManagementData] = useState<LicenseManagementData | null>(null)
@@ -235,16 +237,9 @@ export const Account = ({ userData, reloadUserData }: AccountProps) => {
     }
   }
 
-  const handleCancelTrial = async (entitlement: Entitlement) => {
-    const hasOtherLicenses = hasOtherActiveEntitlements(entitlement.id)
-    const confirmed = window.confirm(
-      hasOtherLicenses
-        ? t('account-license-trial-cancel-confirm-message-has-other')
-        : t('account-license-trial-cancel-confirm-message-no-other'),
-    )
-
-    if (!confirmed) return
-
+  const confirmCancelTrial = async () => {
+    if (!trialCancelEntitlement) return
+    const entitlement = trialCancelEntitlement
     setLicenseActionLoading(entitlement.id, true)
     try {
       const requestInit = await getAuthenticatedRequestInit({
@@ -261,6 +256,7 @@ export const Account = ({ userData, reloadUserData }: AccountProps) => {
         message: t('account-license-trial-cancel-success-message'),
         color: 'green',
       })
+      setTrialCancelEntitlement(null)
       await loadEntitlements()
       reloadUserData()
     } catch (error) {
@@ -272,6 +268,10 @@ export const Account = ({ userData, reloadUserData }: AccountProps) => {
     } finally {
       setLicenseActionLoading(entitlement.id, false)
     }
+  }
+
+  const handleCancelTrial = (entitlement: Entitlement) => {
+    setTrialCancelEntitlement(entitlement)
   }
 
   return (
@@ -333,6 +333,50 @@ export const Account = ({ userData, reloadUserData }: AccountProps) => {
               onClick={confirmLeaveOrganizationSeat}
               loading={
                 orgCancelEntitlement ? Boolean(licenseActionLoadingById[orgCancelEntitlement.id]) : false
+              }
+            >
+              {t('confirm-cancel-subscription')}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+      <Modal
+        opened={Boolean(trialCancelEntitlement)}
+        onClose={() => setTrialCancelEntitlement(null)}
+        title={t('account-license-trial-cancel-button')}
+        centered
+        styles={{
+          title: {
+            color: 'var(--mantine-color-text)',
+            fontWeight: 600,
+          },
+          content: {
+            backgroundColor: 'var(--mantine-color-body)',
+          },
+          header: {
+            backgroundColor: 'var(--mantine-color-body)',
+          },
+        }}
+      >
+        <Stack gap='md'>
+          <Text c='dimmed'>
+            {trialCancelEntitlement
+              ? hasOtherActiveEntitlements(trialCancelEntitlement.id)
+                ? t('account-license-trial-cancel-confirm-message-has-other')
+                : t('account-license-trial-cancel-confirm-message-no-other')
+              : null}
+          </Text>
+          <Group justify='flex-end'>
+            <Button variant='subtle' color='gray' onClick={() => setTrialCancelEntitlement(null)}>
+              {t('cancel')}
+            </Button>
+            <Button
+              color='red'
+              onClick={confirmCancelTrial}
+              loading={
+                trialCancelEntitlement
+                  ? Boolean(licenseActionLoadingById[trialCancelEntitlement.id])
+                  : false
               }
             >
               {t('confirm-cancel-subscription')}
@@ -419,11 +463,7 @@ export const Account = ({ userData, reloadUserData }: AccountProps) => {
                     ))}
                   </SimpleGrid>
                   {visibleEntitlements.some((entitlement) => entitlement.kind === 'personal') ? (
-                    <Group justify='flex-start'>
-                      <Button variant='light' onClick={() => router.push('/app/settings/license-management')}>
-                        {t('license-management-open-page')}
-                      </Button>
-                    </Group>
+                    <LicenseManagementEntry showPersonalButton />
                   ) : null}
                 </Stack>
               )}

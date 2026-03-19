@@ -24,12 +24,16 @@ interface MissingDocumentResponse {
 
 interface CheckoutLegalGateProps {
   accessToken?: string
+  legalContext?: 'checkout_individual' | 'checkout_org'
+  organizationId?: number
   onAllAccepted: () => void
   onAuthError?: () => void
 }
 
 export function CheckoutLegalGate({
   accessToken,
+  legalContext = 'checkout_individual',
+  organizationId,
   onAllAccepted,
   onAuthError,
 }: CheckoutLegalGateProps) {
@@ -53,7 +57,10 @@ export function CheckoutLegalGate({
         method: 'POST',
         headers,
         credentials: 'include',
-        body: JSON.stringify({ context: 'checkout_individual' }),
+        body: JSON.stringify({
+          context: legalContext,
+          organizationId: legalContext === 'checkout_org' ? organizationId : undefined,
+        }),
       })
 
       if (!response.ok) {
@@ -80,7 +87,7 @@ export function CheckoutLegalGate({
     } finally {
       setIsLoading(false)
     }
-  }, [accessToken, onAllAccepted, onAuthError])
+  }, [accessToken, legalContext, onAllAccepted, onAuthError, organizationId])
 
   useEffect(() => {
     checkMissingDocuments()
@@ -104,6 +111,7 @@ export function CheckoutLegalGate({
         body: JSON.stringify({
           documentCode: doc.document_code,
           source: 'checkout',
+          organizationId: legalContext === 'checkout_org' ? organizationId : undefined,
         }),
       })
 

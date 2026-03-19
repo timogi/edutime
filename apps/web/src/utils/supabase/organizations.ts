@@ -41,13 +41,46 @@ export const getOrganizations = async (userId: string): Promise<Organization[]> 
     return []
   }
 
-  return (
-    (data as any).map((item: any) => ({
-      id: item.organizations.id,
-      name: item.organizations.name,
-      seats: item.organizations.seats,
-    })) || []
+  const rows = Array.isArray(data) ? data : []
+
+  return rows
+    .map((item) => {
+      const organization = item.organizations as { id: number; name: string; seats: number } | null
+      if (!organization) return null
+
+      return {
+        id: organization.id,
+        name: organization.name,
+        seats: organization.seats,
+      }
+    })
+    .filter((organization): organization is Organization => organization !== null)
+}
+
+type OrgBillingStatusApiResponse = {
+  data?: {
+    seatCount: number | null
+  } | null
+  error?: string
+}
+
+export const getOrganizationSeatCount = async (organizationId: number): Promise<number | null> => {
+  const requestInit = await getAuthenticatedRequestInit()
+  const response = await fetch(
+    `/api/billing/org-license?organizationId=${encodeURIComponent(String(organizationId))}`,
+    requestInit,
   )
+  const payload = (await response.json()) as OrgBillingStatusApiResponse
+
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to load organization billing status')
+  }
+
+  if (!payload.data || typeof payload.data.seatCount !== 'number') {
+    return null
+  }
+
+  return payload.data.seatCount
 }
 
 export interface OrganizationMember {
@@ -152,13 +185,20 @@ export const getMemberships = async (userEmail: string): Promise<Membership[]> =
     console.error('Error fetching memberships')
     return []
   }
-  return (
-    (data as any).map((item: any) => ({
-      id: item.organization_id,
-      name: item.organizations.name,
-      status: item.status,
-    })) || []
-  )
+  const rows = Array.isArray(data) ? data : []
+
+  return rows
+    .map((item) => {
+      const organization = item.organizations as { name: string } | null
+      if (!organization) return null
+
+      return {
+        id: item.organization_id,
+        name: organization.name,
+        status: item.status,
+      }
+    })
+    .filter((membership): membership is Membership => membership !== null)
 }
 
 export const updateMembership = async (

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import {
+  Alert,
   Card,
   Stack,
   Text,
@@ -89,6 +90,10 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingCantonData, setIsLoadingCantonData] = useState(false)
   const [customAnnualHours, setCustomAnnualHours] = useState(1930)
+  const [profileCategoryDeleteTarget, setProfileCategoryDeleteTarget] = useState<{
+    id: string
+    linkedCount: number
+  } | null>(null)
 
   const { configMode, configProfile, profileCategories, refreshUserData: refreshCtx } = useUser()
 
@@ -411,16 +416,17 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
   const handleDeleteProfileCategory = async (id: string) => {
     try {
       const linkedCount = await countRecordsForProfileCategory(id, userData.user_id)
-      const confirmationMessage =
-        linkedCount > 0
-          ? `${t('confirmDeleteProfileCategoryWithCount', { count: linkedCount })}\n\n${t('deleteProfileCategoryRecordsInfo')}`
-          : t('confirmDeleteProfileCategory')
+      setProfileCategoryDeleteTarget({ id, linkedCount })
+    } catch (error) {
+      console.error('Error deleting profile category:', error)
+    }
+  }
 
-      if (!window.confirm(confirmationMessage)) {
-        return
-      }
-
-      await deleteProfileCategory(id)
+  const confirmDeleteProfileCategory = async () => {
+    if (!profileCategoryDeleteTarget) return
+    try {
+      await deleteProfileCategory(profileCategoryDeleteTarget.id)
+      setProfileCategoryDeleteTarget(null)
       closeProfileCategoryModal()
       await reloadUserData()
       await refreshCtx()
@@ -781,6 +787,28 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
             </Card>
           ))}
         </SimpleGrid>
+      </Modal>
+      <Modal
+        opened={Boolean(profileCategoryDeleteTarget)}
+        onClose={() => setProfileCategoryDeleteTarget(null)}
+        title={t('confirmDeleteProfileCategory')}
+        centered
+      >
+        <Stack gap='md'>
+          <Alert color='orange' variant='light'>
+            {profileCategoryDeleteTarget && profileCategoryDeleteTarget.linkedCount > 0
+              ? `${t('confirmDeleteProfileCategoryWithCount', { count: profileCategoryDeleteTarget.linkedCount })} ${t('deleteProfileCategoryRecordsInfo')}`
+              : t('confirmDeleteProfileCategory')}
+          </Alert>
+          <Group justify='flex-end'>
+            <Button variant='subtle' onClick={() => setProfileCategoryDeleteTarget(null)}>
+              {t('cancel')}
+            </Button>
+            <Button color='red' variant='light' onClick={confirmDeleteProfileCategory}>
+              {t('Delete')}
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
     </>
   )

@@ -49,3 +49,7 @@ select billing.set_org_custom_price_and_seats(<org_id>, <seats>, <amount_cents>,
 ## Re-run safety
 
 It is safe to re-run; the flow is designed to avoid negative side effects on repeated execution.
+
+## Related Operations Docs
+
+- Scheduled background jobs are documented in `apps/web/docs/jobs.md`.

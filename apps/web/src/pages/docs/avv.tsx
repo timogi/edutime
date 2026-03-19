@@ -6,7 +6,7 @@ import { GetStaticPropsContext } from 'next'
 import { Footer } from '@/components/Footer/Footer'
 import { AVVContent } from '@/components/Legal/avv'
 
-export default function AVV() {
+export default function AVVDocs() {
   return (
     <AppShell header={{ height: 60 }} padding={0}>
       <Head>

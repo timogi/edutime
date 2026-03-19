@@ -6,13 +6,23 @@ type PayrexxTransaction = {
   id: number
   status?: string
   referenceId?: string
+  reference_id?: string
+  gatewayId?: number
+  gateway_id?: number
   gateway?: { id?: number } | null
 }
 
 const PAYREXX_API_DEFAULT_VERSION = '1.14'
 const PAYREXX_API_BASE = `https://api.payrexx.com/v${(Deno.env.get('PAYREXX_API_VERSION') || PAYREXX_API_DEFAULT_VERSION).replace(/^v/i, '')}`
-const SUCCESS_STATUSES = new Set(['confirmed', 'authorized', 'paid'])
+const SUCCESS_STATUSES = new Set(['confirmed', 'authorized', 'paid', 'completed', 'success'])
 const FAILURE_STATUSES = new Set(['failed', 'cancelled', 'expired'])
+
+function asObject(value: unknown): JsonObject | null {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as JsonObject
+  }
+  return null
+}
 
 function env(name: string): string {
   const value = Deno.env.get(name)
@@ -154,13 +164,20 @@ function getTransactionPayload(payload: JsonObject): JsonObject | null {
 function extractTransactionId(payload: JsonObject): number | null {
   const transaction = getTransactionPayload(payload) ?? undefined
   const data = payload.data as JsonObject | undefined
+  const transactionData = asObject(data?.transaction)
+  const payloadTransaction = asObject(payload.transaction)
 
   const candidates: unknown[] = [
     transaction?.id,
     payload.transactionId,
     payload.transaction_id,
+    payload.transactionID,
     data?.id,
-    (data?.transaction as JsonObject | undefined)?.id,
+    data?.transaction_id,
+    data?.transactionId,
+    data?.transactionID,
+    transactionData?.id,
+    payloadTransaction?.id,
   ]
 
   for (const candidate of candidates) {
@@ -177,19 +194,39 @@ function extractReferenceId(payload: JsonObject, verifiedTransaction?: PayrexxTr
   const data = payload.data as JsonObject | undefined
   const transactionInvoice = transaction?.invoice as JsonObject | undefined
   const payloadInvoice = payload.invoice as JsonObject | undefined
+  const payloadDataInvoice = asObject(data?.invoice)
+  const payloadTransaction = asObject(payload.transaction)
+  const payloadTxInvoice = asObject(payloadTransaction?.invoice)
+  const verifiedTxRecord = asObject(verifiedTransaction)
 
   const candidates: unknown[] = [
     verifiedTransaction?.referenceId,
+    verifiedTransaction?.reference_id,
+    verifiedTxRecord?.referenceID,
+    verifiedTxRecord?.reference,
     payload.referenceId,
     payload.reference_id,
+    payload.referenceID,
+    payload.reference,
     transaction?.referenceId,
     transaction?.reference_id,
+    transaction?.referenceID,
+    transactionInvoice?.reference,
     transactionInvoice?.referenceId,
     transactionInvoice?.reference_id,
+    payloadTxInvoice?.reference,
+    payloadTxInvoice?.referenceId,
+    payloadTxInvoice?.reference_id,
     payloadInvoice?.referenceId,
     payloadInvoice?.reference_id,
+    payloadInvoice?.reference,
+    payloadDataInvoice?.reference,
+    payloadDataInvoice?.referenceId,
+    payloadDataInvoice?.reference_id,
     data?.referenceId,
     data?.reference_id,
+    data?.referenceID,
+    data?.reference,
   ]
 
   for (const candidate of candidates) {
@@ -204,16 +241,55 @@ function extractGatewayId(payload: JsonObject, verifiedTransaction?: PayrexxTran
   const transaction = getTransactionPayload(payload) ?? undefined
   const data = payload.data as JsonObject | undefined
   const transactionGateway = transaction?.gateway as JsonObject | undefined
+  const transactionInvoice = asObject(transaction?.invoice)
+  const payloadInvoice = asObject(payload.invoice)
+  const payloadTx = asObject(payload.transaction)
+  const payloadTxGateway = asObject(payloadTx?.gateway)
+  const payloadTxInvoice = asObject(payloadTx?.invoice)
+  const dataGateway = asObject(data?.gateway)
+  const dataInvoice = asObject(data?.invoice)
+  const verifiedTxRecord = asObject(verifiedTransaction)
+  const verifiedTxGateway = asObject(verifiedTransaction?.gateway)
 
   const candidates: unknown[] = [
     verifiedTransaction?.gateway?.id,
+    verifiedTransaction?.gatewayId,
+    verifiedTransaction?.gateway_id,
+    verifiedTxRecord?.gatewayID,
+    verifiedTxRecord?.gatewayId,
+    verifiedTxRecord?.gateway_id,
+    verifiedTxGateway?.id,
+    verifiedTxGateway?.gatewayId,
+    verifiedTxGateway?.gateway_id,
     payload.gatewayId,
     payload.gateway_id,
+    payload.gatewayID,
     transaction?.gatewayId,
     transaction?.gateway_id,
+    transaction?.gatewayID,
     transactionGateway?.id,
+    transactionInvoice?.gatewayId,
+    transactionInvoice?.gateway_id,
+    asObject(transactionInvoice?.gateway)?.id,
+    payloadInvoice?.gatewayId,
+    payloadInvoice?.gateway_id,
+    asObject(payloadInvoice?.gateway)?.id,
+    payloadTx?.gatewayId,
+    payloadTx?.gateway_id,
+    payloadTxGateway?.id,
+    payloadTxInvoice?.gatewayId,
+    payloadTxInvoice?.gateway_id,
+    asObject(payloadTxInvoice?.gateway)?.id,
     data?.gatewayId,
     data?.gateway_id,
+    data?.gatewayID,
+    data?.gateway,
+    dataGateway?.id,
+    dataGateway?.gatewayId,
+    dataGateway?.gateway_id,
+    dataInvoice?.gatewayId,
+    dataInvoice?.gateway_id,
+    asObject(dataInvoice?.gateway)?.id,
   ]
 
   for (const candidate of candidates) {
@@ -368,8 +444,31 @@ Deno.serve(async (req) => {
     const normalizedStatus = String(
       verifiedTx?.status || transactionPayload?.status || payload.status || '',
     ).toLowerCase()
-    const referenceId = extractReferenceId(payload, verifiedTx || undefined)
+    let referenceId = extractReferenceId(payload, verifiedTx || undefined)
     const gatewayId = extractGatewayId(payload, verifiedTx || undefined)
+
+    if (!referenceId) {
+      // Fallback: recurring personal transactions can arrive without an explicit reference_id.
+      // In that case, attempt to map by gateway id to the most recent annual checkout.
+      if (gatewayId) {
+        const { data: gatewaySession, error: gatewayLookupError } = await admin
+          .from('checkout_sessions')
+          .select('reference_id')
+          .eq('payrexx_gateway_id', gatewayId)
+          .eq('plan', 'annual')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (gatewayLookupError) {
+          throw new Error(`Failed to resolve checkout reference by gateway id ${gatewayId}`)
+        }
+
+        if (gatewaySession?.reference_id) {
+          referenceId = gatewaySession.reference_id
+        }
+      }
+    }
 
     if (!referenceId) {
       // Ignore events that are not linked to a checkout session reference.
@@ -389,19 +488,31 @@ Deno.serve(async (req) => {
       return new Response('ok (ignored: missing reference_id)', { status: 200 })
     }
 
-    const { data: checkoutSession, error: checkoutLookupError } = await admin
+    const { data: checkoutSessions, error: checkoutLookupError } = await admin
       .from('checkout_sessions')
-      .select('id, plan')
+      .select('id, plan, created_at')
       .eq('reference_id', referenceId)
-      .maybeSingle()
+      .order('created_at', { ascending: false })
+      .limit(2)
 
     if (checkoutLookupError) {
       throw new Error(`Failed to load checkout session for reference ${referenceId}`)
     }
 
+    const checkoutSession = checkoutSessions?.[0] ?? null
+    if ((checkoutSessions?.length || 0) > 1) {
+      console.warn('Multiple checkout sessions found for reference_id, using the latest one', {
+        referenceId,
+        count: checkoutSessions?.length || 0,
+      })
+    }
+
     const checkoutPlan = checkoutSession?.plan
 
     if (SUCCESS_STATUSES.has(normalizedStatus)) {
+      if (!checkoutSession?.id) {
+        throw new Error(`No checkout session found for successful payment reference ${referenceId}`)
+      }
       const rpcName = checkoutPlan === 'org' ? 'process_payrexx_org_payment' : 'process_payrexx_payment'
       const { error: rpcError } = await admin.rpc(rpcName, {
         p_reference_id: referenceId,
@@ -414,6 +525,9 @@ Deno.serve(async (req) => {
         throw new Error(`${rpcName} failed: ${rpcError.message}`)
       }
     } else if (FAILURE_STATUSES.has(normalizedStatus)) {
+      if (!checkoutSession?.id) {
+        throw new Error(`No checkout session found for failed payment reference ${referenceId}`)
+      }
       const { error: failError } = await admin.rpc('fail_checkout_session', {
         p_reference_id: referenceId,
         p_status: normalizedStatus,

@@ -84,6 +84,7 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
       '/docs/terms',
       '/docs/imprint',
       '/docs/agb',
+      '/docs/avv',
       '/guide',
       '/mobile',
       '/new-edutime',

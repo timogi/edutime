@@ -42,7 +42,21 @@ export async function hasActiveEntitlement(
   const { data, error } = await activeEntitlementFilter(supabase, userId, nowIso).limit(1)
 
   if (error) throw error
-  return (data?.length ?? 0) > 0
+  if ((data?.length ?? 0) > 0) {
+    return true
+  }
+
+  // Defensive fallback for early-renewal edge cases where a paid personal entitlement
+  // remains "active" but valid_from was shifted into the future by backend period updates.
+  const { data: fallbackData, error: fallbackError } = await entitlementSelect(supabase, '*')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .eq('kind', 'personal')
+    .or(`valid_until.is.null,valid_until.gte.${nowIso}`)
+    .limit(1)
+
+  if (fallbackError) throw fallbackError
+  return (fallbackData?.length ?? 0) > 0
 }
 
 export async function getUserEntitlements(

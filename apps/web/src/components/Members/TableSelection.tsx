@@ -42,6 +42,7 @@ import {
   addOrganizationMember,
   updateMembership,
   releaseOrganizationMemberSeat,
+  getOrganizationSeatCount,
 } from '@/utils/supabase/organizations'
 import Progress from './Progress'
 import InviteModal from './InviteModal'
@@ -109,6 +110,15 @@ const TableSelection = ({
     queryFn: () => {
       if (!currentOrg?.id) return []
       return getOrganizationMembers(currentOrg.id)
+    },
+    enabled: !!currentOrg?.id,
+  })
+
+  const { data: orgSeatCount } = useQuery({
+    queryKey: ['organizationSeatCount', currentOrg?.id],
+    queryFn: async () => {
+      if (!currentOrg?.id) return null
+      return getOrganizationSeatCount(currentOrg.id)
     },
     enabled: !!currentOrg?.id,
   })
@@ -192,7 +202,7 @@ const TableSelection = ({
 
   const itemsPerPage = 10
   const takenSeats = users.filter((user) => user.status === 'active' || user.status === 'invited').length
-  const totalSeats = currentOrg?.seats || 0
+  const totalSeats = orgSeatCount ?? currentOrg?.seats ?? 0
   const normalizedCurrentUserEmail = (currentUserEmail || '').trim().toLowerCase()
   const hasOwnActiveLicense =
     normalizedCurrentUserEmail.length > 0 &&

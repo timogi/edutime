@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import {
   Container,
   Title,
@@ -21,6 +21,7 @@ import { supabase } from '@/utils/supabase/client'
 import { showNotification } from '@mantine/notifications'
 import { OrgPriceCalculatorModal } from './OrgPriceCalculatorModal'
 import { INDIVIDUAL_ANNUAL_PRICE_CHF } from '@/utils/payments/pricing'
+import { useUser } from '@/contexts/UserProvider'
 import classes from './Pricing.module.css'
 
 export function Pricing() {
@@ -28,19 +29,11 @@ export function Pricing() {
   const tDemo = useTranslations('DemoSection')
   const tIndex = useTranslations('Index')
   const router = useRouter()
+  const { user, hasActiveSubscription } = useUser()
   const [orgModalOpened, setOrgModalOpened] = useState(false)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const isSmallScreen = useMediaQuery('(max-width: 768px)')
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      setIsLoggedIn(!!session)
-    }
-    checkAuth()
-  }, [])
+  const isLoggedIn = Boolean(user)
+  const showOnlyOrganizationOption = isLoggedIn && hasActiveSubscription
 
   const handleDemoClick = async () => {
     if (isLoggedIn) {
@@ -120,128 +113,137 @@ export function Pricing() {
               </Text>
             </div>
 
-            <SimpleGrid cols={{ base: 1, md: 3 }} spacing='lg' w='100%' className={classes.grid}>
-              {/* Demo Card */}
-              <Card
-                className={classes.pricingCard}
-                padding='xl'
-                radius='md'
-                withBorder
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  height: '100%',
-                }}
-              >
-                <Stack gap='lg' h='100%' justify='space-between' style={{ flex: 1 }}>
-                  <div>
-                    <Badge size='lg' variant='light' color='violet' mb='sm'>
-                      Demo
-                    </Badge>
-                    <Title order={3} className={classes.planTitle}>
-                      {t('demoTitle')}
-                    </Title>
-                    <Text size='sm' c='dimmed' mt='xs'>
-                      {t('demoSubtitle')}
-                    </Text>
-                  </div>
-
-                  <Divider />
-
-                  <Stack gap='sm' className={classes.features} style={{ flex: 1 }}>
-                    <Group gap='sm' align='flex-start'>
-                      <IconCheck size={20} className={classes.checkIcon} />
-                      <Text size='sm'>{t('demoFeature1')}</Text>
-                    </Group>
-                    <Group gap='sm' align='flex-start'>
-                      <IconCheck size={20} className={classes.checkIcon} />
-                      <Text size='sm'>{t('demoFeature2')}</Text>
-                    </Group>
-                    <Group gap='sm' align='flex-start'>
-                      <IconCheck size={20} className={classes.checkIcon} />
-                      <Text size='sm'>{t('demoFeature3')}</Text>
-                    </Group>
-                    <Group gap='sm' align='flex-start'>
-                      <IconCheck size={20} className={classes.checkIcon} />
-                      <Text size='sm'>{t('demoFeature4')}</Text>
-                    </Group>
-                  </Stack>
-
-                  <Button onClick={handleDemoClick} size='lg' variant='filled' fullWidth mt='auto'>
-                    {tDemo('startDemo')}
-                  </Button>
-                </Stack>
-              </Card>
-
-              {/* Standard Pricing Card - Most Popular */}
-              <Card
-                className={`${classes.pricingCard} ${classes.popularCard}`}
-                padding='xl'
-                radius='lg'
-                withBorder
-                shadow='xl'
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  height: '100%',
-                }}
-              >
-                <Stack gap='lg' h='100%' justify='space-between' style={{ flex: 1 }}>
-                  <div>
-                    <Badge size='lg' variant='filled' color='violet' mb='sm'>
-                      {t('mostPopular')}
-                    </Badge>
-                    <Title order={3} className={classes.planTitle}>
-                      {t('planName')}
-                    </Title>
-                  </div>
-
-                  <div className={classes.priceSection}>
-                    <Group gap='xs' align='flex-start' justify='center' wrap='nowrap'>
-                      <Text size='3.5rem' fw={700} className={classes.price} lh={1}>
-                        {INDIVIDUAL_ANNUAL_PRICE_CHF}
-                      </Text>
-                      <Text size='lg' c='dimmed' mt='md' lh={1}>
-                        CHF
-                      </Text>
-                    </Group>
-                    <Text size='sm' c='dimmed' mt='xs' ta='center'>
-                      {t('perYear')}
-                    </Text>
-                  </div>
-
-                  <Divider />
-
-                  <Stack gap='sm' className={classes.features}>
-                    <Group gap='sm' align='flex-start'>
-                      <IconCheck size={20} className={classes.checkIcon} />
-                      <Text size='sm'>{t('feature1')}</Text>
-                    </Group>
-                    <Group gap='sm' align='flex-start'>
-                      <IconCheck size={20} className={classes.checkIcon} />
-                      <Text size='sm'>{t('feature2')}</Text>
-                    </Group>
-                    <Group gap='sm' align='flex-start'>
-                      <IconCheck size={20} className={classes.checkIcon} />
-                      <Text size='sm'>{t('feature3')}</Text>
-                    </Group>
-                    <Group gap='sm' align='flex-start'>
-                      <IconCheck size={20} className={classes.checkIcon} />
-                      <Text size='sm'>{t('feature4')}</Text>
-                    </Group>
-                  </Stack>
-
-                  <Button
-                    onClick={handleStandardClick}
-                    size='lg'
-                    variant='filled'
-                    fullWidth
-                    mt='auto'
+            <SimpleGrid
+              cols={{ base: 1, md: showOnlyOrganizationOption ? 1 : 3 }}
+              spacing='lg'
+              w='100%'
+              className={classes.grid}
+            >
+              {!showOnlyOrganizationOption ? (
+                <>
+                  {/* Demo Card */}
+                  <Card
+                    className={classes.pricingCard}
+                    padding='xl'
+                    radius='md'
+                    withBorder
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      height: '100%',
+                    }}
                   >
-                    {t('getStarted')}
-                  </Button>
-                </Stack>
-              </Card>
+                    <Stack gap='lg' h='100%' justify='space-between' style={{ flex: 1 }}>
+                      <div>
+                        <Badge size='lg' variant='light' color='violet' mb='sm'>
+                          Demo
+                        </Badge>
+                        <Title order={3} className={classes.planTitle}>
+                          {t('demoTitle')}
+                        </Title>
+                        <Text size='sm' c='dimmed' mt='xs'>
+                          {t('demoSubtitle')}
+                        </Text>
+                      </div>
+
+                      <Divider />
+
+                      <Stack gap='sm' className={classes.features} style={{ flex: 1 }}>
+                        <Group gap='sm' align='flex-start'>
+                          <IconCheck size={20} className={classes.checkIcon} />
+                          <Text size='sm'>{t('demoFeature1')}</Text>
+                        </Group>
+                        <Group gap='sm' align='flex-start'>
+                          <IconCheck size={20} className={classes.checkIcon} />
+                          <Text size='sm'>{t('demoFeature2')}</Text>
+                        </Group>
+                        <Group gap='sm' align='flex-start'>
+                          <IconCheck size={20} className={classes.checkIcon} />
+                          <Text size='sm'>{t('demoFeature3')}</Text>
+                        </Group>
+                        <Group gap='sm' align='flex-start'>
+                          <IconCheck size={20} className={classes.checkIcon} />
+                          <Text size='sm'>{t('demoFeature4')}</Text>
+                        </Group>
+                      </Stack>
+
+                      <Button onClick={handleDemoClick} size='lg' variant='filled' fullWidth mt='auto'>
+                        {tDemo('startDemo')}
+                      </Button>
+                    </Stack>
+                  </Card>
+
+                  {/* Standard Pricing Card - Most Popular */}
+                  <Card
+                    className={`${classes.pricingCard} ${classes.popularCard}`}
+                    padding='xl'
+                    radius='lg'
+                    withBorder
+                    shadow='xl'
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      height: '100%',
+                    }}
+                  >
+                    <Stack gap='lg' h='100%' justify='space-between' style={{ flex: 1 }}>
+                      <div>
+                        <Badge size='lg' variant='filled' color='violet' mb='sm'>
+                          {t('mostPopular')}
+                        </Badge>
+                        <Title order={3} className={classes.planTitle}>
+                          {t('planName')}
+                        </Title>
+                      </div>
+
+                      <div className={classes.priceSection}>
+                        <Group gap='xs' align='flex-start' justify='center' wrap='nowrap'>
+                          <Text size='3.5rem' fw={700} className={classes.price} lh={1}>
+                            {INDIVIDUAL_ANNUAL_PRICE_CHF}
+                          </Text>
+                          <Text size='lg' c='dimmed' mt='md' lh={1}>
+                            CHF
+                          </Text>
+                        </Group>
+                        <Text size='sm' c='dimmed' mt='xs' ta='center'>
+                          {t('perYear')}
+                        </Text>
+                      </div>
+
+                      <Divider />
+
+                      <Stack gap='sm' className={classes.features}>
+                        <Group gap='sm' align='flex-start'>
+                          <IconCheck size={20} className={classes.checkIcon} />
+                          <Text size='sm'>{t('feature1')}</Text>
+                        </Group>
+                        <Group gap='sm' align='flex-start'>
+                          <IconCheck size={20} className={classes.checkIcon} />
+                          <Text size='sm'>{t('feature2')}</Text>
+                        </Group>
+                        <Group gap='sm' align='flex-start'>
+                          <IconCheck size={20} className={classes.checkIcon} />
+                          <Text size='sm'>{t('feature3')}</Text>
+                        </Group>
+                        <Group gap='sm' align='flex-start'>
+                          <IconCheck size={20} className={classes.checkIcon} />
+                          <Text size='sm'>{t('feature4')}</Text>
+                        </Group>
+                      </Stack>
+
+                      <Button
+                        onClick={handleStandardClick}
+                        size='lg'
+                        variant='filled'
+                        fullWidth
+                        mt='auto'
+                      >
+                        {t('getStarted')}
+                      </Button>
+                    </Stack>
+                  </Card>
+                </>
+              ) : null}
 
               {/* Multiple Licenses Card */}
               <Card

@@ -12,6 +12,7 @@ export function Footer() {
     { link: '/docs/privacy', label: t('privacy') },
     { link: '/docs/terms', label: t('termsOfService') },
     { link: '/docs/agb', label: 'AGB' },
+    { link: '/docs/avv', label: 'AVV' },
     { link: '/docs/imprint', label: t('imprint') },
   ]
 

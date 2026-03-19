@@ -20,13 +20,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     const { supabase } = auth
-    const { documentCode, source } = req.body
+    const { documentCode, source, organizationId } = req.body
 
     if (!documentCode) {
       return res.status(400).json({ error: 'documentCode is required' })
     }
 
-    await acceptUserDocument(supabase, documentCode, (source || 'checkout') as LegalSource)
+    const resolvedOrganizationId =
+      typeof organizationId === 'number'
+        ? organizationId
+        : Number.isInteger(Number(organizationId))
+          ? Number(organizationId)
+          : undefined
+
+    await acceptUserDocument(supabase, documentCode, (source || 'checkout') as LegalSource, {
+      organizationId: resolvedOrganizationId,
+    })
 
     return res.status(200).json({ ok: true })
   } catch (error) {

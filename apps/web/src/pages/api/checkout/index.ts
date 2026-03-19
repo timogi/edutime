@@ -10,7 +10,11 @@ type ResponseData = {
   error?: string
 }
 
+type BillingCycle = 'annual' | 'daily_test'
+
 const nowIso = () => new Date().toISOString()
+const DAILY_TEST_PRICE_CENTS = 100
+const DAILY_TEST_INTERVAL = 'P1D'
 
 /**
  * Create a billing schema client using service role for server-side writes.
@@ -63,7 +67,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const { user, supabase } = auth
 
-    const { plan, qty, organizationId } = req.body
+    const { plan, billingCycle, qty, organizationId } = req.body as {
+      plan?: 'annual' | 'org'
+      billingCycle?: BillingCycle
+      qty?: number
+      organizationId?: number
+    }
     console.log('[checkout] incoming request', {
       plan,
       hasAuthorizationHeader: Boolean(req.headers.authorization),
@@ -73,6 +82,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     if (!plan || (plan !== 'annual' && plan !== 'org')) {
       return res.status(400).json({ error: 'Unsupported checkout plan' })
+    }
+    const resolvedBillingCycle: BillingCycle =
+      billingCycle === 'daily_test' ? 'daily_test' : 'annual'
+    if (plan === 'org' && resolvedBillingCycle !== 'annual') {
+      return res.status(400).json({ error: 'Unsupported billing cycle for organization checkout' })
     }
 
     // Fetch user profile data for Payrexx fields
@@ -114,6 +128,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           .status(403)
           .json({ error: 'Only organization admins can create org license checkouts' })
       }
+
+      const { data: missingOrgLegalDocs, error: missingOrgLegalDocsError } = await supabase.rpc(
+        'legal_missing_documents',
+        {
+          p_context: 'checkout_org',
+          p_organization_id: Number(organizationId),
+        },
+      )
+
+      if (missingOrgLegalDocsError) {
+        console.error('Failed to check missing organization legal documents:', missingOrgLegalDocsError)
+        return res.status(500).json({ error: 'Failed to verify required organization legal documents' })
+      }
+
+      if ((missingOrgLegalDocs?.length ?? 0) > 0) {
+        return res.status(409).json({
+          error:
+            'Organization legal documents must be accepted before checkout. Please accept them and try again.',
+        })
+      }
     } else {
       const licenseClient = createLicenseClient()
       if (!licenseClient) {
@@ -144,6 +178,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       userData?.language || req.headers['accept-language']?.split(',')[0]?.split('-')[0] || 'de'
 
     // Create the Payrexx Gateway (or mock checkout)
+    const isDailyTestCheckout = plan === 'annual' && resolvedBillingCycle === 'daily_test'
     const result = await paymentProvider.createCheckoutSession({
       plan,
       qty: plan === 'org' ? quantity : undefined,
@@ -153,6 +188,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       firstName: userData?.first_name || undefined,
       lastName: userData?.last_name || undefined,
       language,
+      customAmountCents: isDailyTestCheckout ? DAILY_TEST_PRICE_CENTS : undefined,
+      customPurpose: isDailyTestCheckout
+        ? 'EduTime Daily Test Auto-Renew (CHF 1/day)'
+        : undefined,
+      customBasket: isDailyTestCheckout
+        ? [
+            {
+              name: [
+                'EduTime Test-Abo täglich',
+                'EduTime Test subscription daily',
+                'Abonnement de test EduTime quotidien',
+              ],
+              description: [
+                'Temporäres Testabo für Auto-Renew (1 CHF pro Tag)',
+                'Temporary auto-renew test subscription (CHF 1 per day)',
+                "Abonnement de test temporaire auto-renouvelable (1 CHF par jour)",
+              ],
+              quantity: 1,
+              amount: DAILY_TEST_PRICE_CENTS,
+            },
+          ]
+        : undefined,
+      customSubscriptionState: isDailyTestCheckout ? true : undefined,
+      customSubscriptionInterval: isDailyTestCheckout ? DAILY_TEST_INTERVAL : undefined,
+      customSubscriptionPeriod: isDailyTestCheckout ? DAILY_TEST_INTERVAL : undefined,
     })
 
     // Store checkout session in billing.checkout_sessions for webhook reconciliation
@@ -162,6 +222,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     const { amountCents, requiresCustomPricing } = calculateCheckoutAmount(plan, quantity)
+    const checkoutAmountCents = isDailyTestCheckout ? DAILY_TEST_PRICE_CENTS : amountCents
     if (requiresCustomPricing) {
       return res.status(400).json({
         error: `Quantities above ${MAX_AUTO_PRICING_LICENSES} require custom pricing`,
@@ -208,10 +269,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       })
 
       if (ensureError) {
-        console.error('Failed to auto-assign org seat to checkout actor:', ensureError)
-        return res.status(500).json({
-          error: 'Failed to auto-assign organization seat to checkout actor',
-        })
+        const message = String(ensureError.message || '')
+        const isExpectedSuspendedFlow =
+          message.toLowerCase().includes('no active organization subscription found') ||
+          message.toLowerCase().includes('suspended')
+
+        if (!isExpectedSuspendedFlow) {
+          console.error('Failed to auto-assign org seat to checkout actor:', ensureError)
+          return res.status(500).json({
+            error: 'Failed to auto-assign organization seat to checkout actor',
+          })
+        }
+
+        console.warn(
+          'Skipping immediate org seat assignment because subscription is suspended; payment checkout still created.',
+        )
       }
     } else {
       const { error: insertError } = await billingClient.from('checkout_sessions').insert({
@@ -219,7 +291,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         organization_id: null,
         plan: 'annual',
         quantity,
-        amount_cents: amountCents,
+        amount_cents: checkoutAmountCents,
         currency: 'CHF',
         status: 'pending',
         reference_id: result.sessionId,
@@ -228,6 +300,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         metadata: {
           source: 'web_checkout_api',
           plan: 'annual',
+          billing_cycle: resolvedBillingCycle,
           user_id: user.id,
         },
         expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // 2h

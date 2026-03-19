@@ -60,6 +60,8 @@ export class PayrexxProvider implements PaymentProvider {
       customPurpose,
       customBasket,
       customSubscriptionState,
+      customSubscriptionInterval,
+      customSubscriptionPeriod,
     } = params
 
     if (plan === 'org' && qty < MIN_ORG_LICENSES) {
@@ -112,8 +114,10 @@ export class PayrexxProvider implements PaymentProvider {
       validity: GATEWAY_VALIDITY_MINUTES,
       subscriptionState: customSubscriptionState ?? (plan === 'annual'),
       // Payrexx expects PHP interval spec, e.g. P1M / P1Y.
-      subscriptionInterval: plan === 'annual' ? ONE_YEAR_PHP_INTERVAL : undefined,
-      subscriptionPeriod: plan === 'annual' ? ONE_YEAR_PHP_INTERVAL : undefined,
+      subscriptionInterval:
+        customSubscriptionInterval ?? (plan === 'annual' ? ONE_YEAR_PHP_INTERVAL : undefined),
+      subscriptionPeriod:
+        customSubscriptionPeriod ?? (plan === 'annual' ? ONE_YEAR_PHP_INTERVAL : undefined),
     })
 
     if (gatewayResponse.status !== 'success' || !gatewayResponse.data?.[0]) {

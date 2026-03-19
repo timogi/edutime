@@ -51,10 +51,17 @@ export default function ForgotPassword() {
           if (newPassword) {
             try {
               const { data, error } = await supabase.auth.updateUser({ password: newPassword })
-              if (data) alert(t('password-updated'))
-              if (error) alert(t('update-error'))
+              if (data) {
+                setMessage(t('password-updated'))
+                setAlertType('success')
+              }
+              if (error) {
+                setMessage(t('update-error'))
+                setAlertType('error')
+              }
             } catch (error) {
-              alert(t('update-error'))
+              setMessage(t('update-error'))
+              setAlertType('error')
             }
           }
         }, 0)

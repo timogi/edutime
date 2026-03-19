@@ -16,6 +16,8 @@ export interface CheckoutSessionParams {
   customPurpose?: string
   customBasket?: Array<{ name: string[]; description: string[]; quantity: number; amount: number }>
   customSubscriptionState?: boolean
+  customSubscriptionInterval?: string
+  customSubscriptionPeriod?: string
 }
 
 export interface CheckoutSessionResult {

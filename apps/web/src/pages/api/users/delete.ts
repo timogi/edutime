@@ -1,10 +1,91 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
+import { Json } from '@edutime/shared'
+import { createPayrexxClientFromEnv } from '@/utils/payments/payrexxClient'
 
 type ResponseData = {
   message?: string
   error?: string
+  code?: 'SOLE_ADMIN_BLOCKER' | 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED'
+  blockers?: Array<{ organizationId: number; organizationName: string }>
+}
+
+type JsonObject = Record<string, Json>
+
+function createBillingClient() {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!serviceRoleKey) {
+    return null
+  }
+
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, {
+    db: { schema: 'billing' },
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  })
+}
+
+function extractGatewayId(providerSubscriptionId: string, metadata: Json | null): number | null {
+  const parsedProviderId = Number(providerSubscriptionId)
+  if (Number.isFinite(parsedProviderId) && parsedProviderId > 0) {
+    return parsedProviderId
+  }
+
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return null
+  }
+
+  const metadataObj = metadata as Record<string, unknown>
+  const candidates: unknown[] = [
+    metadataObj.payrexx_gateway_id,
+    metadataObj.gateway_id,
+    metadataObj.gatewayId,
+    (metadataObj.transaction as Record<string, unknown> | undefined)?.gatewayId,
+    ((metadataObj.transaction as Record<string, unknown> | undefined)?.gateway as Record<
+      string,
+      unknown
+    > | null)?.id,
+  ]
+
+  for (const candidate of candidates) {
+    const parsed = Number(candidate)
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed
+    }
+  }
+
+  return null
+}
+
+function extractSubscriptionId(metadata: Json | null): number | null {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return null
+  }
+
+  const metadataObj = metadata as Record<string, unknown>
+  const rootSubscription = metadataObj.subscription as Record<string, unknown> | undefined
+  const txSubscription = (metadataObj.transaction as Record<string, unknown> | undefined)?.subscription as
+    | Record<string, unknown>
+    | undefined
+
+  const candidates: unknown[] = [
+    metadataObj.subscription_id,
+    metadataObj.subscriptionId,
+    rootSubscription?.id,
+    txSubscription?.id,
+  ]
+
+  for (const candidate of candidates) {
+    const parsed = Number(candidate)
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed
+    }
+  }
+
+  return null
 }
 
 /**
@@ -138,7 +219,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // Optional: Check if user_id is provided in body and verify it matches
     // This adds an extra layer of security
-    const { user_id } = req.body || {}
+    const { user_id, checkOnly } = req.body || {}
     if (user_id && user_id !== authenticatedUserId) {
       return res.status(403).json({ error: 'You can only delete your own account' })
     }
@@ -157,6 +238,193 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         persistSession: false,
       },
     })
+    const billingClient = createBillingClient()
+    if (!billingClient) {
+      return res.status(500).json({ error: 'Missing billing configuration on server' })
+    }
+
+    // Block deletion if user is sole admin of any active organization.
+    const { data: adminOrganizations, error: adminOrganizationsError } = await supabaseAdmin
+      .from('organization_administrators')
+      .select('organization_id, organizations!inner(id, name, is_active)')
+      .eq('user_id', authenticatedUserId)
+      .eq('organizations.is_active', true)
+
+    if (adminOrganizationsError) {
+      console.error('Error loading admin organizations for delete guard:', adminOrganizationsError)
+      return res.status(500).json({ error: 'Failed to validate organization admin constraints' })
+    }
+
+    const blockers: Array<{ organizationId: number; organizationName: string }> = []
+    for (const row of adminOrganizations || []) {
+      const organizationId = Number(row.organization_id)
+      if (!Number.isInteger(organizationId) || organizationId <= 0) {
+        continue
+      }
+
+      const { count: adminCount, error: adminCountError } = await supabaseAdmin
+        .from('organization_administrators')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', organizationId)
+
+      if (adminCountError) {
+        console.error('Error counting organization admins for delete guard:', adminCountError)
+        return res.status(500).json({ error: 'Failed to validate organization admin constraints' })
+      }
+
+      if ((adminCount || 0) <= 1) {
+        const orgName =
+          row.organizations && typeof row.organizations === 'object' && 'name' in row.organizations
+            ? String((row.organizations as { name?: string }).name || `#${organizationId}`)
+            : `#${organizationId}`
+        blockers.push({
+          organizationId,
+          organizationName: orgName,
+        })
+      }
+    }
+
+    if (blockers.length > 0) {
+      if (checkOnly === true) {
+        return res.status(200).json({
+          code: 'SOLE_ADMIN_BLOCKER',
+          error:
+            'Account deletion blocked: you are the only admin in active organizations. Assign another admin or deactivate those organizations first.',
+          blockers,
+        })
+      }
+      return res.status(409).json({
+        code: 'SOLE_ADMIN_BLOCKER',
+        error:
+          'Account deletion blocked: you are the only admin in active organizations. Assign another admin or deactivate those organizations first.',
+        blockers,
+      })
+    }
+
+    // Ensure personal auto-renew is disabled before account deletion to avoid future billing.
+    const { data: activePersonalSubscription, error: personalSubscriptionError } = await billingClient
+      .from('subscriptions')
+      .select(
+        `
+          id,
+          provider_subscription_id,
+          cancel_at_period_end,
+          metadata,
+          accounts!inner(user_id, organization_id)
+        `,
+      )
+      .eq('accounts.user_id', authenticatedUserId)
+      .is('accounts.organization_id', null)
+      .eq('provider', 'payrexx')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (personalSubscriptionError) {
+      console.error('Error loading personal subscription for delete guard:', personalSubscriptionError)
+      return res.status(500).json({ error: 'Failed to validate personal subscription status' })
+    }
+
+    if (activePersonalSubscription && !activePersonalSubscription.cancel_at_period_end) {
+      if (checkOnly === true) {
+        return res.status(200).json({
+          code: 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED',
+          error:
+            'Your personal subscription will be canceled automatically if you continue with account deletion.',
+        })
+      }
+      let gatewayId = extractGatewayId(
+        String(activePersonalSubscription.provider_subscription_id || ''),
+        activePersonalSubscription.metadata,
+      )
+
+      if (!gatewayId) {
+        const { data: sessionRow, error: checkoutSessionError } = await billingClient
+          .from('checkout_sessions')
+          .select('payrexx_gateway_id')
+          .eq('subscription_id', activePersonalSubscription.id)
+          .not('payrexx_gateway_id', 'is', null)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (checkoutSessionError) {
+          console.error('Failed to resolve Payrexx gateway id for deletion cancellation:', checkoutSessionError)
+          return res.status(409).json({
+            code: 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED',
+            error:
+              'Your personal subscription must be canceled before deletion, but no Payrexx gateway could be resolved. Please cancel it from license management first.',
+          })
+        }
+        gatewayId = sessionRow?.payrexx_gateway_id ?? null
+      }
+
+      if (!gatewayId) {
+        return res.status(409).json({
+          code: 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED',
+          error:
+            'Your personal subscription must be canceled before deletion. Please cancel it from license management first.',
+        })
+      }
+
+      const payrexxClient = createPayrexxClientFromEnv()
+      if (!payrexxClient) {
+        return res.status(409).json({
+          code: 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED',
+          error:
+            'Your personal subscription must be canceled before deletion. Please cancel it from license management first.',
+        })
+      }
+
+      const subscriptionId = extractSubscriptionId(activePersonalSubscription.metadata)
+      try {
+        if (subscriptionId) {
+          await payrexxClient.cancelSubscription(subscriptionId)
+        } else {
+          await payrexxClient.deleteGateway(gatewayId)
+        }
+      } catch (payrexxError) {
+        console.error('Failed to cancel personal Payrexx subscription during account deletion:', payrexxError)
+        return res.status(409).json({
+          code: 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED',
+          error:
+            'Your personal subscription must be canceled before deletion. Please cancel it from license management first.',
+        })
+      }
+
+      const canceledAt = new Date().toISOString()
+      const previousMetadata =
+        activePersonalSubscription.metadata &&
+        typeof activePersonalSubscription.metadata === 'object' &&
+        !Array.isArray(activePersonalSubscription.metadata)
+          ? (activePersonalSubscription.metadata as JsonObject)
+          : {}
+
+      const { error: persistCancelError } = await billingClient
+        .from('subscriptions')
+        .update({
+          cancel_at_period_end: true,
+          canceled_at: canceledAt,
+          metadata: {
+            ...previousMetadata,
+            canceled_at_period_end_at: canceledAt,
+            canceled_via: 'account_deletion',
+            cancellation_gateway_id: gatewayId,
+            cancellation_subscription_id: subscriptionId,
+          },
+        })
+        .eq('id', activePersonalSubscription.id)
+
+      if (persistCancelError) {
+        console.error('Failed to persist personal cancellation during account deletion:', persistCancelError)
+        return res.status(409).json({
+          code: 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED',
+          error:
+            'Your personal subscription must be canceled before deletion. Please cancel it from license management first.',
+        })
+      }
+    }
 
     // Get user email before deletion
     const { data: userData, error: userError } =

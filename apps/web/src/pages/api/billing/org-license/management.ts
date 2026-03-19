@@ -150,7 +150,7 @@ const buildSeatAdjustmentPreview = (params: {
   const remainingRatio = Math.max(0, Math.min(1, remainingMs / periodMs))
   const daysUntilPeriodEnd = Math.ceil(remainingMs / DAY_MS)
   const isIncrease = targetSeatCount > currentSeatCount
-  const graceWindowApplied = isIncrease && daysUntilPeriodEnd <= 30
+  const graceWindowApplied = isIncrease && remainingMs <= 30 * DAY_MS
 
   const annualCurrentAmount = calculateCheckoutAmount('org', currentSeatCount)
   const annualTargetAmount = calculateCheckoutAmount('org', targetSeatCount)
@@ -222,6 +222,38 @@ const mapRpcError = (error: { message?: string }, fallback: string) => {
   return { status: 500, error: fallback }
 }
 
+const ensureOrganizationLegalAccepted = async (params: {
+  organizationId: number
+  userSupabase: ReturnType<typeof getAuthenticatedUser> extends Promise<infer R>
+    ? R extends { supabase: infer S }
+      ? S
+      : never
+    : never
+}) => {
+  const { organizationId, userSupabase } = params
+  const { data: missingDocs, error: missingDocsError } = await userSupabase.rpc(
+    'legal_missing_documents',
+    {
+      p_context: 'checkout_org',
+      p_organization_id: organizationId,
+    },
+  )
+
+  if (missingDocsError) {
+    return { status: 500, error: 'Failed to verify required organization legal documents' as const }
+  }
+
+  if ((missingDocs?.length ?? 0) > 0) {
+    return {
+      status: 409,
+      error:
+        'Organization legal documents must be accepted before managing this organization.' as const,
+    }
+  }
+
+  return null
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<OrgManagementGetResponse | OrgManagementMutationResponse>,
@@ -242,6 +274,14 @@ export default async function handler(
       const organizationId = Number(req.query.organizationId)
       if (!Number.isInteger(organizationId) || organizationId <= 0) {
         return res.status(400).json({ error: 'Missing or invalid organizationId' })
+      }
+
+      const legalCheck = await ensureOrganizationLegalAccepted({
+        organizationId,
+        userSupabase: auth.supabase,
+      })
+      if (legalCheck) {
+        return res.status(legalCheck.status).json({ error: legalCheck.error })
       }
 
       const { data: org, error: orgError } = await publicClient
@@ -394,6 +434,13 @@ export default async function handler(
       if (!Number.isInteger(organizationId) || organizationId <= 0) {
         return res.status(400).json({ error: 'Missing or invalid organizationId' })
       }
+      const legalCheck = await ensureOrganizationLegalAccepted({
+        organizationId,
+        userSupabase: auth.supabase,
+      })
+      if (legalCheck) {
+        return res.status(legalCheck.status).json({ error: legalCheck.error })
+      }
       if (!name) {
         return res.status(400).json({ error: 'Missing organization name' })
       }
@@ -417,6 +464,13 @@ export default async function handler(
       const organizationId = Number(req.body?.organizationId)
       if (!Number.isInteger(organizationId) || organizationId <= 0) {
         return res.status(400).json({ error: 'Missing or invalid organizationId' })
+      }
+      const legalCheck = await ensureOrganizationLegalAccepted({
+        organizationId,
+        userSupabase: auth.supabase,
+      })
+      if (legalCheck) {
+        return res.status(legalCheck.status).json({ error: legalCheck.error })
       }
 
       if (action === 'addAdmin') {
@@ -676,6 +730,58 @@ export default async function handler(
         }
 
         return res.status(200).json({ success: true, subscriptionId: String(data || '') })
+      }
+
+      if (action === 'deactivateOrg') {
+        const { data: adminRow, error: adminError } = await publicClient
+          .from('organization_administrators')
+          .select('id')
+          .eq('organization_id', organizationId)
+          .eq('user_id', auth.user.id)
+          .maybeSingle()
+
+        if (adminError) {
+          return res.status(500).json({ error: 'Failed to verify organization admin access' })
+        }
+        if (!adminRow) {
+          return res.status(403).json({ error: 'Not authorized to manage organization' })
+        }
+
+        const { data: orgRow, error: orgLookupError } = await publicClient
+          .from('organizations')
+          .select('id, is_active')
+          .eq('id', organizationId)
+          .maybeSingle()
+
+        if (orgLookupError) {
+          return res.status(500).json({ error: 'Failed to load organization' })
+        }
+        if (!orgRow) {
+          return res.status(404).json({ error: 'Organization not found' })
+        }
+
+        if (orgRow.is_active) {
+          const { error: deactivateError } = await publicClient
+            .from('organizations')
+            .update({ is_active: false })
+            .eq('id', organizationId)
+
+          if (deactivateError) {
+            return res.status(500).json({ error: 'Failed to deactivate organization' })
+          }
+        }
+
+        const { error: cancelError } = await billingClient.rpc('cancel_org_subscription_at_period_end', {
+          p_actor_user_id: auth.user.id,
+          p_organization_id: organizationId,
+        })
+
+        if (cancelError && !String(cancelError.message || '').toLowerCase().includes('no organization subscription found')) {
+          const mapped = mapRpcError(cancelError, 'Failed to cancel organization subscription during deactivation')
+          return res.status(mapped.status).json({ error: mapped.error })
+        }
+
+        return res.status(200).json({ success: true })
       }
 
       return res.status(400).json({ error: 'Unknown action' })
