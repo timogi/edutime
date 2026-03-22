@@ -122,6 +122,63 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         p_organization_id: organizationId,
       })
 
+      if (error?.message === 'No pending invite found for this organization') {
+        const actorEmail = (auth.user.email || '').toLowerCase().trim()
+        if (!actorEmail) {
+          return res.status(400).json({ error: 'User email not available' })
+        }
+
+        const membershipQuery = serviceClient
+          .from('organization_members')
+          .select('id, user_email, user_id, status')
+          .eq('organization_id', organizationId)
+          .eq('status', 'invited')
+          .limit(1)
+
+        const { data: membership, error: membershipError } = await membershipQuery
+          .or(`user_id.eq.${auth.user.id},user_email.ilike.${actorEmail}`)
+          .maybeSingle()
+
+        if (membershipError) {
+          console.error('Failed to load organization membership for invite rejection fallback:', membershipError)
+          return res.status(400).json({ error: membershipError.message || 'Failed to reject invite' })
+        }
+
+        if (!membership) {
+          return res.status(404).json({ error: 'No pending invite found for this organization' })
+        }
+
+        const { error: updateMembershipError } = await serviceClient
+          .from('organization_members')
+          .update({
+            status: 'rejected',
+            user_id: null,
+          })
+          .eq('id', membership.id)
+
+        if (updateMembershipError) {
+          console.error(
+            'Failed to update organization membership for invite rejection fallback:',
+            updateMembershipError,
+          )
+          return res.status(400).json({ error: updateMembershipError.message || 'Failed to reject invite' })
+        }
+
+        const { error: cancelInviteError } = await serviceClient
+          .schema('license')
+          .from('org_invites')
+          .update({ status: 'canceled' })
+          .eq('organization_id', organizationId)
+          .eq('status', 'pending')
+          .ilike('email', actorEmail)
+
+        if (cancelInviteError) {
+          console.error('Failed to cancel pending invite during rejection fallback:', cancelInviteError)
+        }
+
+        return res.status(200).json({})
+      }
+
       if (error) {
         console.error('Failed to reject org invite:', error)
         return res.status(400).json({ error: error.message || 'Failed to reject invite' })

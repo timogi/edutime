@@ -181,7 +181,7 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
         setOrganizations(fetchedOrganizations || [])
       }
 
-      // Check entitlements for active license
+      // App usage requires an entitlement (personal, trial, org seat). Org billing alone does not unlock the app.
       try {
         const hasActive = await hasActiveEntitlement(supabase, userData.user_id)
         setHasActiveSubscription(hasActive)

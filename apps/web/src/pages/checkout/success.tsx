@@ -4,6 +4,7 @@ import { GetStaticPropsContext } from 'next/types'
 import { Container, Paper, Stack, Text, Title, Button, ThemeIcon, Loader } from '@mantine/core'
 import { useTranslations } from 'next-intl'
 import { IconCircleCheck } from '@tabler/icons-react'
+import { supabase } from '@/utils/supabase/client'
 
 type CheckoutStatus =
   | 'pending'
@@ -32,7 +33,19 @@ export default function CheckoutSuccessPage() {
     }
 
     try {
-      const response = await fetch(`/api/checkout/status?ref=${encodeURIComponent(referenceId)}`)
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      const headers: HeadersInit = {}
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`
+      }
+
+      const response = await fetch(
+        `/api/checkout/status?ref=${encodeURIComponent(referenceId)}`,
+        { credentials: 'include', headers },
+      )
       if (!response.ok) {
         setStatus('unknown')
         return

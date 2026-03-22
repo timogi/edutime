@@ -75,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const { data: sessionRow, error: sessionError } = await billingClient
       .from('checkout_sessions')
-      .select('status, subscription_id, plan')
+      .select('status, subscription_id, plan, organization_id')
       .eq('reference_id', referenceId)
       .eq('user_id', auth.user.id)
       .maybeSingle()
@@ -105,8 +105,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     const status = (sessionRow.status || 'unknown') as CheckoutStatus
-    const hasActiveEntitlement = (activeEntitlements?.length ?? 0) > 0
     const plan = sessionRow.plan === 'org' ? 'org' : sessionRow.plan === 'annual' ? 'annual' : undefined
+
+    let hasActiveEntitlement = (activeEntitlements?.length ?? 0) > 0
+
+    if (!hasActiveEntitlement && plan === 'org') {
+      if (status === 'completed') {
+        hasActiveEntitlement = true
+      } else if (sessionRow.organization_id != null) {
+        const { data: orgSeats, error: orgSeatError } = await licenseClient
+          .from('entitlements')
+          .select('id')
+          .eq('user_id', auth.user.id)
+          .eq('kind', 'org_seat')
+          .eq('status', 'active')
+          .eq('organization_id', sessionRow.organization_id)
+          .lte('valid_from', nowIso())
+          .or(`valid_until.is.null,valid_until.gte.${nowIso()}`)
+          .limit(1)
+
+        if (orgSeatError) {
+          console.error('Failed to read org seat entitlement status:', orgSeatError)
+        } else {
+          hasActiveEntitlement = (orgSeats?.length ?? 0) > 0
+        }
+      }
+    }
 
     return res.status(200).json({ status, hasActiveEntitlement, plan })
   } catch (error) {

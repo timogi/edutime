@@ -20,6 +20,7 @@ import {
   Center,
   Badge,
   Tooltip,
+  MultiSelect,
 } from '@mantine/core'
 import {
   IconDots,
@@ -49,6 +50,13 @@ import InviteModal from './InviteModal'
 import { useTranslations } from 'next-intl'
 import { Organization } from '@/types/globals'
 import classes from './TableSelection.module.css'
+
+const MEMBER_STATUSES = ['active', 'invited', 'rejected', 'canceled'] as const
+
+type MemberStatus = (typeof MEMBER_STATUSES)[number]
+
+/** Default: hide canceled (revoked) rows; user can add statuses via filter. */
+const DEFAULT_STATUS_FILTER: MemberStatus[] = ['active', 'invited', 'rejected']
 
 interface TableSelectionProps {
   organizations: Organization[]
@@ -89,6 +97,7 @@ const TableSelection = ({
   const [comment, setComment] = useState('')
   const clipboard = useClipboard()
   const [copiedId, setCopiedId] = useState<number | null>(null)
+  const [statusFilter, setStatusFilter] = useState<MemberStatus[]>(DEFAULT_STATUS_FILTER)
 
   const t = useTranslations('Index')
   const isSmallScreen = useMediaQuery('(max-width: 768px)')
@@ -99,6 +108,10 @@ const TableSelection = ({
     () => organizations.find((org) => org.name === selectedOrg),
     [organizations, selectedOrg],
   )
+
+  React.useEffect(() => {
+    setStatusFilter(DEFAULT_STATUS_FILTER)
+  }, [currentOrg?.id])
 
   // React Query: Fetch members
   const {
@@ -210,9 +223,21 @@ const TableSelection = ({
       (user) => user.status === 'active' && user.email.trim().toLowerCase() === normalizedCurrentUserEmail,
     )
 
+  const effectiveStatusFilter = useMemo(
+    () => (statusFilter.length > 0 ? statusFilter : [...MEMBER_STATUSES]),
+    [statusFilter],
+  )
+
+  const statusFilterOptions = useMemo(
+    () => MEMBER_STATUSES.map((s) => ({ value: s, label: t(s) })),
+    [t],
+  )
+
   // Filter and sort users
   const filteredAndSortedUsers = useMemo(() => {
     let result = [...users]
+
+    result = result.filter((user) => effectiveStatusFilter.includes(user.status))
 
     // Filter by search
     if (searchEmail) {
@@ -254,7 +279,7 @@ const TableSelection = ({
     }
 
     return result
-  }, [users, searchEmail, sortState])
+  }, [users, searchEmail, sortState, effectiveStatusFilter])
 
   // Pagination
   const totalPages = Math.ceil(filteredAndSortedUsers.length / itemsPerPage)
@@ -304,10 +329,24 @@ const TableSelection = ({
       current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
     )
 
-  const toggleAll = () =>
-    setSelection((current) =>
-      current.length === users.length ? [] : users.map((item) => item.id.toString()),
-    )
+  const filteredIds = useMemo(
+    () => filteredAndSortedUsers.map((item) => item.id.toString()),
+    [filteredAndSortedUsers],
+  )
+
+  const allFilteredSelected =
+    filteredIds.length > 0 && filteredIds.every((id) => selection.includes(id))
+  const someFilteredSelected = filteredIds.some((id) => selection.includes(id))
+
+  const toggleAll = () => {
+    setSelection((current) => {
+      if (filteredIds.length === 0) return current
+      if (filteredIds.every((id) => current.includes(id))) {
+        return current.filter((id) => !filteredIds.includes(id))
+      }
+      return Array.from(new Set([...current, ...filteredIds]))
+    })
+  }
 
   const handleInvite = async (comment: string) => {
     if (takenSeats < totalSeats) {
@@ -337,6 +376,11 @@ const TableSelection = ({
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchEmail(event.currentTarget.value)
     setActivePage(1) // Reset to first page on search
+  }
+
+  const handleStatusFilterChange = (values: string[]) => {
+    setStatusFilter(values as MemberStatus[])
+    setActivePage(1)
   }
 
   const handleResendInvitation = (id: number) => {
@@ -390,7 +434,7 @@ const TableSelection = ({
     }
 
     const headers = ['Email', 'Status', 'Created At', 'Comment']
-    const csvData = users.map((user) => [
+    const csvData = filteredAndSortedUsers.map((user) => [
       escapeCsvValue(user.email),
       escapeCsvValue(user.status),
       escapeCsvValue(user.created_at.toLocaleDateString('de-DE')),
@@ -460,7 +504,7 @@ const TableSelection = ({
             })}
           </Text>
         </Table.Td>
-        <Table.Td style={{ verticalAlign: 'middle', maxWidth: '200px', minWidth: 0 }}>
+        <Table.Td style={{ verticalAlign: 'middle', minWidth: 0, width: '28%' }}>
           {item.comment ? (
             <Tooltip label={item.comment} multiline w={300} withArrow>
               <Text
@@ -516,13 +560,14 @@ const TableSelection = ({
   })
 
   return (
-    <Stack p='lg' gap='lg' className={classes.wrapper}>
+    <Stack gap='lg' className={classes.wrapper} w='100%' maw='100%'>
       <Stack
-        align='flex-start'
+        align='stretch'
         gap='lg'
+        w='100%'
         style={{ flexDirection: isSmallScreen ? 'column' : 'row' }}
       >
-        <Stack style={{ width: isSmallScreen ? '100%' : '300px' }}>
+        <Stack w={isSmallScreen ? '100%' : 300} maw={isSmallScreen ? '100%' : 300} flex='none'>
           <Select
             data={organizationOptions}
             placeholder={t('Select organization')}
@@ -567,13 +612,9 @@ const TableSelection = ({
           </Card>
         </Stack>
 
-        <Card
-          radius='md'
-          withBorder
-          style={{ flexGrow: 1, width: isSmallScreen ? '100%' : 'auto' }}
-        >
+        <Card radius='md' withBorder style={{ flex: 1, minWidth: 0, width: '100%' }}>
           <Stack gap='sm'>
-            <Group justify='apart' wrap='wrap' gap='sm'>
+            <Group justify='apart' wrap='wrap' gap='sm' align='flex-end'>
               <TextInput
                 placeholder={t('Search by email')}
                 value={searchEmail}
@@ -581,6 +622,21 @@ const TableSelection = ({
                 leftSection={<IconSearch size='0.9rem' stroke={1.5} />}
                 size='md'
                 style={{ flexGrow: 1, minWidth: isSmallScreen ? '100%' : '200px' }}
+              />
+              <MultiSelect
+                label={t('members-status-filter-label')}
+                placeholder={t('members-status-filter-placeholder')}
+                data={statusFilterOptions}
+                value={statusFilter}
+                onChange={handleStatusFilterChange}
+                size='md'
+                clearable
+                searchable
+                style={{ minWidth: isSmallScreen ? '100%' : 260, flexGrow: isSmallScreen ? 1 : 0 }}
+                styles={{
+                  dropdown: { backgroundColor: 'var(--mantine-color-body)' },
+                  option: { backgroundColor: 'var(--mantine-color-body)' },
+                }}
               />
               <Group gap='xs' wrap='nowrap'>
                 <Button
@@ -615,20 +671,26 @@ const TableSelection = ({
                 </Button>
               </Group>
             )}
-            <ScrollArea type='auto' offsetScrollbars>
+            <ScrollArea type='auto' offsetScrollbars w='100%' maw='100%'>
               {isLoading ? (
                 <Center p='xl'>
                   <Loader />
                 </Center>
               ) : (
-                <Table verticalSpacing='sm' className={classes.table} highlightOnHover striped>
+                <Table
+                  verticalSpacing='sm'
+                  className={classes.table}
+                  highlightOnHover
+                  striped
+                  style={{ width: '100%', tableLayout: 'fixed' }}
+                >
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th w={40}>
                         <Checkbox
                           onChange={toggleAll}
-                          checked={selection.length === users.length && users.length > 0}
-                          indeterminate={selection.length > 0 && selection.length !== users.length}
+                          checked={allFilteredSelected}
+                          indeterminate={someFilteredSelected && !allFilteredSelected}
                         />
                       </Table.Th>
                       <Table.Th>
@@ -667,7 +729,7 @@ const TableSelection = ({
                           {getSortIcon('created_at')}
                         </Group>
                       </Table.Th>
-                      <Table.Th style={{ maxWidth: '200px', minWidth: 0 }}>
+                      <Table.Th style={{ width: '28%', minWidth: 0 }}>
                         <Group
                           gap='xs'
                           style={{ cursor: 'pointer', userSelect: 'none' }}

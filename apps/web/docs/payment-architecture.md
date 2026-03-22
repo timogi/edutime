@@ -8,6 +8,8 @@ EduTime uses Payrexx as payment provider for license purchases:
 - **Supabase Edge Functions** → webhook processing + daily reconciliation
 - **Supabase Database** → all billing and licensing data
 
+**Related:** Product-wide license and entitlement flows: [license-and-entitlement-flows.md](./license-and-entitlement-flows.md). Scheduled org billing jobs: [jobs.md](./jobs.md).
+
 ## Database Schema
 
 ### Existing Tables (already in Supabase)

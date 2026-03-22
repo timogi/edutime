@@ -156,9 +156,19 @@ export const DeleteAccount: React.FC<DeleteAccountProps> = ({ user_id }) => {
         throw new Error(result.error || 'Failed to delete account')
       }
 
-      // Sign out and redirect
-      await supabase.auth.signOut()
-      router.push('/delete/success')
+      // User no longer exists server-side — global signOut hits the API and surfaces
+      // "Invalid or expired token". Local sign-out only clears client session/storage.
+      try {
+        await supabase.auth.signOut({ scope: 'local' })
+      } catch (signOutError: unknown) {
+        console.error('Local sign-out after account deletion:', signOutError)
+      }
+
+      const defaultLocale = router.defaultLocale ?? 'de'
+      const locale = router.locale ?? defaultLocale
+      const homeUrl =
+        locale === defaultLocale ? '/?accountDeleted=1' : `/${locale}?accountDeleted=1`
+      window.location.assign(homeUrl)
     } catch (error: unknown) {
       console.error('Deletion error:', error)
       if (error instanceof Error) {

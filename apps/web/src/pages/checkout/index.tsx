@@ -41,6 +41,7 @@ const getErrorMessage = (error: unknown): string => {
 export default function CheckoutPage() {
   const router = useRouter()
   const t = useTranslations('Index')
+  const tCheckout = useTranslations('Checkout')
   const [isLoading, setIsLoading] = useState(true)
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -53,6 +54,7 @@ export default function CheckoutPage() {
   const [autoSelectedOrganization, setAutoSelectedOrganization] =
     useState<OrganizationCheckoutOption | null>(null)
   const [existingUnlicensedOrgCount, setExistingUnlicensedOrgCount] = useState(0)
+  const [firstUnlicensedOrg, setFirstUnlicensedOrg] = useState<OrganizationCheckoutOption | null>(null)
   const [isCreatingOrganization, setIsCreatingOrganization] = useState(false)
   const [legalAccepted, setLegalAccepted] = useState(false)
   const [accessToken, setAccessToken] = useState<string | null>(null)
@@ -192,8 +194,9 @@ export default function CheckoutPage() {
             const licensedOrganizations = orgLicenseChecks
               .filter((check) => check.hasExistingOrgLicense)
               .map((check) => check.org)
-            const unlicensedCount = orgLicenseChecks.length - licensedOrganizations.length
-            setExistingUnlicensedOrgCount(unlicensedCount)
+            const unlicensedChecks = orgLicenseChecks.filter((check) => !check.hasExistingOrgLicense)
+            setExistingUnlicensedOrgCount(unlicensedChecks.length)
+            setFirstUnlicensedOrg(unlicensedChecks.length > 0 ? unlicensedChecks[0].org : null)
 
             if (licensedOrganizations.length > 0) {
               const selectedOrg = licensedOrganizations[0]
@@ -206,6 +209,9 @@ export default function CheckoutPage() {
               setIsLoading(false)
               return
             }
+          } else {
+            setExistingUnlicensedOrgCount(0)
+            setFirstUnlicensedOrg(null)
           }
 
           setPlan(planParam)
@@ -452,7 +458,21 @@ export default function CheckoutPage() {
             </Text>
             {existingUnlicensedOrgCount > 0 ? (
               <Alert icon={<IconAlertCircle size='1rem' />} color='yellow' variant='light'>
-                {t('checkout-org-existing-no-license-note', { count: existingUnlicensedOrgCount })}
+                <Stack gap='sm'>
+                  <Text size='sm'>{t('checkout-org-existing-no-license-note', { count: existingUnlicensedOrgCount })}</Text>
+                  {firstUnlicensedOrg ? (
+                    <Button
+                      variant='light'
+                      onClick={() =>
+                        void router.push(
+                          `/app/organization-management?organizationId=${encodeURIComponent(String(firstUnlicensedOrg.id))}`,
+                        )
+                      }
+                    >
+                      {t('checkout-org-manage-existing-button')}
+                    </Button>
+                  ) : null}
+                </Stack>
               </Alert>
             ) : null}
             <TextInput
@@ -513,9 +533,9 @@ export default function CheckoutPage() {
         <Paper withBorder p={30} radius='md'>
           <Stack gap='md' align='center'>
             <Loader size='lg' />
-            <Title order={3}>Redirecting to checkout...</Title>
+            <Title order={3}>{tCheckout('redirecting')}</Title>
             <Text c='dimmed' ta='center' size='sm'>
-              You will be redirected to the payment page shortly.
+              {tCheckout('redirectingDescription')}
             </Text>
           </Stack>
         </Paper>
@@ -528,13 +548,13 @@ export default function CheckoutPage() {
       <Paper withBorder p={30} radius='md'>
         <Stack gap='md' align='center'>
           <Loader size='lg' />
-          <Title order={3}>Redirecting to checkout...</Title>
+          <Title order={3}>{tCheckout('redirecting')}</Title>
           <Text c='dimmed' ta='center' size='sm'>
-            You will be redirected to the payment page shortly.
+            {tCheckout('redirectingDescription')}
           </Text>
           {checkoutUrl && (
             <Button component='a' href={checkoutUrl} variant='filled' fullWidth mt='md'>
-              Continue to Checkout
+              {tCheckout('continueToPayment')}
             </Button>
           )}
         </Stack>

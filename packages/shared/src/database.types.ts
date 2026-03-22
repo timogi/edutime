@@ -420,6 +420,10 @@ export type Database = {
         }
         Returns: string
       }
+      deactivate_organization_revoke_access: {
+        Args: { p_actor_user_id: string; p_organization_id: number }
+        Returns: undefined
+      }
       ensure_org_actor_entitlement: {
         Args: { p_actor_user_id: string; p_organization_id: number }
         Returns: string

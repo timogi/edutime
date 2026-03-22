@@ -35,7 +35,7 @@ export function LicenseManagementEntry({
       ) : null}
       {showOrganizationButton ? (
         <Button variant='light' onClick={handleOpenOrganization}>
-          {t('org-license-management-title')}
+          {t('org-organization-settings-button')}
         </Button>
       ) : null}
     </Group>

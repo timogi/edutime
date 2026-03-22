@@ -2,6 +2,8 @@
 
 This document lists recurring backend jobs and how they are configured.
 
+**Related:** How these jobs fit into trials, personal, and org entitlements: [license-and-entitlement-flows.md](./license-and-entitlement-flows.md). Payrexx checkout and webhooks: [payment-architecture.md](./payment-architecture.md).
+
 ## Org Billing Jobs
 
 - **Job name:** `org-billing-jobs-daily`

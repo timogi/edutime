@@ -1,26 +1,30 @@
-import { Container, Group, Anchor, rem, useMantineTheme } from '@mantine/core'
+import { Container, Group, Anchor } from '@mantine/core'
 import { useTranslations } from 'next-intl'
 import LocaleSwitcher from '../Settings/LocaleSwitcher'
 import Link from 'next/link'
 import classes from './Footer.module.css'
 
+const CONTACT_MAIL = 'info@edutime.ch'
+
 export function Footer() {
   const t = useTranslations('Index')
-  const theme = useMantineTheme()
 
-  const links = [
-    { link: '/docs/privacy', label: t('privacy') },
-    { link: '/docs/terms', label: t('termsOfService') },
-    { link: '/docs/agb', label: 'AGB' },
-    { link: '/docs/avv', label: 'AVV' },
-    { link: '/docs/imprint', label: t('imprint') },
+  const internalLinks = [
+    { href: '/docs/privacy', label: t('privacy') },
+    { href: '/docs/terms', label: t('termsOfService') },
+    { href: '/docs/imprint', label: t('imprint') },
   ]
 
-  const items = links.map((link) => (
-    <Link key={link.label} href={link.link} className={classes.link}>
-      {link.label}
-    </Link>
-  ))
+  const items = [
+    ...internalLinks.map(({ href, label }) => (
+      <Link key={href} href={href} className={classes.link}>
+        {label}
+      </Link>
+    )),
+    <Anchor key='contact' href={`mailto:${CONTACT_MAIL}`} className={classes.link}>
+      {t('footer-contact-mail')}
+    </Anchor>,
+  ]
 
   return (
     <div

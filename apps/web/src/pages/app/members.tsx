@@ -4,12 +4,19 @@ import { Members } from '@/components/Members/Members'
 import { useUser } from '@/contexts/UserProvider'
 
 export default function MembersPage() {
-  const { user, organizations, refreshUserData } = useUser()
+  const { user, organizations, refreshUserData, hasActiveSubscription } = useUser()
 
   if (!user) return null
 
+  const showBackToNoLicense = !hasActiveSubscription && organizations.length > 0
+
   return (
-    <Members userData={user} organizations={organizations} onMembersChanged={refreshUserData} />
+    <Members
+      userData={user}
+      organizations={organizations}
+      onMembersChanged={refreshUserData}
+      showBackToNoLicense={showBackToNoLicense}
+    />
   )
 }
 

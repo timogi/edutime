@@ -7,7 +7,8 @@
 
 .table {
   width: 100%;
-  min-width: 600px;
+  max-width: 100%;
+  min-width: min(100%, 640px);
 }
 
 .table th {

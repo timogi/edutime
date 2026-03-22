@@ -175,17 +175,7 @@ export default async function handler(
         return res.status(500).json({ error: 'Failed to initialize org checkout' })
       }
 
-      const { error: ensureError } = await billingClient.rpc('ensure_org_actor_entitlement', {
-        p_actor_user_id: auth.user.id,
-        p_organization_id: organizationId,
-      })
-
-      if (ensureError) {
-        console.error('Failed to auto-assign org seat to checkout actor:', ensureError)
-        return res.status(500).json({
-          error: 'Failed to auto-assign organization seat to checkout actor',
-        })
-      }
+      // Org admins are not auto-assigned a seat; they assign seats via member invites / seat management.
 
       return res.status(200).json({
         checkoutUrl: checkout.checkoutUrl,

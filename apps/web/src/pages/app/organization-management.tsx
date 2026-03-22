@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   Container,
+  Divider,
   Group,
   Loader,
   Modal,
@@ -16,6 +17,7 @@ import {
   Table,
   Text,
   TextInput,
+  Title,
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { IconAlertTriangle, IconCheck, IconExternalLink } from '@tabler/icons-react'
@@ -58,7 +60,6 @@ type OrgBillingData = {
     reference: string | null
   } | null
   checkoutReferenceId: string | null
-  responsibleEmail: string | null
   nextPeriodSeatCount: number | null
   invoices: Array<{
     id: string
@@ -107,6 +108,30 @@ type MissingOrgDocument = {
 const ORG_LEGAL_REQUIRED_ERROR_MESSAGE =
   'organization legal documents must be accepted before managing this organization.'
 
+/** Postgres RPC `add_organization_admin_by_email` raises English text; map for i18n. */
+const localizeOrgManagementApiError = (
+  message: string,
+  t: (key: string, values?: Record<string, string | number | Date>) => string,
+  fallbackTranslationKey: string,
+) => {
+  const trimmed = message.trim()
+  if (trimmed.toLowerCase() === 'missing admin email') {
+    return t('org-management-admin-add-error-missing-email')
+  }
+  const noUserMatch = trimmed.match(/no user found for email\s+(\S+)/i)
+  if (noUserMatch?.[1]) {
+    return t('org-management-admin-add-error-no-user', { email: noUserMatch[1] })
+  }
+  const lower = trimmed.toLowerCase()
+  if (lower.includes('cannot remove your own organization admin role')) {
+    return t('org-management-admin-remove-error-cannot-remove-self')
+  }
+  if (lower.includes('cannot remove the last organization admin')) {
+    return t('org-management-admin-remove-error-last-admin')
+  }
+  return trimmed || t(fallbackTranslationKey)
+}
+
 const formatDate = (value: string | null, locale: string, fallback: string) => {
   if (!value) return fallback
   return new Date(value).toLocaleDateString(locale)
@@ -120,6 +145,32 @@ const formatAmount = (amountCents: number, currency: string, locale: string) =>
     maximumFractionDigits: 2,
   }).format(amountCents / 100)
 
+const PENDING_INVOICE_STATUSES = new Set(['open', 'draft', 'failed'])
+
+/** Upcoming charge: latest pending invoice if any, else subscription renewal amount (unless canceled at period end). */
+const getNextOrgPaymentAmount = (
+  billing: OrgBillingData,
+  canceledAtPeriodEnd: boolean,
+): { amountCents: number; currency: string } | null => {
+  const pending = billing.invoices.filter((inv) => {
+    const st = inv.status.trim().toLowerCase()
+    return PENDING_INVOICE_STATUSES.has(st) && inv.amount_cents > 0
+  })
+  if (pending.length > 0) {
+    const latest = pending.reduce((a, b) =>
+      new Date(a.created_at).getTime() >= new Date(b.created_at).getTime() ? a : b,
+    )
+    return { amountCents: latest.amount_cents, currency: latest.currency }
+  }
+  if (canceledAtPeriodEnd) {
+    return null
+  }
+  if (billing.amountCents > 0) {
+    return { amountCents: billing.amountCents, currency: billing.currency }
+  }
+  return null
+}
+
 const WarningNotice = ({ children }: { children: React.ReactNode }) => (
   <Alert color='yellow' variant='light' icon={<IconAlertTriangle size={16} />}>
     {children}
@@ -128,6 +179,7 @@ const WarningNotice = ({ children }: { children: React.ReactNode }) => (
 
 export default function OrganizationManagementPage() {
   const t = useTranslations('Index')
+  const tNoLicense = useTranslations('NoLicense')
   const router = useRouter()
   const { user, organizations, refreshUserData, hasActiveSubscription } = useUser()
 
@@ -345,7 +397,10 @@ export default function OrganizationManagementPage() {
       }
       notifications.show({
         title: t('error'),
-        message: error instanceof Error ? error.message : t(fallbackTranslationKey),
+        message:
+          error instanceof Error
+            ? localizeOrgManagementApiError(error.message, t, fallbackTranslationKey)
+            : t(fallbackTranslationKey),
         color: 'red',
       })
     },
@@ -522,7 +577,7 @@ export default function OrganizationManagementPage() {
         color: 'green',
       })
       await refreshUserData()
-      await router.push(backPath)
+      void router.push('/app')
     } catch (error) {
       await handleOrgManagementError(error, 'org-management-deactivate-error', Number(selectedOrganizationId))
     } finally {
@@ -542,11 +597,41 @@ export default function OrganizationManagementPage() {
   const hasOrgSubscription = Boolean(payload?.billing)
   const currentSeatCount = payload?.billing?.seatCount || payload?.organization?.seats || 0
 
+  const nextPaymentAmount = useMemo(() => {
+    if (!payload?.billing) return null
+    return getNextOrgPaymentAmount(payload.billing, isOrgCanceled)
+  }, [payload?.billing, isOrgCanceled])
+
+  const handleStartOrganizationCheckout = useCallback(() => {
+    const orgId = payload?.organization?.id ?? Number(selectedOrganizationId)
+    if (!Number.isInteger(orgId) || orgId <= 0) return
+    const rawSeats =
+      payload?.billing?.seatCount ?? payload?.organization?.seats ?? targetSeatCount
+    const qty = Math.max(
+      typeof rawSeats === 'number' && Number.isFinite(rawSeats) ? rawSeats : 3,
+      3,
+    )
+    void router.push(`/checkout?plan=org&qty=${qty}&orgId=${orgId}`)
+  }, [
+    payload?.organization?.id,
+    payload?.billing?.seatCount,
+    payload?.organization?.seats,
+    payload?.billing,
+    selectedOrganizationId,
+    targetSeatCount,
+    router,
+  ])
+
   const selectedOrgName = useMemo(() => {
     if (!selectedOrganizationId) return null
     return organizations.find((org) => String(org.id) === selectedOrganizationId)?.name || null
   }, [organizations, selectedOrganizationId])
-  const backPath = hasActiveSubscription ? '/app/members' : '/app/no-license'
+  const backPath =
+    hasActiveSubscription && selectedOrganizationId
+      ? `/app/members?organizationId=${encodeURIComponent(selectedOrganizationId)}`
+      : hasActiveSubscription
+        ? '/app/members'
+        : '/app/no-license'
   const showBackButton = !hasActiveSubscription || typeof router.query.organizationId === 'string'
 
   const requestSeatAdjustment = useCallback(
@@ -762,123 +847,9 @@ export default function OrganizationManagementPage() {
         </Card>
 
         <Card withBorder>
-          <Stack gap='sm'>
-            <Text size='xl'>{t('org-management-seat-plan-title')}</Text>
-            <Text size='sm' c='dimmed'>
-              {t('org-management-seat-plan-description')}
-            </Text>
-            <Alert color='blue' variant='light'>
-              {t('org-management-seat-plan-grace-note')}
-            </Alert>
-            <Text size='sm' c='dimmed'>
-              {t('org-management-seat-plan-current')}: {currentSeatCount}
-            </Text>
-            <NumberInput
-              label={t('org-management-seat-plan-target-label')}
-              min={3}
-              max={100}
-              value={targetSeatCount}
-              onChange={(value) => {
-                setTargetSeatCount(typeof value === 'number' ? value : currentSeatCount || 3)
-                setSeatAdjustmentPreview(null)
-              }}
-            />
-            {seatAdjustmentPreview ? (
-              <Paper withBorder radius='md' p='sm'>
-                <Stack gap='xs'>
-                  <Text fw={600}>{t('org-management-seat-plan-invoice-title')}</Text>
-                  <Table withTableBorder striped>
-                    <Table.Tbody>
-                      <Table.Tr>
-                        <Table.Td>{t('org-management-seat-plan-invoice-current-seats')}</Table.Td>
-                        <Table.Td>{seatAdjustmentPreview.currentSeatCount}</Table.Td>
-                      </Table.Tr>
-                      <Table.Tr>
-                        <Table.Td>{t('org-management-seat-plan-invoice-target-seats')}</Table.Td>
-                        <Table.Td>{seatAdjustmentPreview.targetSeatCount}</Table.Td>
-                      </Table.Tr>
-                      <Table.Tr>
-                        <Table.Td>{t('org-management-seat-plan-invoice-current-annual')}</Table.Td>
-                        <Table.Td>
-                          {formatAmount(seatAdjustmentPreview.currentAnnualAmountCents, 'CHF', locale)}
-                        </Table.Td>
-                      </Table.Tr>
-                      <Table.Tr>
-                        <Table.Td>{t('org-management-seat-plan-invoice-next-annual')}</Table.Td>
-                        <Table.Td>
-                          {formatAmount(seatAdjustmentPreview.nextAnnualAmountCents, 'CHF', locale)}
-                        </Table.Td>
-                      </Table.Tr>
-                      {seatAdjustmentPreview.isIncrease ? (
-                        <Table.Tr>
-                          <Table.Td>{t('org-management-seat-plan-invoice-upgrade-now')}</Table.Td>
-                          <Table.Td>
-                            <Stack gap={2}>
-                              <Text size='sm'>
-                                {seatAdjustmentPreview.graceWindowApplied
-                                  ? t('org-management-seat-plan-invoice-upgrade-free')
-                                  : formatAmount(seatAdjustmentPreview.proratedAmountCents, 'CHF', locale)}
-                              </Text>
-                              <Text size='xs' c='dimmed'>
-                                {t('org-management-seat-plan-invoice-upgrade-detail', {
-                                  count:
-                                    seatAdjustmentPreview.targetSeatCount - seatAdjustmentPreview.currentSeatCount,
-                                  days: Math.min(Math.max(seatAdjustmentPreview.daysUntilPeriodEnd, 0), 365),
-                                })}
-                              </Text>
-                            </Stack>
-                          </Table.Td>
-                        </Table.Tr>
-                      ) : null}
-                    </Table.Tbody>
-                  </Table>
-                  {!seatAdjustmentPreview.isIncrease ? (
-                    <Alert color='orange' variant='light'>
-                      {t('org-management-seat-plan-downgrade-note')}
-                    </Alert>
-                  ) : null}
-                  <Text size='sm' c='dimmed'>
-                    {t(
-                      isOrgCanceled
-                        ? 'org-management-seat-plan-auto-renew-note-canceled'
-                        : 'org-management-seat-plan-auto-renew-note',
-                    )}
-                  </Text>
-                </Stack>
-              </Paper>
-            ) : null}
-            {!hasOrgSubscription ? (
-              <Alert color='orange' variant='light'>
-                {t('org-license-empty')}
-              </Alert>
-            ) : null}
-            <Group justify='flex-end'>
-              <Button
-                onClick={handleSeatPlanUpdate}
-                loading={isUpdatingSeatPlan}
-                disabled={
-                  !hasOrgSubscription ||
-                  !seatAdjustmentPreview ||
-                  seatAdjustmentPreview.targetSeatCount !== targetSeatCount
-                }
-              >
-                {seatAdjustmentPreview?.paymentRequired
-                  ? t('org-management-seat-plan-save-paid')
-                  : t('org-management-seat-plan-save')}
-              </Button>
-            </Group>
-          </Stack>
-        </Card>
-
-        <Card withBorder>
-          <Stack gap='sm'>
+          <Stack gap='md'>
             <Group justify='space-between' align='flex-start'>
-              <div>
-                <Text size='xl'>{t('org-management-billing-title')}</Text>
-                <Text size='sm' c='dimmed'>
-                  {t('org-management-billing-description')}
-                </Text>
-              </div>
+              <Text size='xl'>{t('org-management-billing-title')}</Text>
               {payload?.billing ? (
                 <Badge color={getOrgSubscriptionStatusColor(payload.billing.subscriptionStatus)} variant='light'>
                   {getOrgSubscriptionStatusLabel(payload.billing.subscriptionStatus)}
@@ -889,17 +860,43 @@ export default function OrganizationManagementPage() {
             {isLoading ? (
               <Text c='dimmed'>{t('license-management-loading')}</Text>
             ) : !payload?.billing ? (
-              <Text c='dimmed'>{t('org-license-empty')}</Text>
+              <Stack gap='sm'>
+                <Text c='dimmed'>{t('org-license-empty')}</Text>
+                {payload?.organization ? (
+                  <>
+                    <Text size='sm' c='dimmed'>
+                      {t('checkout-org-seat-count-info', {
+                        count: Math.max(payload.organization.seats ?? 3, 3),
+                      })}
+                    </Text>
+                    <Button variant='filled' onClick={handleStartOrganizationCheckout}>
+                      {tNoLicense('org-no-license-checkout')}
+                    </Button>
+                  </>
+                ) : null}
+              </Stack>
             ) : (
               <Stack gap='xs'>
                 <Text size='sm' c='dimmed'>
+                  {t('org-management-seat-plan-current')}: {currentSeatCount}
+                </Text>
+                <Text size='sm' c='dimmed'>
                   {isOrgCanceled
                     ? `${t('org-management-cancel-effective-date')}: ${formatDate(payload.billing.currentPeriodEnd, locale, t('license-unlimited'))}`
-                    : `${t('license-management-current-period-end')}: ${formatDate(payload.billing.currentPeriodEnd, locale, t('license-unlimited'))}`}
+                    : payload.billing.subscriptionStatus === 'active_unpaid' &&
+                        typeof payload.billing.invoiceDueDate === 'string' &&
+                        payload.billing.invoiceDueDate.trim().length > 0
+                      ? `${t('org-management-billing-payment-due')}: ${formatDate(payload.billing.invoiceDueDate, locale, t('license-unlimited'))}`
+                      : `${t('org-management-billing-next-payment')}: ${formatDate(payload.billing.currentPeriodEnd, locale, t('license-unlimited'))}`}
                 </Text>
-                {payload.billing.responsibleEmail ? (
+                {nextPaymentAmount ? (
                   <Text size='sm' c='dimmed'>
-                    {t('org-license-responsible-email')}: {payload.billing.responsibleEmail}
+                    {t('org-management-billing-next-payment-amount')}:{' '}
+                    {formatAmount(nextPaymentAmount.amountCents, nextPaymentAmount.currency, locale)}
+                  </Text>
+                ) : isOrgCanceled ? (
+                  <Text size='sm' c='dimmed'>
+                    {t('org-management-billing-next-payment-none-after-cancel')}
                   </Text>
                 ) : null}
                 {isOrgCanceled ? <WarningNotice>{t('org-management-cancel-pending-note')}</WarningNotice> : null}
@@ -915,6 +912,12 @@ export default function OrganizationManagementPage() {
                     </Button>
                   )}
                 </Group>
+
+                {payload.billing.subscriptionStatus === 'suspended' ? (
+                  <Button variant='outline' onClick={handleStartOrganizationCheckout}>
+                    {tNoLicense('org-no-license-checkout')}
+                  </Button>
+                ) : null}
 
                 <Text size='lg' fw={600} mt='sm'>
                   {t('license-management-history-title')}
@@ -967,15 +970,110 @@ export default function OrganizationManagementPage() {
                 )}
               </Stack>
             )}
+
+            <Divider my='md' />
+
+            <Stack gap='sm'>
+              <Title order={4}>{t('org-management-seat-plan-title')}</Title>
+              <Text size='sm' c='dimmed'>
+                {t('org-management-seat-plan-grace-note')}
+              </Text>
+              <NumberInput
+                label={t('org-management-seat-plan-target-label')}
+                min={3}
+                max={100}
+                value={targetSeatCount}
+                onChange={(value) => {
+                  setTargetSeatCount(typeof value === 'number' ? value : currentSeatCount || 3)
+                  setSeatAdjustmentPreview(null)
+                }}
+              />
+              {seatAdjustmentPreview ? (
+                <Paper withBorder radius='md' p='sm'>
+                  <Stack gap='xs'>
+                    <Text fw={600}>{t('org-management-seat-plan-invoice-title')}</Text>
+                    <Table withTableBorder striped>
+                      <Table.Tbody>
+                        <Table.Tr>
+                          <Table.Td>{t('org-management-seat-plan-invoice-current-seats')}</Table.Td>
+                          <Table.Td>{seatAdjustmentPreview.currentSeatCount}</Table.Td>
+                        </Table.Tr>
+                        <Table.Tr>
+                          <Table.Td>{t('org-management-seat-plan-invoice-target-seats')}</Table.Td>
+                          <Table.Td>{seatAdjustmentPreview.targetSeatCount}</Table.Td>
+                        </Table.Tr>
+                        <Table.Tr>
+                          <Table.Td>{t('org-management-seat-plan-invoice-current-annual')}</Table.Td>
+                          <Table.Td>
+                            {formatAmount(seatAdjustmentPreview.currentAnnualAmountCents, 'CHF', locale)}
+                          </Table.Td>
+                        </Table.Tr>
+                        <Table.Tr>
+                          <Table.Td>{t('org-management-seat-plan-invoice-next-annual')}</Table.Td>
+                          <Table.Td>
+                            {formatAmount(seatAdjustmentPreview.nextAnnualAmountCents, 'CHF', locale)}
+                          </Table.Td>
+                        </Table.Tr>
+                        {seatAdjustmentPreview.isIncrease ? (
+                          <Table.Tr>
+                            <Table.Td>{t('org-management-seat-plan-invoice-upgrade-now')}</Table.Td>
+                            <Table.Td>
+                              <Stack gap={2}>
+                                <Text size='sm'>
+                                  {seatAdjustmentPreview.graceWindowApplied
+                                    ? t('org-management-seat-plan-invoice-upgrade-free')
+                                    : formatAmount(seatAdjustmentPreview.proratedAmountCents, 'CHF', locale)}
+                                </Text>
+                                <Text size='xs' c='dimmed'>
+                                  {t('org-management-seat-plan-invoice-upgrade-detail', {
+                                    count:
+                                      seatAdjustmentPreview.targetSeatCount - seatAdjustmentPreview.currentSeatCount,
+                                    days: Math.min(Math.max(seatAdjustmentPreview.daysUntilPeriodEnd, 0), 365),
+                                  })}
+                                </Text>
+                              </Stack>
+                            </Table.Td>
+                          </Table.Tr>
+                        ) : null}
+                      </Table.Tbody>
+                    </Table>
+                    {!seatAdjustmentPreview.isIncrease ? (
+                      <Alert color='orange' variant='light'>
+                        {t('org-management-seat-plan-downgrade-note')}
+                      </Alert>
+                    ) : null}
+                    <Text size='sm' c='dimmed'>
+                      {t(
+                        isOrgCanceled
+                          ? 'org-management-seat-plan-auto-renew-note-canceled'
+                          : 'org-management-seat-plan-auto-renew-note',
+                      )}
+                    </Text>
+                  </Stack>
+                </Paper>
+              ) : null}
+              <Group justify='flex-end'>
+                <Button
+                  onClick={handleSeatPlanUpdate}
+                  loading={isUpdatingSeatPlan}
+                  disabled={
+                    !hasOrgSubscription ||
+                    !seatAdjustmentPreview ||
+                    seatAdjustmentPreview.targetSeatCount !== targetSeatCount
+                  }
+                >
+                  {seatAdjustmentPreview?.paymentRequired
+                    ? t('org-management-seat-plan-save-paid')
+                    : t('org-management-seat-plan-save')}
+                </Button>
+              </Group>
+            </Stack>
           </Stack>
         </Card>
 
         <Card withBorder>
           <Stack gap='sm'>
             <Text size='xl'>{t('org-management-deactivate-title')}</Text>
-            <Text size='sm' c='dimmed'>
-              {t('org-management-deactivate-description')}
-            </Text>
             <Text size='sm' c='dimmed'>
               {t('org-management-deactivate-support-note')}
             </Text>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   Container,
   Title,
@@ -11,6 +11,8 @@ import {
   Divider,
   Alert,
   SimpleGrid,
+  Loader,
+  Select,
 } from '@mantine/core'
 import { useTranslations } from 'next-intl'
 import { useUser } from '@/contexts/UserProvider'
@@ -27,6 +29,13 @@ import { hasActiveEntitlement, hasEverHadTrial } from '@edutime/shared'
 import { INDIVIDUAL_ANNUAL_PRICE_CHF } from '@/utils/payments/pricing'
 import classes from './NoLicenseView.module.css'
 import pricingClasses from '../Main/Pricing.module.css'
+
+type OrgBillingGateStatus =
+  | 'idle'
+  | 'loading'
+  | 'needs_checkout'
+  | 'licensed_no_seat'
+  | 'suspended'
 
 export function NoLicenseView() {
   const t = useTranslations('Index')
@@ -49,12 +58,95 @@ export function NoLicenseView() {
   const [hasUsedDemo, setHasUsedDemo] = useState<boolean | null>(null)
   const [isRefreshingLicense, setIsRefreshingLicense] = useState(false)
   const [orgModalOpened, setOrgModalOpened] = useState(false)
+  const [orgBillingGate, setOrgBillingGate] = useState<OrgBillingGateStatus>('idle')
 
   // Check if user is an administrator
   const isAdministrator = organizations && organizations.length > 0
   const isOrgAdminWithoutActiveSubscription = isAdministrator && !hasActiveSubscription
-  const primaryOrganization = organizations[0] || null
-  const organizationCheckoutQty = Math.max(primaryOrganization?.seats ?? 3, 3)
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!organizations.length) {
+      setSelectedOrgId(null)
+      return
+    }
+    setSelectedOrgId((prev) => {
+      if (prev && organizations.some((o) => String(o.id) === prev)) return prev
+      return String(organizations[0].id)
+    })
+  }, [organizations])
+
+  const selectedOrganization = useMemo(() => {
+    if (!organizations.length) return null
+    if (selectedOrgId) {
+      const match = organizations.find((o) => String(o.id) === selectedOrgId)
+      if (match) return match
+    }
+    return organizations[0]
+  }, [organizations, selectedOrgId])
+
+  useEffect(() => {
+    if (!isOrgAdminWithoutActiveSubscription || !selectedOrganization?.id) {
+      setOrgBillingGate('idle')
+      return
+    }
+
+    setOrgBillingGate('loading')
+    let cancelled = false
+
+    const loadOrgBilling = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+
+        if (!session?.access_token) {
+          if (!cancelled) setOrgBillingGate('needs_checkout')
+          return
+        }
+
+        const response = await fetch(
+          `/api/billing/org-license?organizationId=${selectedOrganization.id}`,
+          {
+            credentials: 'include',
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          },
+        )
+
+        if (!response.ok) {
+          if (!cancelled) setOrgBillingGate('needs_checkout')
+          return
+        }
+
+        const payload = (await response.json()) as {
+          data?: { subscriptionStatus?: string } | null
+        }
+
+        if (cancelled) return
+
+        const status = payload.data?.subscriptionStatus
+        if (status === 'active' || status === 'active_unpaid') {
+          setOrgBillingGate('licensed_no_seat')
+        } else if (status === 'suspended') {
+          setOrgBillingGate('suspended')
+        } else {
+          setOrgBillingGate('needs_checkout')
+        }
+      } catch (error) {
+        console.error('Failed to load org billing status for no-license view:', error)
+        if (!cancelled) setOrgBillingGate('needs_checkout')
+      }
+    }
+
+    void loadOrgBilling()
+    return () => {
+      cancelled = true
+    }
+  }, [isOrgAdminWithoutActiveSubscription, selectedOrganization?.id])
+
+  const orgBillingUnresolved =
+    isOrgAdminWithoutActiveSubscription &&
+    (orgBillingGate === 'idle' || orgBillingGate === 'loading')
 
   // Check if user has ever had a trial on component mount
   useEffect(() => {
@@ -294,77 +386,22 @@ export function NoLicenseView() {
     )
   }
 
-  const handleStartOrganizationCheckout = () => {
-    if (!primaryOrganization) return
-    router.push(`/checkout?plan=org&qty=${organizationCheckoutQty}&orgId=${primaryOrganization.id}`)
-  }
-
   const handleOpenOrganizationManagement = () => {
-    if (!primaryOrganization) return
-    router.push(`/app/organization-management?organizationId=${primaryOrganization.id}`)
+    if (!selectedOrganization) return
+    router.push(`/app/organization-management?organizationId=${selectedOrganization.id}`)
   }
 
-  if (isOrgAdminWithoutActiveSubscription) {
-    return (
-      <>
-        <Container size={1000} py='xl'>
-          <Stack gap='xl' align='center'>
-            <div className={classes.header}>
-              <Title order={1} ta='center' mb='md'>
-                {t_noLicense('title')}
-              </Title>
-              <Text size='lg' c='dimmed' ta='center' maw={700}>
-                {t_noLicense('org-no-license-description')}
-              </Text>
-            </div>
-
-            {router.query.checkout === 'pending' && router.query.plan === 'org' && (
-              <Alert
-                icon={<IconInfoCircle size={16} />}
-                color='orange'
-                variant='light'
-                w='100%'
-                maw={800}
-              >
-                <Stack gap='xs'>
-                  <Text size='sm'>{t_noLicense('activationPendingMessage')}</Text>
-                  <Button
-                    variant='light'
-                    onClick={handleRefreshLicenseStatus}
-                    loading={isRefreshingLicense}
-                    disabled={isRefreshingLicense}
-                  >
-                    {t_noLicense('refreshActivation')}
-                  </Button>
-                </Stack>
-              </Alert>
-            )}
-
-            <Card padding='xl' radius='md' withBorder w='100%' maw={800}>
-              <Stack gap='md'>
-                <Title order={3}>{t_noLicense('org-no-license-title')}</Title>
-                <Text size='sm' c='dimmed'>
-                  {primaryOrganization?.name || t('org-license-management-title')}
-                </Text>
-                <Text size='sm' c='dimmed'>
-                  {t('checkout-org-seat-count-info', { count: organizationCheckoutQty })}
-                </Text>
-                <Group>
-                  <Button variant='light' onClick={handleOpenOrganizationManagement}>
-                    {t('org-license-management-title')}
-                  </Button>
-                  <Button variant='filled' onClick={handleStartOrganizationCheckout}>
-                    {t_noLicense('org-no-license-checkout')}
-                  </Button>
-                </Group>
-              </Stack>
-            </Card>
-          </Stack>
-        </Container>
-        <Footer />
-      </>
-    )
+  const handleOpenMembersPage = () => {
+    if (!selectedOrganization) return
+    void router.push(`/app/members?organizationId=${selectedOrganization.id}`)
   }
+
+  const showOrgCheckoutPendingAlert =
+    isOrgAdminWithoutActiveSubscription &&
+    router.query.checkout === 'pending' &&
+    router.query.plan === 'org'
+  const showIndividualCheckoutPendingAlert =
+    router.query.checkout === 'pending' && !showOrgCheckoutPendingAlert
 
   return (
     <>
@@ -374,12 +411,42 @@ export function NoLicenseView() {
             <Title order={1} ta='center' mb='md'>
               {t_noLicense('title')}
             </Title>
-            <Text size='lg' c='dimmed' ta='center' maw={600}>
-              {isAdministrator ? t_noLicense('description-admin') : t_noLicense('description')}
+            <Text size='lg' c='dimmed' ta='center' maw={isOrgAdminWithoutActiveSubscription ? 700 : 600}>
+              {isOrgAdminWithoutActiveSubscription
+                ? orgBillingUnresolved
+                  ? t_noLicense('org-billing-status-loading')
+                  : orgBillingGate === 'licensed_no_seat'
+                    ? t_noLicense('org-admin-licensed-lead')
+                    : t_noLicense('org-no-license-description')
+                : isAdministrator
+                  ? t_noLicense('description-admin')
+                  : t_noLicense('description')}
             </Text>
           </div>
 
-          {router.query.checkout === 'pending' && (
+          {showOrgCheckoutPendingAlert && (
+            <Alert
+              icon={<IconInfoCircle size={16} />}
+              color='orange'
+              variant='light'
+              w='100%'
+              maw={800}
+            >
+              <Stack gap='xs'>
+                <Text size='sm'>{t_noLicense('activationPendingMessage')}</Text>
+                <Button
+                  variant='light'
+                  onClick={handleRefreshLicenseStatus}
+                  loading={isRefreshingLicense}
+                  disabled={isRefreshingLicense}
+                >
+                  {t_noLicense('refreshActivation')}
+                </Button>
+              </Stack>
+            </Alert>
+          )}
+
+          {showIndividualCheckoutPendingAlert && (
             <Alert icon={<IconInfoCircle size={16} />} color='orange' variant='light' w='100%' maw={800}>
               <Stack gap='xs'>
                 <Text size='sm'>{t_noLicense('activationPendingMessage')}</Text>
@@ -395,40 +462,59 @@ export function NoLicenseView() {
             </Alert>
           )}
 
-          {/* Administrator Member Management */}
-          {isAdministrator && hasActiveSubscription && (
+          {isOrgAdminWithoutActiveSubscription && (
             <Card padding='xl' radius='md' withBorder w='100%' maw={800}>
-              <Stack gap='md'>
-                <Group justify='space-between' align='center'>
-                  <Title order={3}>{t('member-management') || 'Mitgliederverwaltung'}</Title>
-                  <Badge color='violet' variant='light' size='lg'>
-                    {organizations.length}
-                  </Badge>
-                </Group>
-                <Alert icon={<IconInfoCircle size={16} />} color='violet' variant='light'>
-                  <Text size='sm'>
-                    {t('member-management-description') ||
-                      'Sie sind Administrator einer Organisation. Verwalten Sie die Mitglieder Ihrer Organisation.'}
-                  </Text>
-                </Alert>
-                <LicenseManagementEntry
-                  showPersonalButton
-                  showOrganizationButton
-                  organizationId={organizations[0]?.id ?? null}
-                />
+              <Stack gap='md' align='stretch'>
+                {orgBillingUnresolved ? (
+                  <>
+                    <Title order={3}>{t_noLicense('org-billing-status-loading')}</Title>
+                    <Loader size='sm' />
+                  </>
+                ) : (
+                  <>
+                    <Title order={3}>
+                      {orgBillingGate === 'licensed_no_seat'
+                        ? t_noLicense('org-admin-licensed-card-title')
+                        : t_noLicense('org-no-license-title')}
+                    </Title>
+                    {organizations.length > 1 ? (
+                      <Select
+                        label={t('org-license-organization')}
+                        data={organizations.map((org) => ({
+                          value: String(org.id),
+                          label: org.name,
+                        }))}
+                        value={selectedOrgId}
+                        onChange={(value) => {
+                          if (value) setSelectedOrgId(value)
+                        }}
+                        w='100%'
+                      />
+                    ) : (
+                      <Text size='sm' fw={500}>
+                        {selectedOrganization?.name ?? '—'}
+                      </Text>
+                    )}
+                    <Stack gap='sm' w='100%' mt='xs'>
+                      {orgBillingGate === 'licensed_no_seat' ? (
+                        <>
+                          <Button variant='filled' fullWidth onClick={handleOpenMembersPage}>
+                            {t('no-license-manage-members-button')}
+                          </Button>
+                          <Text size='xs' c='dimmed' ta='center'>
+                            {t('no-license-manage-members-hint')}
+                          </Text>
+                        </>
+                      ) : null}
+                      <Button variant='light' fullWidth onClick={handleOpenOrganizationManagement}>
+                        {t('org-organization-settings-button')}
+                      </Button>
+                    </Stack>
+                  </>
+                )}
               </Stack>
             </Card>
           )}
-
-          <Card padding='xl' radius='md' withBorder w='100%' maw={800}>
-            <Stack gap='sm'>
-              <Title order={3}>{t('license-management-title')}</Title>
-              <Text size='sm' c='dimmed'>
-                {t_noLicense('licenseRequiredMessage')}
-              </Text>
-              <LicenseManagementEntry showPersonalButton />
-            </Stack>
-          </Card>
 
           {/* Pending Invitations */}
           {pendingInvitations.length > 0 && (
@@ -748,10 +834,30 @@ export function NoLicenseView() {
             </>
           )}
 
-          <Divider w='100%' />
+          {isAdministrator ? (
+            <Divider
+              w='100%'
+              maw={800}
+              label={t_noLicense('personal-license-section-label')}
+              labelPosition='center'
+              my='lg'
+            />
+          ) : null}
+
+          <Card padding='xl' radius='md' withBorder w='100%' maw={800}>
+            <Stack gap='md'>
+              <Title order={3}>{t('license-management-title')}</Title>
+              <Text size='sm' c='dimmed'>
+                {t_noLicense('licenseRequiredMessage')}
+              </Text>
+              <LicenseManagementEntry showPersonalButton />
+            </Stack>
+          </Card>
+
+          <Divider w='100%' maw={800} my='md' />
 
           {/* User Info and Actions */}
-          <Card className={classes.accountCard} padding='xl' radius='md' withBorder w='100%'>
+          <Card padding='xl' radius='md' withBorder w='100%' maw={800}>
             <Stack gap='lg'>
               {/* Email Display */}
               <Group justify='space-between'>

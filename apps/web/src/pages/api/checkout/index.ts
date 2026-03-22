@@ -263,28 +263,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         return res.status(500).json({ error: 'Failed to initialize org checkout session' })
       }
 
-      const { error: ensureError } = await billingClient.rpc('ensure_org_actor_entitlement', {
-        p_actor_user_id: user.id,
-        p_organization_id: Number(organizationId),
-      })
-
-      if (ensureError) {
-        const message = String(ensureError.message || '')
-        const isExpectedSuspendedFlow =
-          message.toLowerCase().includes('no active organization subscription found') ||
-          message.toLowerCase().includes('suspended')
-
-        if (!isExpectedSuspendedFlow) {
-          console.error('Failed to auto-assign org seat to checkout actor:', ensureError)
-          return res.status(500).json({
-            error: 'Failed to auto-assign organization seat to checkout actor',
-          })
-        }
-
-        console.warn(
-          'Skipping immediate org seat assignment because subscription is suspended; payment checkout still created.',
-        )
-      }
+      // Org admins are not auto-assigned a seat; they assign seats via member invites / seat management.
     } else {
       const { error: insertError } = await billingClient.from('checkout_sessions').insert({
         user_id: user.id,

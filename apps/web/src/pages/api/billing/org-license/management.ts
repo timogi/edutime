@@ -733,42 +733,14 @@ export default async function handler(
       }
 
       if (action === 'deactivateOrg') {
-        const { data: adminRow, error: adminError } = await publicClient
-          .from('organization_administrators')
-          .select('id')
-          .eq('organization_id', organizationId)
-          .eq('user_id', auth.user.id)
-          .maybeSingle()
+        const { error: revokeError } = await billingClient.rpc('deactivate_organization_revoke_access', {
+          p_actor_user_id: auth.user.id,
+          p_organization_id: organizationId,
+        })
 
-        if (adminError) {
-          return res.status(500).json({ error: 'Failed to verify organization admin access' })
-        }
-        if (!adminRow) {
-          return res.status(403).json({ error: 'Not authorized to manage organization' })
-        }
-
-        const { data: orgRow, error: orgLookupError } = await publicClient
-          .from('organizations')
-          .select('id, is_active')
-          .eq('id', organizationId)
-          .maybeSingle()
-
-        if (orgLookupError) {
-          return res.status(500).json({ error: 'Failed to load organization' })
-        }
-        if (!orgRow) {
-          return res.status(404).json({ error: 'Organization not found' })
-        }
-
-        if (orgRow.is_active) {
-          const { error: deactivateError } = await publicClient
-            .from('organizations')
-            .update({ is_active: false })
-            .eq('id', organizationId)
-
-          if (deactivateError) {
-            return res.status(500).json({ error: 'Failed to deactivate organization' })
-          }
+        if (revokeError) {
+          const mapped = mapRpcError(revokeError, 'Failed to deactivate organization')
+          return res.status(mapped.status).json({ error: mapped.error })
         }
 
         const { error: cancelError } = await billingClient.rpc('cancel_org_subscription_at_period_end', {
