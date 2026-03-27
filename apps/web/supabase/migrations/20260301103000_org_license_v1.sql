@@ -18,7 +18,7 @@ create table if not exists billing.org_renewal_reminders (
   organization_id int not null references public.organizations(id),
   recipient_user_id uuid references auth.users(id),
   recipient_email text not null,
-  reminder_type text not null check (reminder_type in ('days_30', 'days_7', 'renewal_day')),
+  reminder_type text not null check (reminder_type in ('invoice_overdue_45', 'invoice_overdue_90')),
   scheduled_for date not null,
   status text not null default 'pending' check (status in ('pending', 'sent', 'failed')),
   sent_at timestamptz,
@@ -685,19 +685,27 @@ as $$
 declare
   v_inserted_count int := 0;
 begin
-  with org_subscriptions as (
+  with latest_open_invoice as (
+    select distinct on (i.subscription_id)
+      i.subscription_id,
+      i.due_date
+    from billing.invoices i
+    where i.status in ('open', 'draft', 'failed')
+      and i.due_date is not null
+    order by i.subscription_id, i.created_at desc
+  ),
+  org_sub as (
     select
       s.id as subscription_id,
       a.organization_id,
-      s.current_period_end::date as renewal_date,
       (s.metadata ->> 'responsible_user_id')::uuid as responsible_user_id,
-      (s.metadata ->> 'responsible_email') as responsible_email
+      (s.metadata ->> 'responsible_email') as responsible_email,
+      i.due_date
     from billing.subscriptions s
     join billing.accounts a on a.id = s.account_id
+    join latest_open_invoice i on i.subscription_id = s.id
     where s.provider = 'payrexx'
       and coalesce(s.metadata ->> 'plan', '') = 'org'
-      and s.status in ('active', 'active_unpaid')
-      and s.current_period_end is not null
       and a.organization_id is not null
   ),
   due_slots as (
@@ -706,17 +714,16 @@ begin
       os.organization_id,
       os.responsible_user_id,
       os.responsible_email,
-      os.renewal_date,
+      os.due_date,
       x.reminder_type,
       x.scheduled_for
-    from org_subscriptions os
+    from org_sub os
     cross join lateral (
       values
-        ('days_30'::text, os.renewal_date - 30),
-        ('days_7'::text, os.renewal_date - 7),
-        ('renewal_day'::text, os.renewal_date)
+        ('invoice_overdue_45'::text, (os.due_date + interval '45 days')::date),
+        ('invoice_overdue_90'::text, (os.due_date + interval '90 days')::date)
     ) as x(reminder_type, scheduled_for)
-    where x.scheduled_for = p_reference_time::date
+    where x.scheduled_for <= p_reference_time::date
   ),
   resolved_recipients as (
     select

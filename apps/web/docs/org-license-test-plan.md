@@ -7,8 +7,8 @@ This test plan covers the org flow.
 - Payrexx webhook configured and reachable
 - `org-billing-jobs` deployed with:
   - `RESEND_API_KEY`
-  - `BILLING_FROM_EMAIL`
   - optional `ORG_BILLING_JOB_SECRET`
+  - (transactional mail from address is fixed: `noreply@send.edutime.ch`)
 
 ## Core Scenarios
 
@@ -23,16 +23,16 @@ This test plan covers the org flow.
 
 ## Delinquency And Suspension
 
-- Open invoice past `due_date + grace_days`.
+- Open invoice past `due_date + grace_days` (default **45** days for org subscriptions).
   - Expected: `run_org_delinquency_sweep` sets subscription `suspended`.
   - Expected: related `org_seat` entitlements become `revoked` with reason `payment_failed`.
 - Suspended org member attempts app access.
   - Expected: user no longer has active entitlement and is gated to no-license flow.
 
-## Renewal Reminder Emails
+## Payment notice e-mails (overdue invoice)
 
-- Run `run_org_renewal_reminder_sweep` on -30/-7/0 day checkpoints.
-  - Expected: one reminder record per `(subscription_id, reminder_type, scheduled_for)`.
+- Run `run_org_renewal_reminder_sweep` with `p_reference_time` on **due + 45** and **due + 90** calendar days (latest open invoice per org subscription).
+  - Expected: at most one reminder row per `(subscription_id, reminder_type, scheduled_for)` for `invoice_overdue_45` / `invoice_overdue_90`.
 - Run `org-billing-jobs` with pending reminders.
   - Expected: reminder status changes `pending -> sent` on success.
   - Expected: reminder status changes `pending -> failed` with `last_error` on send failure.
@@ -49,4 +49,4 @@ This test plan covers the org flow.
 ## Rollout
 
 - Deploy migration and both Supabase functions (`payrexx-webhook`, `org-billing-jobs`).
-- Validate first renewal cycle reminders in staging before production enablement.
+- Validate payment-notice and auto-renew checkout e-mails in staging before production enablement.

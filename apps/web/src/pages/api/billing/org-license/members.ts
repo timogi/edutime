@@ -1,13 +1,30 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser } from '@/utils/supabase/api-auth'
+import { EDUTIME_TRANSACTIONAL_FROM } from '@edutime/shared'
+import {
+  resolveOrgInviteEmailLocale,
+  sendOrgMemberInviteEmail,
+} from '@/utils/email/orgMemberInviteEmail'
 
 type MembersApiResponse = {
   inviteId?: string
+  /** Present after `invite` when the invite was created successfully. */
+  emailSent?: boolean
+  /** True when invitee is the same person as the admin — no invite email is sent. */
+  emailSkippedSelf?: boolean
   entitlementId?: string
   releasedEntitlementId?: string | null
   leftOrganizationId?: number
   error?: string
+}
+
+function getAppBaseUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL
+  if (explicit) return explicit.replace(/\/$/, '')
+  const vercel = process.env.VERCEL_URL
+  if (vercel) return `https://${vercel.replace(/^https?:\/\//, '')}`
+  return 'https://edutime.ch'
 }
 
 function createBillingClient() {
@@ -89,7 +106,67 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         return res.status(400).json({ error: error.message || 'Failed to invite member' })
       }
 
-      return res.status(200).json({ inviteId: String(data) })
+      const inviteId = String(data)
+      let emailSent = false
+
+      const actorEmail = (auth.user.email || '').toLowerCase().trim()
+      const inviteEmailNorm = email.toLowerCase().trim()
+      const emailSkippedSelf = actorEmail.length > 0 && actorEmail === inviteEmailNorm
+
+      const resendApiKey = process.env.RESEND_API_KEY
+
+      if (emailSkippedSelf) {
+        return res.status(200).json({ inviteId, emailSent: false, emailSkippedSelf: true })
+      }
+
+      if (resendApiKey) {
+        const { data: inviteRow, error: inviteRowError } = await serviceClient
+          .schema('license')
+          .from('org_invites')
+          .select('token, email')
+          .eq('id', inviteId)
+          .single()
+
+        const { data: orgRow, error: orgRowError } = await serviceClient
+          .from('organizations')
+          .select('name')
+          .eq('id', organizationId)
+          .single()
+
+        if (inviteRowError || !inviteRow) {
+          console.error('Org invite email: could not load invite row after create:', inviteRowError)
+        } else if (orgRowError) {
+          console.error('Org invite email: could not load organization:', orgRowError)
+        } else {
+          const acceptUrl = new URL('/app/no-license', `${getAppBaseUrl()}/`)
+          acceptUrl.searchParams.set('invite', inviteRow.token)
+
+          const locale = resolveOrgInviteEmailLocale(
+            typeof req.headers['accept-language'] === 'string'
+              ? req.headers['accept-language']
+              : undefined,
+          )
+
+          try {
+            await sendOrgMemberInviteEmail({
+              resendApiKey,
+              fromEmail: EDUTIME_TRANSACTIONAL_FROM,
+              toEmail: inviteRow.email,
+              organizationName: orgRow?.name?.trim() || 'Organization',
+              inviteeEmail: inviteRow.email,
+              acceptUrl: acceptUrl.toString(),
+              locale,
+            })
+            emailSent = true
+          } catch (sendErr) {
+            console.error('Org invite email: Resend failed:', sendErr)
+          }
+        }
+      } else {
+        console.warn('Org invite email skipped: RESEND_API_KEY is not configured')
+      }
+
+      return res.status(200).json({ inviteId, emailSent })
     }
 
     if (action === 'accept') {

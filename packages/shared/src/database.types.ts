@@ -527,6 +527,10 @@ export type Database = {
         Args: { p_reference_time?: string }
         Returns: Json
       }
+      run_org_hard_delinquency_sweep: {
+        Args: { p_reference_time?: string }
+        Returns: Json
+      }
       run_org_legacy_migration: {
         Args: { p_organization_ids?: number[] }
         Returns: Json

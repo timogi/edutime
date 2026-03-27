@@ -635,7 +635,7 @@ export default async function handler(
             p_payrexx_gateway_id: checkout.gatewayId || null,
             p_payrexx_gateway_link: checkout.checkoutUrl,
             p_expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-            p_due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            p_due_date: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
             p_metadata: {
               source: 'org_management_seat_adjustment',
               actor_user_id: auth.user.id,

@@ -48,6 +48,7 @@ import {
 import Progress from './Progress'
 import InviteModal from './InviteModal'
 import { useTranslations } from 'next-intl'
+import { showNotification } from '@mantine/notifications'
 import { Organization } from '@/types/globals'
 import classes from './TableSelection.module.css'
 
@@ -142,11 +143,36 @@ const TableSelection = ({
       if (!currentOrg?.id) throw new Error('No organization selected')
       return addOrganizationMember(currentOrg.id, email, comment)
     },
-    onSuccess: () => {
+    onSuccess: (payload, variables) => {
       queryClient.invalidateQueries({ queryKey: ['organizationMembers', currentOrg?.id] })
       onMembersChanged()
       setInviteEmail('')
       close()
+      if (payload.emailSkippedSelf) {
+        showNotification({
+          title: t('invite-notification-self-title'),
+          color: 'teal',
+        })
+      } else if (payload.emailSent === false) {
+        showNotification({
+          title: t('invite-notification-no-email-title'),
+          message: t('invite-notification-no-email-message'),
+          color: 'yellow',
+        })
+      } else {
+        showNotification({
+          title: t('invite-notification-sent-title'),
+          message: t('invite-notification-sent-message', { email: variables.email }),
+          color: 'teal',
+        })
+      }
+    },
+    onError: (err: Error) => {
+      showNotification({
+        title: t('invite-notification-error-title'),
+        message: err.message || t('invite-notification-error-message'),
+        color: 'red',
+      })
     },
   })
 

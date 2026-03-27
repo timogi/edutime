@@ -2,6 +2,8 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const PAYREXX_API_DEFAULT_VERSION = '1.14'
 
+const EDUTIME_TRANSACTIONAL_FROM = 'EduTime GmbH <noreply@send.edutime.ch>'
+
 type Locale = 'de' | 'en' | 'fr'
 
 type TemplateContent = {
@@ -19,6 +21,49 @@ type AutoRenewSubscriptionRow = {
   metadata: Record<string, unknown> | null
   cancel_at_period_end: boolean | null
   account_id: string
+}
+
+/** Days after period end until invoice payment is due (matches create_org_checkout p_due_date). Default 45. */
+function resolveOrgInvoiceDueDaysAfterPeriodEnd(metadata: Record<string, unknown> | null): number {
+  const raw = metadata?.invoice_due_days ?? metadata?.org_invoice_due_days
+  const n = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : Number.NaN
+  if (Number.isInteger(n) && n >= 1 && n <= 366) return n
+  return 45
+}
+
+function formatPaymentDueDate(locale: Locale, paymentDueIso: string): string {
+  const d = new Date(paymentDueIso)
+  if (Number.isNaN(d.getTime())) return paymentDueIso
+  const tag = locale === 'fr' ? 'fr-CH' : locale === 'en' ? 'en-GB' : 'de-CH'
+  return new Intl.DateTimeFormat(tag, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(d)
+}
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function resolveActorUserId(subscription: AutoRenewSubscriptionRow, fallbackAdminUserId: string): string {
+  const raw = subscription.metadata?.responsible_user_id
+  if (typeof raw === 'string' && UUID_RE.test(raw.trim())) {
+    return raw.trim()
+  }
+  return fallbackAdminUserId
+}
+
+function resolveBillingRecipientEmail(
+  subscription: AutoRenewSubscriptionRow,
+  fallbackAdminEmail: string | undefined,
+): string | undefined {
+  const raw = subscription.metadata?.responsible_email
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim()
+    if (trimmed.includes('@')) return trimmed
+  }
+  return fallbackAdminEmail
 }
 
 type InvoiceStatus = 'draft' | 'open' | 'failed' | 'paid' | 'void' | 'cancelled'
@@ -186,32 +231,301 @@ function detectLocale(raw: string | null | undefined): Locale {
   return 'de'
 }
 
+function formatCheckoutAmount(locale: Locale, amountCents: number, currency: string): string {
+  const tag = locale === 'fr' ? 'fr-CH' : locale === 'en' ? 'en-CH' : 'de-CH'
+  const code = currency.trim() || 'CHF'
+  return new Intl.NumberFormat(tag, {
+    style: 'currency',
+    currency: code,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amountCents / 100)
+}
+
+interface CheckoutLinkEmailContext {
+  orgName: string
+  amountCents: number
+  currency: string
+  seatCount: number
+  /** Same instant as p_due_date passed to create_org_checkout (invoice payment deadline). */
+  paymentDueIso: string
+}
+
 function buildCheckoutLinkTemplate(
   locale: Locale,
   checkoutUrl: string,
-  managementUrl: string,
+  ctx: CheckoutLinkEmailContext,
 ): TemplateContent {
+  const name = ctx.orgName.trim() || 'Organisation'
+  const amountLabel = formatCheckoutAmount(locale, ctx.amountCents, ctx.currency)
+  const seats = ctx.seatCount
+  const dueLabel = formatPaymentDueDate(locale, ctx.paymentDueIso)
 
   if (locale === 'fr') {
     return {
-      subject: 'EduTime: lien de paiement pour la licence d’organisation',
-      text: `Bonjour,\n\nLe lien de paiement pour le renouvellement de votre licence d’organisation est prêt.\n\nLien de paiement: ${checkoutUrl}\n\nVous pouvez aussi y accéder ici: ${managementUrl}\n\nEquipe EduTime`,
-      html: `<p>Bonjour,</p><p>Le lien de paiement pour le renouvellement de votre licence d’organisation est prêt.</p><p><a href="${checkoutUrl}">Ouvrir le lien de paiement</a></p><p>Vous pouvez aussi y accéder ici: <a href="${managementUrl}">${managementUrl}</a></p><p>Equipe EduTime</p>`,
+      subject: `EduTime: renouvellement de la licence — ${name}`,
+      text: [
+        'Bonjour',
+        '',
+        `Le renouvellement de la licence d’organisation EduTime pour « ${name} » est dû. Vous pouvez régler le montant ci-dessous ; l’accès reste possible en attendant.`,
+        '',
+        `Montant : ${amountLabel} pour ${seats} sièges (par an).`,
+        `Échéance : paiement au plus tard le ${dueLabel}.`,
+        '',
+        `Lien de paiement : ${checkoutUrl}`,
+        '',
+        'Merci de ne pas répondre directement à cet e-mail. Pour toute question : info@edutime.ch',
+        '',
+        'Ce message a été envoyé à tous les administrateurs de l’organisation.',
+        '',
+        'Equipe EduTime',
+      ].join('\n'),
+      html: `<p>Bonjour</p>
+<p>Le renouvellement de la licence d’organisation EduTime pour « ${name} » est dû. Vous pouvez régler le montant ci-dessous ; l’accès reste possible en attendant.</p>
+<p><strong>Montant :</strong> ${amountLabel} pour ${seats} sièges (par an).<br>
+<strong>Échéance :</strong> paiement au plus tard le <strong>${dueLabel}</strong>.</p>
+<p><a href="${checkoutUrl}">Ouvrir le lien de paiement</a></p>
+<p>Merci de ne pas répondre directement à cet e-mail. Pour toute question : <a href="mailto:info@edutime.ch">info@edutime.ch</a></p>
+<p>Ce message a été envoyé à tous les administrateurs de l’organisation.</p>
+<p>Equipe EduTime</p>`,
     }
   }
 
   if (locale === 'en') {
     return {
-      subject: 'EduTime: organization license payment link',
-      text: `Hello,\n\nYour payment link for renewing your organization license is ready.\n\nPayment link: ${checkoutUrl}\n\nYou can also access it here: ${managementUrl}\n\nEduTime Team`,
-      html: `<p>Hello,</p><p>Your payment link for renewing your organization license is ready.</p><p><a href="${checkoutUrl}">Open payment link</a></p><p>You can also access it here: <a href="${managementUrl}">${managementUrl}</a></p><p>EduTime Team</p>`,
+      subject: `EduTime: license renewal due — ${name}`,
+      text: [
+        'Hello',
+        '',
+        `Your EduTime organization license for «${name}» is due for renewal. You can pay using the link below; access can continue while payment is pending.`,
+        '',
+        `Amount: ${amountLabel} per year for ${seats} seats.`,
+        `Payment deadline: pay by ${dueLabel}.`,
+        '',
+        `Payment link: ${checkoutUrl}`,
+        '',
+        'Please do not reply to this email directly. For questions: info@edutime.ch',
+        '',
+        'This message was sent to all organization administrators.',
+        '',
+        'EduTime Team',
+      ].join('\n'),
+      html: `<p>Hello</p>
+<p>Your EduTime organization license for «${name}» is <strong>due for renewal</strong>. You can pay using the link below; access can continue while payment is pending.</p>
+<p><strong>Amount:</strong> ${amountLabel} per year for ${seats} seats.<br>
+<strong>Payment deadline:</strong> pay by <strong>${dueLabel}</strong>.</p>
+<p><a href="${checkoutUrl}">Open payment link</a></p>
+<p>Please do not reply to this email directly. For questions: <a href="mailto:info@edutime.ch">info@edutime.ch</a></p>
+<p>This message was sent to all organization administrators.</p>
+<p>EduTime Team</p>`,
     }
   }
 
   return {
-    subject: 'EduTime: Zahlungslink für Organisationslizenz',
-    text: `Hallo,\n\nDer Zahlungslink für die Verlängerung deiner Organisationslizenz ist bereit.\n\nZahlungslink: ${checkoutUrl}\n\nDu kannst ihn auch hier öffnen: ${managementUrl}\n\nEduTime Team`,
-    html: `<p>Hallo,</p><p>Der Zahlungslink für die Verlängerung deiner Organisationslizenz ist bereit.</p><p><a href="${checkoutUrl}">Zahlungslink öffnen</a></p><p>Du kannst ihn auch hier öffnen: <a href="${managementUrl}">${managementUrl}</a></p><p>EduTime Team</p>`,
+    subject: `EduTime: Verlängerung Organisationslizenz — ${name}`,
+    text: [
+      'Guten Tag',
+      '',
+      `Die Verlängerung Ihrer EduTime-Organisationslizenz für «${name}» steht an.`,
+      '',
+      `Betrag: ${amountLabel} pro Jahr für ${seats} Sitze`,
+      `Zahlungsfrist: Zahlung bis zum ${dueLabel}.`,
+      '',
+      `Zahlungslink öffnen: ${checkoutUrl}`,
+      '',
+      'Bitte antworten Sie nicht direkt auf diese E-Mail. Bei Fragen: info@edutime.ch',
+      '',
+      'Diese Nachricht wurde an alle Organisations-Admins gesendet.',
+      '',
+      'Freundliche Grüsse',
+      '',
+      'EduTime Team',
+    ].join('\n'),
+    html: `<p>Guten Tag</p>
+<p>Die Verlängerung Ihrer EduTime-Organisationslizenz für «${name}» steht an.</p>
+<p>Betrag: ${amountLabel} pro Jahr für ${seats} Sitze<br>
+<strong>Zahlungsfrist:</strong> Zahlung bis zum <strong>${dueLabel}</strong>.</p>
+<p><a href="${checkoutUrl}">Zahlungslink öffnen</a></p>
+<p>Bitte antworten Sie nicht direkt auf diese E-Mail. Bei Fragen: <a href="mailto:info@edutime.ch">info@edutime.ch</a></p>
+<p>Diese Nachricht wurde an alle Organisations-Admins gesendet.</p>
+<p>Freundliche Grüsse</p>
+<p>EduTime Team</p>`,
+  }
+}
+
+type PaymentInvoiceNoticeType = 'invoice_overdue_45' | 'invoice_overdue_90'
+
+function isPaymentInvoiceNoticeType(t: string): t is PaymentInvoiceNoticeType {
+  return t === 'invoice_overdue_45' || t === 'invoice_overdue_90'
+}
+
+function buildPaymentInvoiceNoticeTemplate(
+  locale: Locale,
+  reminderType: PaymentInvoiceNoticeType,
+  orgName: string,
+  managementUrl: string,
+): TemplateContent {
+  const name = orgName || 'Organization'
+  const is45 = reminderType === 'invoice_overdue_45'
+
+  if (locale === 'fr') {
+    if (is45) {
+      return {
+        subject: `EduTime: délai de paiement dépassé — ${name}`,
+        text: [
+          'Bonjour',
+          '',
+          `La période de paiement après l’échéance de la facture EduTime pour l’organisation « ${name} » est dépassée. Veuillez régler le montant sans délai.`,
+          '',
+          `Sans paiement, l’accès peut être restreint. Si la facture reste impayée, le compte organisation peut être désactivé dans les 45 jours au plus tard.`,
+          '',
+          `Gestion de la licence et de l’organisation : ${managementUrl}`,
+          '',
+          'Merci de ne pas répondre directement à cet e-mail. Pour toute question : info@edutime.ch',
+          '',
+          'Ce message a été envoyé à tous les administrateurs de l’organisation.',
+          '',
+          'Equipe EduTime',
+        ].join('\n'),
+        html: `<p>Bonjour</p>
+<p>La période de paiement après l’échéance de la facture EduTime pour l’organisation « ${name} » est dépassée. Veuillez régler le montant sans délai.</p>
+<p>Sans paiement, l’accès peut être restreint. Si la facture reste impayée, le compte organisation peut être désactivé dans les <strong>45 jours</strong> au plus tard.</p>
+<p><a href="${managementUrl}">Gestion de la licence et de l’organisation</a></p>
+<p>Merci de ne pas répondre directement à cet e-mail. Pour toute question : <a href="mailto:info@edutime.ch">info@edutime.ch</a></p>
+<p>Ce message a été envoyé à tous les administrateurs de l’organisation.</p>
+<p>Equipe EduTime</p>`,
+      }
+    }
+    return {
+      subject: `EduTime: compte désactivé — ${name}`,
+      text: [
+        'Bonjour',
+        '',
+        `Le compte organisation « ${name} » a été désactivé pour facture impayée après expiration des délais. Vous pouvez régler le montant dans la gestion ; après paiement, l’accès peut être rétabli selon les règles du compte.`,
+        '',
+        `Gestion de la licence et de l’organisation : ${managementUrl}`,
+        '',
+        'Merci de ne pas répondre directement à cet e-mail. Pour toute question : info@edutime.ch',
+        '',
+        'Ce message a été envoyé à tous les administrateurs de l’organisation.',
+        '',
+        'Equipe EduTime',
+      ].join('\n'),
+      html: `<p>Bonjour</p>
+<p>Le compte organisation « ${name} » a été désactivé pour facture impayée après expiration des délais. Vous pouvez régler le montant dans la gestion ; après paiement, l’accès peut être rétabli selon les règles du compte.</p>
+<p><a href="${managementUrl}">Gestion de la licence et de l’organisation</a></p>
+<p>Merci de ne pas répondre directement à cet e-mail. Pour toute question : <a href="mailto:info@edutime.ch">info@edutime.ch</a></p>
+<p>Ce message a été envoyé à tous les administrateurs de l’organisation.</p>
+<p>Equipe EduTime</p>`,
+    }
+  }
+
+  if (locale === 'en') {
+    if (is45) {
+      return {
+        subject: `EduTime: payment deadline passed — ${name}`,
+        text: [
+          'Hello',
+          '',
+          `The payment period after the EduTime invoice due date for organization «${name}» has expired. Please settle the amount without delay.`,
+          '',
+          `Without payment, access may be restricted. If the invoice remains unpaid, the organization account may be deactivated within 45 days at the earliest.`,
+          '',
+          `License and organization management: ${managementUrl}`,
+          '',
+          'Please do not reply to this email directly. For questions: info@edutime.ch',
+          '',
+          'This message was sent to all organization administrators.',
+          '',
+          'EduTime Team',
+        ].join('\n'),
+        html: `<p>Hello</p>
+<p>The payment period after the EduTime invoice due date for organization «${name}» has expired. Please settle the amount without delay.</p>
+<p>Without payment, access may be restricted. If the invoice remains unpaid, the organization account may be deactivated within <strong>45 days</strong> at the earliest.</p>
+<p><a href="${managementUrl}">License and organization management</a></p>
+<p>Please do not reply to this email directly. For questions: <a href="mailto:info@edutime.ch">info@edutime.ch</a></p>
+<p>This message was sent to all organization administrators.</p>
+<p>EduTime Team</p>`,
+      }
+    }
+    return {
+      subject: `EduTime: account deactivated — ${name}`,
+      text: [
+        'Hello',
+        '',
+        `The organization account «${name}» has been deactivated for non-payment after the deadlines expired. You can pay in the management area; after payment, access may be restored according to your account rules.`,
+        '',
+        `License and organization management: ${managementUrl}`,
+        '',
+        'Please do not reply to this email directly. For questions: info@edutime.ch',
+        '',
+        'This message was sent to all organization administrators.',
+        '',
+        'EduTime Team',
+      ].join('\n'),
+      html: `<p>Hello</p>
+<p>The organization account «${name}» has been deactivated for non-payment after the deadlines expired. You can pay in the management area; after payment, access may be restored according to your account rules.</p>
+<p><a href="${managementUrl}">License and organization management</a></p>
+<p>Please do not reply to this email directly. For questions: <a href="mailto:info@edutime.ch">info@edutime.ch</a></p>
+<p>This message was sent to all organization administrators.</p>
+<p>EduTime Team</p>`,
+    }
+  }
+
+  if (is45) {
+    return {
+      subject: `EduTime: Zahlungsfrist abgelaufen — ${name}`,
+      text: [
+        'Guten Tag',
+        '',
+        `Die Zahlungsfrist für die offene EduTime-Rechnung Ihrer Organisation «${name}» ist abgelaufen. Bitte begleichen Sie den Betrag umgehend.`,
+        '',
+        `Ohne rechtzeitige Zahlung kann der Zugriff auf die Organisation eingeschränkt werden. Bleibt die Rechnung offen, wird der Organisations-Account frühestens in 45 Tagen deaktiviert.`,
+        '',
+        `Zur Lizenz- und Organisationsverwaltung: ${managementUrl}`,
+        '',
+        'Bitte antworten Sie nicht direkt auf diese E-Mail. Bei Fragen: info@edutime.ch',
+        '',
+        'Diese Nachricht wurde an alle Organisations-Admins gesendet.',
+        '',
+        'Freundliche Grüsse',
+        '',
+        'EduTime Team',
+      ].join('\n'),
+      html: `<p>Guten Tag</p>
+<p>Die Zahlungsfrist für die offene EduTime-Rechnung Ihrer Organisation «${name}» ist abgelaufen. Bitte begleichen Sie den Betrag umgehend.</p>
+<p>Ohne rechtzeitige Zahlung kann der Zugriff auf die Organisation eingeschränkt werden. Bleibt die Rechnung offen, wird der Organisations-Account frühestens in <strong>45 Tagen</strong> deaktiviert.</p>
+<p><a href="${managementUrl}">Zur Lizenz- und Organisationsverwaltung</a></p>
+<p>Bitte antworten Sie nicht direkt auf diese E-Mail. Bei Fragen: <a href="mailto:info@edutime.ch">info@edutime.ch</a></p>
+<p>Diese Nachricht wurde an alle Organisations-Admins gesendet.</p>
+<p>Freundliche Grüsse</p>
+<p>EduTime Team</p>`,
+    }
+  }
+  return {
+    subject: `EduTime: Organisations-Account deaktiviert — ${name}`,
+    text: [
+      'Guten Tag',
+      '',
+      `Der Organisations-Account «${name}» wurde nach Ablauf der Fristen wegen unbezahlter Rechnung deaktiviert. Sie können in der Verwaltung zahlen; nach Zahlung kann der Zugriff wieder freigeschaltet werden.`,
+      '',
+      `Zur Lizenz- und Organisationsverwaltung: ${managementUrl}`,
+      '',
+      'Bitte antworten Sie nicht direkt auf diese E-Mail. Bei Fragen: info@edutime.ch',
+      '',
+      'Diese Nachricht wurde an alle Organisations-Admins gesendet.',
+      '',
+      'Freundliche Grüsse',
+      '',
+      'EduTime Team',
+    ].join('\n'),
+    html: `<p>Guten Tag</p>
+<p>Der Organisations-Account «${name}» wurde nach Ablauf der Fristen wegen unbezahlter Rechnung deaktiviert. Sie können in der Verwaltung zahlen; nach Zahlung kann der Zugriff wieder freigeschaltet werden.</p>
+<p><a href="${managementUrl}">Zur Lizenz- und Organisationsverwaltung</a></p>
+<p>Bitte antworten Sie nicht direkt auf diese E-Mail. Bei Fragen: <a href="mailto:info@edutime.ch">info@edutime.ch</a></p>
+<p>Diese Nachricht wurde an alle Organisations-Admins gesendet.</p>
+<p>Freundliche Grüsse</p>
+<p>EduTime Team</p>`,
   }
 }
 
@@ -265,7 +579,7 @@ Deno.serve(async (req: Request) => {
       /^v/i,
       '',
     )
-    const fromEmail = Deno.env.get('BILLING_FROM_EMAIL') || 'EduTime <billing@edutime.ch>'
+    const fromEmail = EDUTIME_TRANSACTIONAL_FROM
     const appUrl = Deno.env.get('NEXT_PUBLIC_APP_URL') || Deno.env.get('APP_URL') || 'https://edutime.ch'
     const nowIso = new Date().toISOString()
 
@@ -428,8 +742,10 @@ Deno.serve(async (req: Request) => {
             throw new Error(`Missing organization admin for organization ${organizationId}`)
           }
 
-          const adminUser = userById.get(admin.user_id)
-          const adminEmail = adminEmailByUserId.get(admin.user_id)
+          const actorUserId = resolveActorUserId(subscription, admin.user_id)
+          const adminUser = userById.get(actorUserId) ?? userById.get(admin.user_id)
+          const adminEmail = adminEmailByUserId.get(actorUserId) ?? adminEmailByUserId.get(admin.user_id)
+          const recipientEmail = resolveBillingRecipientEmail(subscription, adminEmail)
           const seatCountFromMetadata = Number(subscription.metadata?.next_period_seat_count ?? NaN)
           const seatCount = Number.isFinite(seatCountFromMetadata) && seatCountFromMetadata >= 3
             ? Math.trunc(seatCountFromMetadata)
@@ -479,12 +795,16 @@ Deno.serve(async (req: Request) => {
           const periodStart = subscription.current_period_end
             ? new Date(subscription.current_period_end)
             : new Date(nowIso)
+          const invoiceDueDaysAfterPeriodEnd = resolveOrgInvoiceDueDaysAfterPeriodEnd(subscription.metadata)
           const dueDate = new Date(
-            Date.UTC(periodStart.getUTCFullYear(), periodStart.getUTCMonth(), periodStart.getUTCDate() + 30),
+            Date.UTC(
+              periodStart.getUTCFullYear(),
+              periodStart.getUTCMonth(),
+              periodStart.getUTCDate() + invoiceDueDaysAfterPeriodEnd,
+            ),
           ).toISOString()
-
           const { error: createCheckoutError } = await billing.rpc('create_org_checkout', {
-            p_actor_user_id: admin.user_id,
+            p_actor_user_id: actorUserId,
             p_organization_id: organizationId,
             p_quantity: seatCount,
             p_amount_cents: amountCents,
@@ -509,12 +829,23 @@ Deno.serve(async (req: Request) => {
 
           autoRenewCreatedCount += 1
 
-          if (resendApiKey && adminEmail) {
+          if (resendApiKey && recipientEmail) {
             try {
               const locale = detectLocale(adminUser?.language)
-              const managementUrl = `${appUrl}/app/organization-management`
-              const emailTemplate = buildCheckoutLinkTemplate(locale, gateway.checkoutUrl, managementUrl)
-              await sendEmailWithResend(resendApiKey, fromEmail, adminEmail, emailTemplate)
+              const { data: orgRowForEmail } = await publicClient
+                .from('organizations')
+                .select('name')
+                .eq('id', organizationId)
+                .maybeSingle()
+              const orgNameForEmail = (orgRowForEmail?.name as string | undefined)?.trim() || 'Organisation'
+              const emailTemplate = buildCheckoutLinkTemplate(locale, gateway.checkoutUrl, {
+                orgName: orgNameForEmail,
+                amountCents,
+                currency: subscription.currency || 'CHF',
+                seatCount,
+                paymentDueIso: dueDate,
+              })
+              await sendEmailWithResend(resendApiKey, fromEmail, recipientEmail, emailTemplate)
               checkoutLinkEmailsSent += 1
             } catch (emailError) {
               checkoutLinkEmailsFailed += 1
@@ -526,9 +857,9 @@ Deno.serve(async (req: Request) => {
           } else {
             if (!resendApiKey) {
               console.warn('org-billing-jobs checkout-link email skipped: RESEND_API_KEY is not configured')
-            } else if (!adminEmail) {
+            } else if (!recipientEmail) {
               console.warn(
-                `org-billing-jobs checkout-link email skipped: missing admin email for organization ${organizationId}`,
+                `org-billing-jobs checkout-link email skipped: missing billing recipient email for organization ${organizationId}`,
               )
             }
           }
@@ -556,6 +887,86 @@ Deno.serve(async (req: Request) => {
       )
     }
 
+    const { data: renewalReminderSweepResult, error: renewalReminderSweepError } = await billing.rpc(
+      'run_org_renewal_reminder_sweep',
+      { p_reference_time: nowIso },
+    )
+    if (renewalReminderSweepError) {
+      throw new Error(`run_org_renewal_reminder_sweep failed: ${renewalReminderSweepError.message}`)
+    }
+
+    let renewalReminderEmailsSent = 0
+    let renewalReminderEmailsFailed = 0
+
+    if (resendApiKey) {
+      const todayStr = nowIso.slice(0, 10)
+      const { data: pendingReminders, error: pendingRemindersError } = await billing
+        .from('org_renewal_reminders')
+        .select('id, organization_id, recipient_email, recipient_user_id, reminder_type, scheduled_for')
+        .eq('status', 'pending')
+        .lte('scheduled_for', todayStr)
+        .limit(200)
+
+      if (pendingRemindersError) {
+        throw new Error(`Failed to load org renewal reminders: ${pendingRemindersError.message}`)
+      }
+
+      const managementUrlBase = `${appUrl}/app/organization-management`
+
+      for (const row of pendingReminders || []) {
+        const reminderType = String(row.reminder_type)
+        if (!isPaymentInvoiceNoticeType(reminderType)) {
+          console.warn(`org-billing-jobs: unexpected reminder_type ${reminderType} for row ${row.id}, skipping`)
+          continue
+        }
+
+        const recipientEmail = String(row.recipient_email || '').trim()
+        if (!recipientEmail.includes('@')) continue
+
+        let locale: Locale = 'de'
+        if (row.recipient_user_id) {
+          const { data: profile } = await publicClient
+            .from('users')
+            .select('language')
+            .eq('user_id', row.recipient_user_id)
+            .maybeSingle()
+          locale = detectLocale(profile?.language ?? null)
+        }
+
+        const { data: orgRow } = await publicClient
+          .from('organizations')
+          .select('name')
+          .eq('id', row.organization_id)
+          .maybeSingle()
+
+        const orgName = (orgRow?.name as string | undefined)?.trim() || 'Organization'
+        const managementUrl = `${managementUrlBase}?organizationId=${encodeURIComponent(String(row.organization_id))}`
+
+        try {
+          const tpl = buildPaymentInvoiceNoticeTemplate(
+            locale,
+            reminderType,
+            orgName,
+            managementUrl,
+          )
+          await sendEmailWithResend(resendApiKey, fromEmail, recipientEmail, tpl)
+          renewalReminderEmailsSent += 1
+          await billing
+            .from('org_renewal_reminders')
+            .update({ status: 'sent', sent_at: nowIso, last_error: null })
+            .eq('id', row.id)
+        } catch (error) {
+          renewalReminderEmailsFailed += 1
+          const msg = error instanceof Error ? error.message : String(error)
+          console.error(`org-billing-jobs renewal reminder email failed for ${row.id}:`, msg)
+          await billing
+            .from('org_renewal_reminders')
+            .update({ status: 'failed', last_error: msg })
+            .eq('id', row.id)
+        }
+      }
+    }
+
     const { data: delinquencySummary, error: delinquencyError } = await billing.rpc(
       'run_org_delinquency_sweep',
       { p_reference_time: nowIso },
@@ -564,15 +975,27 @@ Deno.serve(async (req: Request) => {
       throw new Error(`run_org_delinquency_sweep failed: ${delinquencyError.message}`)
     }
 
+    const { data: hardDelinquencySummary, error: hardDelinquencyError } = await billing.rpc(
+      'run_org_hard_delinquency_sweep',
+      { p_reference_time: nowIso },
+    )
+    if (hardDelinquencyError) {
+      throw new Error(`run_org_hard_delinquency_sweep failed: ${hardDelinquencyError.message}`)
+    }
+
     return new Response(
       JSON.stringify({
         ok: true,
+        renewalReminderSweepResult,
         delinquencySummary,
+        hardDelinquencySummary,
         cancellationFinalizationSummary,
         autoRenewCheckoutsCreated: autoRenewCreatedCount,
         autoRenewCheckoutsFailed: autoRenewFailedCount,
         checkoutLinkEmailsSent,
         checkoutLinkEmailsFailed,
+        renewalReminderEmailsSent,
+        renewalReminderEmailsFailed,
       }),
       {
         status: 200,

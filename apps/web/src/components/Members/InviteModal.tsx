@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Modal, Stack, TextInput, Button, Alert } from '@mantine/core'
-import { IconAlertCircle, IconInfoCircle, IconMail } from '@tabler/icons-react'
+import { IconAlertCircle, IconMail } from '@tabler/icons-react'
 import { useWindowEvent } from '@mantine/hooks' // Import useWindowEvent from Mantine
 import { useTranslations } from 'next-intl'
 import { GetStaticPropsContext } from 'next/types'
@@ -86,8 +86,8 @@ const InviteModal = ({
             {t('The user is already a member of the organization')}
           </Alert>
         )}
-        <Alert icon={<IconInfoCircle size='1rem' />} title={''}>
-          {t('No email will be sent')}
+        <Alert icon={<IconMail size='1rem' />} title={t('invite-email-info-title')}>
+          {t('invite-email-info-body')}
         </Alert>
         <TextInput
           placeholder={t('Enter email')}
@@ -97,8 +97,9 @@ const InviteModal = ({
           size='md'
         />
         <TextInput
-          placeholder={t('comment-placeholder')}
-          label={t('comment')}
+          placeholder={t('invite-comment-placeholder')}
+          label={t('invite-comment-label')}
+          description={t('invite-comment-description')}
           value={comment}
           onChange={(event) => setComment(event.currentTarget.value)}
         />

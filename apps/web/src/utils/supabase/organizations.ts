@@ -138,7 +138,12 @@ export const addOrganizationMember = async (
     }),
   })
   const response = await fetch('/api/billing/org-license/members', requestInit)
-  const payload = (await response.json()) as { inviteId?: string; error?: string }
+  const payload = (await response.json()) as {
+    inviteId?: string
+    emailSent?: boolean
+    emailSkippedSelf?: boolean
+    error?: string
+  }
 
   if (!response.ok) {
     throw new Error(payload.error || 'Failed to invite member')
