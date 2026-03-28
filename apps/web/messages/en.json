@@ -491,7 +491,7 @@
     "org-management-billing-subscription-ends": "Subscription ends on",
     "org-management-billing-next-payment-none-after-cancel": "No further payment is scheduled after cancellation.",
     "org-management-invoice-payable-until": "Pay by",
-    "org-management-open-invoice-title": "Open invoice",
+    "org-management-open-invoices-title": "Open invoices",
     "org-management-receipt-subtitle": "Payment confirmation for a successfully paid EduTime organization license.",
     "org-management-receipt-product-value": "EduTime annual license (organization)",
     "org-management-receipt-organization": "Organization",

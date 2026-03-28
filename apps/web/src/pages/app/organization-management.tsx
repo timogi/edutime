@@ -166,12 +166,6 @@ const orgInvoiceExcludedFromPaymentHistory = (status: string) => {
   return s === 'open' || s === 'draft' || s === 'failed'
 }
 
-const orgBillingAwaitingInvoicePayment = (billing: OrgBillingData): boolean => {
-  const s = (billing.invoiceStatus || '').trim().toLowerCase()
-  const isPending = s === 'open' || s === 'draft' || s === 'failed'
-  return isPending && Boolean(billing.payrexxInvoicePaymentLink || billing.payrexxGatewayLink)
-}
-
 const WarningNotice = ({ children }: { children: React.ReactNode }) => (
   <Alert color='yellow' variant='light' icon={<IconAlertTriangle size={16} />}>
     {children}
@@ -697,6 +691,15 @@ export default function OrganizationManagementPage() {
     if (!list) return []
     return list.filter((inv) => !orgInvoiceExcludedFromPaymentHistory(inv.status))
   }, [payload?.billing?.invoices])
+
+  const orgOpenInvoices = useMemo(() => {
+    const list = payload?.billing?.invoices
+    if (!list) return []
+    return list
+      .filter((inv) => orgInvoiceExcludedFromPaymentHistory(inv.status))
+      .slice()
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  }, [payload?.billing?.invoices])
   const backPath =
     hasActiveSubscription && selectedOrganizationId
       ? `/app/members?organizationId=${encodeURIComponent(selectedOrganizationId)}`
@@ -1016,34 +1019,71 @@ export default function OrganizationManagementPage() {
                   </Button>
                 ) : null}
 
-                {orgBillingAwaitingInvoicePayment(payload.billing) ? (
-                  <Alert color='orange' variant='light' title={t('org-management-open-invoice-title')}>
-                    <Stack gap='sm'>
-                      {typeof payload.billing.invoiceDueDate === 'string' &&
-                      payload.billing.invoiceDueDate.trim().length > 0 ? (
-                        <Text size='sm'>
-                          {t('org-management-invoice-payable-until')}:{' '}
-                          {formatDate(payload.billing.invoiceDueDate, locale, '-')}
-                        </Text>
-                      ) : null}
-                      <Button
-                        component='a'
-                        href={
-                          payload.billing.payrexxInvoicePaymentLink || payload.billing.payrexxGatewayLink!
-                        }
-                        target='_blank'
-                        rel='noreferrer'
-                        variant='light'
-                        size='sm'
-                        w='fit-content'
-                      >
-                        {t('org-management-payment-link-button')}
-                      </Button>
-                    </Stack>
-                  </Alert>
+                {orgOpenInvoices.length > 0 ? (
+                  <>
+                    <Text size='lg' fw={600} mt='sm'>
+                      {t('org-management-open-invoices-title')}
+                    </Text>
+                    <Paper withBorder radius='md' p='xs'>
+                      <Table striped highlightOnHover withTableBorder>
+                        <Table.Thead>
+                          <Table.Tr>
+                            <Table.Th>{t('license-management-history-date')}</Table.Th>
+                            <Table.Th>{t('license-management-history-amount')}</Table.Th>
+                            <Table.Th>{t('org-management-invoice-payable-until')}</Table.Th>
+                            <Table.Th>{t('license-management-history-status')}</Table.Th>
+                            <Table.Th>{t('license-management-history-reference')}</Table.Th>
+                            <Table.Th>{t('org-management-payment-link-column')}</Table.Th>
+                          </Table.Tr>
+                        </Table.Thead>
+                        <Table.Tbody>
+                          {orgOpenInvoices.map((invoice) => {
+                            const payLink =
+                              payload.billing?.payrexxInvoicePaymentLink || payload.billing?.payrexxGatewayLink
+                            const showPayLink =
+                              Boolean(payLink) &&
+                              (invoice.status === 'open' ||
+                                invoice.status === 'draft' ||
+                                invoice.status === 'failed')
+                            return (
+                              <Table.Tr key={invoice.id}>
+                                <Table.Td>{formatDate(invoice.created_at, locale, '-')}</Table.Td>
+                                <Table.Td>{formatAmount(invoice.amount_cents, invoice.currency, locale)}</Table.Td>
+                                <Table.Td>
+                                  {typeof invoice.due_date === 'string' && invoice.due_date.trim().length > 0
+                                    ? formatDate(invoice.due_date, locale, '-')
+                                    : '-'}
+                                </Table.Td>
+                                <Table.Td>{getInvoiceStatusLabel(invoice.status)}</Table.Td>
+                                <Table.Td>{invoice.provider_invoice_id || '-'}</Table.Td>
+                                <Table.Td>
+                                  {showPayLink ? (
+                                    <Button
+                                      component='a'
+                                      href={payLink!}
+                                      target='_blank'
+                                      rel='noreferrer'
+                                      variant='light'
+                                      size='xs'
+                                    >
+                                      {t('org-management-payment-link-button')}
+                                    </Button>
+                                  ) : (
+                                    <Text size='sm' c='dimmed'>
+                                      -
+                                    </Text>
+                                  )}
+                                </Table.Td>
+                              </Table.Tr>
+                            )
+                          })}
+                        </Table.Tbody>
+                      </Table>
+                    </Paper>
+                  </>
                 ) : null}
 
-                <Text size='lg' fw={600} mt='sm'>
+                <Text size='lg' fw={600} mt={orgOpenInvoices.length > 0 ? 'md' : 'sm'}>
                   {t('license-management-history-title')}
                 </Text>
                 {orgPaymentHistoryInvoices.length === 0 ? (

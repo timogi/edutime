@@ -66,15 +66,6 @@ function resolveBillingRecipientEmail(
   return fallbackAdminEmail
 }
 
-type InvoiceStatus = 'draft' | 'open' | 'failed' | 'paid' | 'void' | 'cancelled'
-
-type InvoiceRow = {
-  id: string
-  subscription_id: string
-  status: InvoiceStatus
-  created_at: string
-}
-
 type OrganizationAdminRow = {
   organization_id: number
   user_id: string
@@ -557,6 +548,106 @@ function buildPaymentInvoiceNoticeTemplate(
   }
 }
 
+/** Email when org subscription ends because cancel_at_period_end (no auto-renew). */
+function buildOrgCanceledAtPeriodEndNoticeTemplate(
+  locale: Locale,
+  orgName: string,
+  managementUrl: string,
+): TemplateContent {
+  const name = orgName.trim() || 'Organisation'
+
+  if (locale === 'fr') {
+    return {
+      subject: `EduTime: fin de la licence organisation — ${name}`,
+      text: [
+        'Bonjour',
+        '',
+        `La période de votre licence d’organisation EduTime pour « ${name} » est terminée. Le renouvellement automatique était désactivé : l’abonnement est clos et les sièges organisation ne sont plus actifs.`,
+        '',
+        `Vous pouvez souscrire à nouveau une licence ou gérer l’organisation ici : ${managementUrl}`,
+        '',
+        'Merci de ne pas répondre directement à cet e-mail. Pour toute question : info@edutime.ch',
+        '',
+        'Ce message a été envoyé à tous les administrateurs de l’organisation.',
+        '',
+        'Equipe EduTime',
+      ].join('\n'),
+      html: `<p>Bonjour</p>
+<p>La période de votre licence d’organisation EduTime pour « ${name} » est <strong>terminée</strong>. Le renouvellement automatique était désactivé : l’abonnement est clos et les sièges organisation ne sont plus actifs.</p>
+<p>Vous pouvez souscrire à nouveau une licence ou gérer l’organisation ici : <a href="${managementUrl}">gestion de l’organisation</a>.</p>
+<p>Merci de ne pas répondre directement à cet e-mail. Pour toute question : <a href="mailto:info@edutime.ch">info@edutime.ch</a></p>
+<p>Ce message a été envoyé à tous les administrateurs de l’organisation.</p>
+<p>Equipe EduTime</p>`,
+    }
+  }
+
+  if (locale === 'en') {
+    return {
+      subject: `EduTime: organization license ended — ${name}`,
+      text: [
+        'Hello',
+        '',
+        `The billing period for your EduTime organization license for «${name}» has ended. Automatic renewal was turned off: the subscription has ended and organization seats are no longer active.`,
+        '',
+        `You can purchase a new license or manage the organization here: ${managementUrl}`,
+        '',
+        'Please do not reply to this email directly. For questions: info@edutime.ch',
+        '',
+        'This message was sent to all organization administrators.',
+        '',
+        'EduTime Team',
+      ].join('\n'),
+      html: `<p>Hello</p>
+<p>The billing period for your EduTime organization license for «${name}» has <strong>ended</strong>. Automatic renewal was turned off: the subscription has ended and organization seats are no longer active.</p>
+<p>You can purchase a new license or manage the organization here: <a href="${managementUrl}">organization management</a>.</p>
+<p>Please do not reply to this email directly. For questions: <a href="mailto:info@edutime.ch">info@edutime.ch</a></p>
+<p>This message was sent to all organization administrators.</p>
+<p>EduTime Team</p>`,
+    }
+  }
+
+  return {
+    subject: `EduTime: Organisationslizenz beendet — ${name}`,
+    text: [
+      'Guten Tag',
+      '',
+      `Die Laufzeit Ihrer EduTime-Organisationslizenz für «${name}» ist zu Ende. Die automatische Verlängerung war deaktiviert: Das Abonnement ist beendet und die Organisationssitze sind nicht mehr aktiv.`,
+      '',
+      `Sie können eine neue Lizenz erwerben oder die Organisation hier verwalten: ${managementUrl}`,
+      '',
+      'Bitte antworten Sie nicht direkt auf diese E-Mail. Bei Fragen: info@edutime.ch',
+      '',
+      'Diese Nachricht wurde an alle Organisations-Admins gesendet.',
+      '',
+      'Freundliche Grüsse',
+      '',
+      'EduTime Team',
+    ].join('\n'),
+    html: `<p>Guten Tag</p>
+<p>Die Laufzeit Ihrer EduTime-Organisationslizenz für «${name}» ist <strong>zu Ende</strong>. Die automatische Verlängerung war deaktiviert: Das Abonnement ist beendet und die Organisationssitze sind nicht mehr aktiv.</p>
+<p>Sie können eine neue Lizenz erwerben oder die Organisation hier verwalten: <a href="${managementUrl}">Zur Lizenz- und Organisationsverwaltung</a>.</p>
+<p>Bitte antworten Sie nicht direkt auf diese E-Mail. Bei Fragen: <a href="mailto:info@edutime.ch">info@edutime.ch</a></p>
+<p>Diese Nachricht wurde an alle Organisations-Admins gesendet.</p>
+<p>Freundliche Grüsse</p>
+<p>EduTime Team</p>`,
+  }
+}
+
+function parseCanceledAtPeriodEndOrgIds(summary: unknown): number[] {
+  if (summary === null || typeof summary !== 'object') return []
+  const raw = (summary as Record<string, unknown>).canceled_at_period_end_organization_ids
+  if (!Array.isArray(raw)) return []
+  const out: number[] = []
+  for (const item of raw) {
+    if (typeof item === 'number' && Number.isInteger(item)) {
+      out.push(item)
+    } else if (typeof item === 'string' && /^\d+$/.test(item)) {
+      out.push(Number.parseInt(item, 10))
+    }
+  }
+  return out
+}
+
 async function sendEmailWithResend(
   apiKey: string,
   fromEmail: string,
@@ -665,27 +756,18 @@ Deno.serve(async (req: Request) => {
 
       const openInvoiceSubscriptions = new Set<string>()
       if (subscriptionIds.length > 0) {
-        const { data: invoices, error: invoicesError } = await billing
-          .from('invoices')
-          .select('id, subscription_id, status, created_at')
-          .in('subscription_id', subscriptionIds)
-          .order('created_at', { ascending: false })
-
-        if (invoicesError) {
-          throw new Error(`Failed to fetch org renewal invoices: ${invoicesError.message}`)
+        const { data: blockingIds, error: blockingError } = await billing.rpc(
+          'org_subscription_ids_with_latest_unpaid_invoice',
+          { p_subscription_ids: subscriptionIds },
+        )
+        if (blockingError) {
+          throw new Error(`Failed to resolve org renewal invoice guard: ${blockingError.message}`)
         }
-
-        const latestInvoiceBySubscription = new Map<string, InvoiceRow>()
-        for (const invoice of (invoices || []) as InvoiceRow[]) {
-          if (!latestInvoiceBySubscription.has(invoice.subscription_id)) {
-            latestInvoiceBySubscription.set(invoice.subscription_id, invoice)
+        for (const id of blockingIds || []) {
+          if (typeof id === 'string') {
+            openInvoiceSubscriptions.add(id)
           }
         }
-        latestInvoiceBySubscription.forEach((invoice, subscriptionId) => {
-          if (invoice.status === 'open' || invoice.status === 'draft' || invoice.status === 'failed') {
-            openInvoiceSubscriptions.add(subscriptionId)
-          }
-        })
       }
 
       const organizationIds = Array.from(
@@ -915,6 +997,85 @@ Deno.serve(async (req: Request) => {
       )
     }
 
+    const canceledPeriodEndOrgIds = parseCanceledAtPeriodEndOrgIds(cancellationFinalizationSummary)
+    let orgCancelPeriodEndEmailsSent = 0
+    let orgCancelPeriodEndEmailsFailed = 0
+
+    if (resendApiKey) {
+      const managementUrlBase = `${appUrl}/app/organization-management`
+
+      for (const orgId of canceledPeriodEndOrgIds) {
+        if (!Number.isInteger(orgId) || orgId <= 0) continue
+
+        const { data: orgRow } = await publicClient
+          .from('organizations')
+          .select('name')
+          .eq('id', orgId)
+          .maybeSingle()
+
+        const orgName = (orgRow?.name as string | undefined)?.trim() || 'Organisation'
+
+        const { data: adminRows, error: adminsError } = await publicClient
+          .from('organization_administrators')
+          .select('user_id')
+          .eq('organization_id', orgId)
+          .not('user_id', 'is', null)
+
+        if (adminsError) {
+          console.error(
+            `org-billing-jobs: failed to load admins for org ${orgId} (cancel-at-period-end notice):`,
+            adminsError.message,
+          )
+          continue
+        }
+
+        const managementUrl = `${managementUrlBase}?organizationId=${encodeURIComponent(String(orgId))}`
+        const dedupeEmails = new Set<string>()
+
+        for (const row of adminRows || []) {
+          const userId = row.user_id as string
+          if (!userId) continue
+
+          const { data: profile } = await publicClient
+            .from('users')
+            .select('language')
+            .eq('user_id', userId)
+            .maybeSingle()
+
+          const locale = detectLocale(profile?.language ?? null)
+
+          const { data: authUserData, error: authUserError } = await publicClient.auth.admin.getUserById(userId)
+          if (authUserError) {
+            console.error(
+              `org-billing-jobs: auth lookup failed for admin ${userId} (org ${orgId}):`,
+              authUserError.message,
+            )
+            continue
+          }
+
+          const email = authUserData.user?.email?.trim()
+          if (!email || !email.includes('@') || dedupeEmails.has(email.toLowerCase())) continue
+          dedupeEmails.add(email.toLowerCase())
+
+          const tpl = buildOrgCanceledAtPeriodEndNoticeTemplate(locale, orgName, managementUrl)
+          try {
+            await sendEmailWithResend(resendApiKey, fromEmail, email, tpl)
+            orgCancelPeriodEndEmailsSent += 1
+          } catch (error) {
+            orgCancelPeriodEndEmailsFailed += 1
+            console.error(
+              `org-billing-jobs cancel-at-period-end email failed for org ${orgId} → ${email}:`,
+              error instanceof Error ? error.message : error,
+            )
+          }
+        }
+      }
+    } else if (canceledPeriodEndOrgIds.length > 0) {
+      console.warn(
+        'org-billing-jobs cancel-at-period-end notices skipped: RESEND_API_KEY is not configured',
+      )
+    }
+
     const { data: renewalReminderSweepResult, error: renewalReminderSweepError } = await billing.rpc(
       'run_org_renewal_reminder_sweep',
       { p_reference_time: nowIso },
@@ -1033,6 +1194,8 @@ Deno.serve(async (req: Request) => {
         checkoutLinkEmailsFailed,
         renewalReminderEmailsSent,
         renewalReminderEmailsFailed,
+        orgCancelPeriodEndEmailsSent,
+        orgCancelPeriodEndEmailsFailed,
       }),
       {
         status: 200,
