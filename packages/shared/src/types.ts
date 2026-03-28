@@ -131,6 +131,10 @@ export type Organization = {
   id: number
   name: string
   seats: number
+  /** false when org is shut down (billing or admin); admins still see the org to pay or manage. */
+  is_active: boolean
+  /** Admin-requested removal: earliest date for automated purge; null for billing nonpayment. */
+  scheduled_deletion_at: string | null
 }
 
 export type Membership = {

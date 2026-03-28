@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   Container,
+  Dialog,
   Divider,
   Group,
   Loader,
@@ -20,12 +21,19 @@ import {
   Title,
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
-import { IconAlertTriangle, IconCheck, IconExternalLink } from '@tabler/icons-react'
+import { IconAlertTriangle, IconCheck, IconExternalLink, IconFileTypePdf } from '@tabler/icons-react'
 import { GetServerSidePropsContext } from 'next'
 import { useRouter } from 'next/router'
 import { useTranslations } from 'next-intl'
 import { DOCUMENT_LABELS, DOCUMENT_ROUTES } from '@edutime/shared'
+import {
+  PaymentReceiptDocument,
+  renderPaymentReceiptPdfBlob,
+  triggerBrowserPdfDownload,
+  type PaymentReceiptTranslations,
+} from '@/components/billing/PaymentReceiptDocument'
 import { useUser } from '@/contexts/UserProvider'
+import { MIN_ORG_LICENSES } from '@/utils/payments/pricing'
 import { supabase } from '@/utils/supabase/client'
 
 type OrgAdmin = {
@@ -69,6 +77,7 @@ type OrgBillingData = {
     provider_invoice_id: string | null
     paid_at: string | null
     created_at: string
+    due_date: string | null
   }>
 }
 
@@ -77,7 +86,10 @@ type OrgManagementPayload = {
     id: number
     name: string
     seats: number
+    is_active: boolean
+    scheduled_deletion_at: string | null
   }
+  membersLosingLicenseCount?: number
   admins?: OrgAdmin[]
   billing?: OrgBillingData | null
   error?: string
@@ -129,6 +141,9 @@ const localizeOrgManagementApiError = (
   if (lower.includes('cannot remove the last organization admin')) {
     return t('org-management-admin-remove-error-last-admin')
   }
+  if (trimmed === 'SEAT_REDUCTION_REQUIRES_REMOVING_MEMBERS') {
+    return t('org-management-seat-plan-error-remove-members-first')
+  }
   return trimmed || t(fallbackTranslationKey)
 }
 
@@ -145,30 +160,16 @@ const formatAmount = (amountCents: number, currency: string, locale: string) =>
     maximumFractionDigits: 2,
   }).format(amountCents / 100)
 
-const PENDING_INVOICE_STATUSES = new Set(['open', 'draft', 'failed'])
+/** Unpaid / pending — excluded from payment history table (shown separately when actionable). */
+const orgInvoiceExcludedFromPaymentHistory = (status: string) => {
+  const s = status.trim().toLowerCase()
+  return s === 'open' || s === 'draft' || s === 'failed'
+}
 
-/** Upcoming charge: latest pending invoice if any, else subscription renewal amount (unless canceled at period end). */
-const getNextOrgPaymentAmount = (
-  billing: OrgBillingData,
-  canceledAtPeriodEnd: boolean,
-): { amountCents: number; currency: string } | null => {
-  const pending = billing.invoices.filter((inv) => {
-    const st = inv.status.trim().toLowerCase()
-    return PENDING_INVOICE_STATUSES.has(st) && inv.amount_cents > 0
-  })
-  if (pending.length > 0) {
-    const latest = pending.reduce((a, b) =>
-      new Date(a.created_at).getTime() >= new Date(b.created_at).getTime() ? a : b,
-    )
-    return { amountCents: latest.amount_cents, currency: latest.currency }
-  }
-  if (canceledAtPeriodEnd) {
-    return null
-  }
-  if (billing.amountCents > 0) {
-    return { amountCents: billing.amountCents, currency: billing.currency }
-  }
-  return null
+const orgBillingAwaitingInvoicePayment = (billing: OrgBillingData): boolean => {
+  const s = (billing.invoiceStatus || '').trim().toLowerCase()
+  const isPending = s === 'open' || s === 'draft' || s === 'failed'
+  return isPending && Boolean(billing.payrexxInvoicePaymentLink || billing.payrexxGatewayLink)
 }
 
 const WarningNotice = ({ children }: { children: React.ReactNode }) => (
@@ -205,6 +206,7 @@ export default function OrganizationManagementPage() {
   const [isLoadingOrgLegalDocs, setIsLoadingOrgLegalDocs] = useState(false)
   const [orgLegalError, setOrgLegalError] = useState<string | null>(null)
   const [acceptingOrgDocumentId, setAcceptingOrgDocumentId] = useState<number | null>(null)
+  const [generatingOrgReceiptInvoiceId, setGeneratingOrgReceiptInvoiceId] = useState<string | null>(null)
 
   const locale = router.locale || 'de-CH'
   const isOrgLegalMissingError = useCallback((message: string) => {
@@ -289,6 +291,54 @@ export default function OrganizationManagementPage() {
     [t],
   )
 
+  const handleDownloadOrgReceipt = useCallback(
+    async (invoice: OrgBillingData['invoices'][number]) => {
+      if (invoice.status !== 'paid') {
+        return
+      }
+      const orgName = payload?.organization?.name?.trim() || '-'
+      setGeneratingOrgReceiptInvoiceId(invoice.id)
+      try {
+        const receiptTranslations: PaymentReceiptTranslations = {
+          title: t('license-management-receipt-title'),
+          subtitle: t('org-management-receipt-subtitle'),
+          issueDate: t('license-management-receipt-issue-date'),
+          paymentDate: t('license-management-receipt-payment-date'),
+          amount: t('license-management-receipt-amount'),
+          currency: t('license-management-receipt-currency'),
+          reference: t('license-management-receipt-reference'),
+          status: t('license-management-receipt-status'),
+          statusPaid: t('license-management-history-status-paid'),
+          customer: t('license-management-receipt-customer'),
+          customerLine: `${t('org-management-receipt-organization')}: ${orgName}`,
+          issuer: t('license-management-receipt-issuer'),
+          product: t('license-management-receipt-product'),
+          productValue: t('org-management-receipt-product-value'),
+          periodLabel: t('license-management-receipt-period-label'),
+          periodYear: t('license-management-receipt-period-year'),
+        }
+        const receiptDocument = (
+          <PaymentReceiptDocument invoice={invoice} locale={locale} translations={receiptTranslations} />
+        )
+        const blob = await renderPaymentReceiptPdfBlob(receiptDocument)
+        const safeReference = (invoice.provider_invoice_id || invoice.id).replace(/[^a-zA-Z0-9_-]/g, '_')
+        const datePart = new Date().toISOString().split('T')[0]
+        const filename = `EduTime_Org_Zahlungsbestaetigung_${safeReference}_${datePart}.pdf`
+        triggerBrowserPdfDownload(blob, filename)
+      } catch (error) {
+        console.error('Error creating organization receipt PDF:', error)
+        notifications.show({
+          title: t('error'),
+          message: t('license-management-receipt-error'),
+          color: 'red',
+        })
+      } finally {
+        setGeneratingOrgReceiptInvoiceId(null)
+      }
+    },
+    [locale, payload?.organization?.name, t],
+  )
+
   const getOrgSubscriptionStatusLabel = useCallback(
     (status: OrgSubscriptionStatus) => {
       switch (status) {
@@ -329,7 +379,15 @@ export default function OrganizationManagementPage() {
         }
         setPayload(data)
         setRenameValue(data.organization?.name || '')
-        setTargetSeatCount(data.billing?.nextPeriodSeatCount || data.billing?.seatCount || data.organization?.seats || 3)
+        const occupied = data.membersLosingLicenseCount ?? 0
+        const minSeats = Math.max(MIN_ORG_LICENSES, occupied)
+        const preferred =
+          data.billing?.nextPeriodSeatCount ??
+          data.billing?.seatCount ??
+          data.organization?.seats ??
+          minSeats
+        const preferredNum = typeof preferred === 'number' && Number.isFinite(preferred) ? preferred : minSeats
+        setTargetSeatCount(Math.max(minSeats, preferredNum))
         setSeatAdjustmentPreview(null)
       } catch (error) {
         const message = error instanceof Error ? error.message : ''
@@ -380,10 +438,14 @@ export default function OrganizationManagementPage() {
         body: JSON.stringify(body),
       })
       const response = await fetch('/api/billing/org-license/management', requestInit)
-      const data = (await response.json()) as { error?: string }
+      const data = (await response.json()) as {
+        error?: string
+        deletionNoticeEmailsSent?: number
+      }
       if (!response.ok) {
         throw new Error(data.error || 'Request failed')
       }
+      return data
     },
     [getAuthenticatedRequestInit],
   )
@@ -567,19 +629,23 @@ export default function OrganizationManagementPage() {
 
     setIsDeactivatingOrg(true)
     try {
-      await postAction({
+      const result = await postAction({
         action: 'deactivateOrg',
         organizationId: Number(selectedOrganizationId),
       })
+      const emailsSent =
+        typeof result.deletionNoticeEmailsSent === 'number' && result.deletionNoticeEmailsSent > 0
       notifications.show({
-        title: t('org-management-deactivate-success-title'),
-        message: t('org-management-deactivate-success-message'),
+        title: t('org-management-delete-success-title'),
+        message: emailsSent
+          ? t('org-management-delete-success-message-email')
+          : t('org-management-delete-success-message'),
         color: 'green',
       })
       await refreshUserData()
-      void router.push('/app')
+      void router.push('/app/no-license')
     } catch (error) {
-      await handleOrgManagementError(error, 'org-management-deactivate-error', Number(selectedOrganizationId))
+      await handleOrgManagementError(error, 'org-management-delete-error', Number(selectedOrganizationId))
     } finally {
       setIsDeactivatingOrg(false)
       setIsDeactivateConfirmOpen(false)
@@ -592,15 +658,14 @@ export default function OrganizationManagementPage() {
   }
 
   const adminCount = payload?.admins?.length || 0
+  const membersLosingLicenseCount = payload?.membersLosingLicenseCount ?? 0
+  const minimumSeatPlanTarget = Math.max(MIN_ORG_LICENSES, membersLosingLicenseCount)
   const canRemoveAdmins = adminCount > 1
   const isOrgCanceled = Boolean(payload?.billing?.cancelAtPeriodEnd)
   const hasOrgSubscription = Boolean(payload?.billing)
+  const organizationRowInactive = payload?.organization ? !payload.organization.is_active : false
+  const showOrgDeleteSection = Boolean(payload?.organization?.is_active)
   const currentSeatCount = payload?.billing?.seatCount || payload?.organization?.seats || 0
-
-  const nextPaymentAmount = useMemo(() => {
-    if (!payload?.billing) return null
-    return getNextOrgPaymentAmount(payload.billing, isOrgCanceled)
-  }, [payload?.billing, isOrgCanceled])
 
   const handleStartOrganizationCheckout = useCallback(() => {
     const orgId = payload?.organization?.id ?? Number(selectedOrganizationId)
@@ -626,6 +691,12 @@ export default function OrganizationManagementPage() {
     if (!selectedOrganizationId) return null
     return organizations.find((org) => String(org.id) === selectedOrganizationId)?.name || null
   }, [organizations, selectedOrganizationId])
+
+  const orgPaymentHistoryInvoices = useMemo(() => {
+    const list = payload?.billing?.invoices
+    if (!list) return []
+    return list.filter((inv) => !orgInvoiceExcludedFromPaymentHistory(inv.status))
+  }, [payload?.billing?.invoices])
   const backPath =
     hasActiveSubscription && selectedOrganizationId
       ? `/app/members?organizationId=${encodeURIComponent(selectedOrganizationId)}`
@@ -668,6 +739,14 @@ export default function OrganizationManagementPage() {
     if (!seatAdjustmentPreview || seatAdjustmentPreview.targetSeatCount !== targetSeatCount) {
       return
     }
+    if (targetSeatCount < minimumSeatPlanTarget) {
+      notifications.show({
+        title: t('error'),
+        message: t('org-management-seat-plan-error-remove-members-first'),
+        color: 'red',
+      })
+      return
+    }
     setIsUpdatingSeatPlan(true)
     try {
       const data = await requestSeatAdjustment(true)
@@ -701,7 +780,12 @@ export default function OrganizationManagementPage() {
       setSeatAdjustmentPreview(null)
       return
     }
-    if (!targetSeatCount || targetSeatCount < 3 || targetSeatCount > 100 || targetSeatCount === currentSeatCount) {
+    if (
+      !targetSeatCount ||
+      targetSeatCount < minimumSeatPlanTarget ||
+      targetSeatCount > 100 ||
+      targetSeatCount === currentSeatCount
+    ) {
       setSeatAdjustmentPreview(null)
       return
     }
@@ -734,6 +818,7 @@ export default function OrganizationManagementPage() {
     selectedOrganizationId,
     targetSeatCount,
     currentSeatCount,
+    minimumSeatPlanTarget,
     requestSeatAdjustment,
   ])
 
@@ -768,13 +853,24 @@ export default function OrganizationManagementPage() {
             <div />
           )}
           <Select
-            data={organizations.map((org) => ({ value: String(org.id), label: org.name }))}
+            data={organizations.map((org) => ({
+              value: String(org.id),
+              label: org.is_active
+                ? org.name
+                : `${org.name} (${t('org-management-select-inactive-suffix')})`,
+            }))}
             value={selectedOrganizationId}
             onChange={setSelectedOrganizationId}
             style={{ minWidth: 280 }}
             label={t('org-license-organization')}
           />
         </Group>
+
+        {!isLoading && organizationRowInactive ? (
+          <Alert color='orange' variant='light' icon={<IconAlertTriangle size={16} />}>
+            <Text size='sm'>{t('org-management-inactive-billing-alert')}</Text>
+          </Alert>
+        ) : null}
 
         <Card withBorder>
           <Stack gap='sm'>
@@ -832,7 +928,7 @@ export default function OrganizationManagementPage() {
                         variant='light'
                         color='red'
                         size='xs'
-                        disabled={!canRemoveAdmins || admin.user_id === user.id}
+                        disabled={!canRemoveAdmins || admin.user_id === user.user_id}
                         loading={removingAdminUserId === admin.user_id}
                         onClick={() => handleRemoveAdmin(admin.user_id)}
                       >
@@ -881,24 +977,25 @@ export default function OrganizationManagementPage() {
                   {t('org-management-seat-plan-current')}: {currentSeatCount}
                 </Text>
                 <Text size='sm' c='dimmed'>
-                  {isOrgCanceled
-                    ? `${t('org-management-cancel-effective-date')}: ${formatDate(payload.billing.currentPeriodEnd, locale, t('license-unlimited'))}`
-                    : payload.billing.subscriptionStatus === 'active_unpaid' &&
-                        typeof payload.billing.invoiceDueDate === 'string' &&
-                        payload.billing.invoiceDueDate.trim().length > 0
-                      ? `${t('org-management-billing-payment-due')}: ${formatDate(payload.billing.invoiceDueDate, locale, t('license-unlimited'))}`
-                      : `${t('org-management-billing-next-payment')}: ${formatDate(payload.billing.currentPeriodEnd, locale, t('license-unlimited'))}`}
+                  {t('org-management-billing-annual-amount')}:{' '}
+                  {formatAmount(payload.billing.amountCents, payload.billing.currency, locale)}
                 </Text>
-                {nextPaymentAmount ? (
+                {isOrgCanceled ? (
+                  <>
+                    <Text size='sm' c='dimmed'>
+                      {t('org-management-billing-subscription-ends')}:{' '}
+                      {formatDate(payload.billing.currentPeriodEnd, locale, t('license-unlimited'))}
+                    </Text>
+                    <Text size='sm' c='dimmed'>
+                      {t('org-management-billing-next-payment-none-after-cancel')}
+                    </Text>
+                  </>
+                ) : (
                   <Text size='sm' c='dimmed'>
-                    {t('org-management-billing-next-payment-amount')}:{' '}
-                    {formatAmount(nextPaymentAmount.amountCents, nextPaymentAmount.currency, locale)}
+                    {t('org-management-billing-renewal-on')}:{' '}
+                    {formatDate(payload.billing.currentPeriodEnd, locale, t('license-unlimited'))}
                   </Text>
-                ) : isOrgCanceled ? (
-                  <Text size='sm' c='dimmed'>
-                    {t('org-management-billing-next-payment-none-after-cancel')}
-                  </Text>
-                ) : null}
+                )}
                 {isOrgCanceled ? <WarningNotice>{t('org-management-cancel-pending-note')}</WarningNotice> : null}
 
                 <Group>
@@ -919,10 +1016,37 @@ export default function OrganizationManagementPage() {
                   </Button>
                 ) : null}
 
+                {orgBillingAwaitingInvoicePayment(payload.billing) ? (
+                  <Alert color='orange' variant='light' title={t('org-management-open-invoice-title')}>
+                    <Stack gap='sm'>
+                      {typeof payload.billing.invoiceDueDate === 'string' &&
+                      payload.billing.invoiceDueDate.trim().length > 0 ? (
+                        <Text size='sm'>
+                          {t('org-management-invoice-payable-until')}:{' '}
+                          {formatDate(payload.billing.invoiceDueDate, locale, '-')}
+                        </Text>
+                      ) : null}
+                      <Button
+                        component='a'
+                        href={
+                          payload.billing.payrexxInvoicePaymentLink || payload.billing.payrexxGatewayLink!
+                        }
+                        target='_blank'
+                        rel='noreferrer'
+                        variant='light'
+                        size='sm'
+                        w='fit-content'
+                      >
+                        {t('org-management-payment-link-button')}
+                      </Button>
+                    </Stack>
+                  </Alert>
+                ) : null}
+
                 <Text size='lg' fw={600} mt='sm'>
                   {t('license-management-history-title')}
                 </Text>
-                {payload.billing.invoices.length === 0 ? (
+                {orgPaymentHistoryInvoices.length === 0 ? (
                   <Text c='dimmed'>{t('license-management-history-empty')}</Text>
                 ) : (
                   <Paper withBorder radius='md' p='xs'>
@@ -933,33 +1057,31 @@ export default function OrganizationManagementPage() {
                           <Table.Th>{t('license-management-history-amount')}</Table.Th>
                           <Table.Th>{t('license-management-history-status')}</Table.Th>
                           <Table.Th>{t('license-management-history-reference')}</Table.Th>
-                          <Table.Th>{t('org-management-payment-link-column')}</Table.Th>
+                          <Table.Th>{t('license-management-history-receipt')}</Table.Th>
                         </Table.Tr>
                       </Table.Thead>
                       <Table.Tbody>
-                        {payload.billing.invoices.map((invoice) => (
+                        {orgPaymentHistoryInvoices.map((invoice) => (
                           <Table.Tr key={invoice.id}>
                             <Table.Td>{formatDate(invoice.paid_at || invoice.created_at, locale, '-')}</Table.Td>
                             <Table.Td>{formatAmount(invoice.amount_cents, invoice.currency, locale)}</Table.Td>
                             <Table.Td>{getInvoiceStatusLabel(invoice.status)}</Table.Td>
                             <Table.Td>{invoice.provider_invoice_id || '-'}</Table.Td>
                             <Table.Td>
-                              {invoice.status === 'open' &&
-                              (payload.billing?.payrexxInvoicePaymentLink || payload.billing?.payrexxGatewayLink) ? (
+                              {invoice.status === 'paid' ? (
                                 <Button
-                                  component='a'
-                                  href={
-                                    payload.billing.payrexxInvoicePaymentLink || payload.billing.payrexxGatewayLink!
-                                  }
-                                  target='_blank'
-                                  rel='noreferrer'
-                                  variant='light'
                                   size='xs'
+                                  variant='light'
+                                  leftSection={<IconFileTypePdf size='0.875rem' />}
+                                  onClick={() => void handleDownloadOrgReceipt(invoice)}
+                                  loading={generatingOrgReceiptInvoiceId === invoice.id}
                                 >
-                                  {t('org-management-payment-link-button')}
+                                  {t('license-management-history-receipt-download')}
                                 </Button>
                               ) : (
-                                '-'
+                                <Text size='sm' c='dimmed'>
+                                  -
+                                </Text>
                               )}
                             </Table.Td>
                           </Table.Tr>
@@ -980,11 +1102,15 @@ export default function OrganizationManagementPage() {
               </Text>
               <NumberInput
                 label={t('org-management-seat-plan-target-label')}
-                min={3}
+                min={minimumSeatPlanTarget}
                 max={100}
                 value={targetSeatCount}
                 onChange={(value) => {
-                  setTargetSeatCount(typeof value === 'number' ? value : currentSeatCount || 3)
+                  const next =
+                    typeof value === 'number' && Number.isFinite(value)
+                      ? value
+                      : minimumSeatPlanTarget
+                  setTargetSeatCount(next)
                   setSeatAdjustmentPreview(null)
                 }}
               />
@@ -1071,24 +1197,26 @@ export default function OrganizationManagementPage() {
           </Stack>
         </Card>
 
-        <Card withBorder>
-          <Stack gap='sm'>
-            <Text size='xl'>{t('org-management-deactivate-title')}</Text>
-            <Text size='sm' c='dimmed'>
-              {t('org-management-deactivate-support-note')}
-            </Text>
-            <Group justify='flex-end'>
-              <Button
-                color='red'
-                variant='light'
-                onClick={handleDeactivateOrganization}
-                loading={isDeactivatingOrg}
-              >
-                {t('org-management-deactivate-button')}
-              </Button>
-            </Group>
-          </Stack>
-        </Card>
+        {showOrgDeleteSection ? (
+          <Card withBorder>
+            <Stack gap='sm'>
+              <Text size='xl'>{t('org-management-delete-title')}</Text>
+              <Text size='sm' c='dimmed'>
+                {t('org-management-delete-support-note')}
+              </Text>
+              <Group justify='flex-end'>
+                <Button
+                  color='red'
+                  variant='light'
+                  onClick={handleDeactivateOrganization}
+                  loading={isDeactivatingOrg}
+                >
+                  {t('org-management-delete-button')}
+                </Button>
+              </Group>
+            </Stack>
+          </Card>
+        ) : null}
       </Stack>
       <Modal
         opened={isOrgLegalModalOpen}
@@ -1171,15 +1299,29 @@ export default function OrganizationManagementPage() {
             : null}
         </Stack>
       </Modal>
-      <Modal
+      <Dialog
         opened={isDeactivateConfirmOpen}
         onClose={() => setIsDeactivateConfirmOpen(false)}
-        title={t('org-management-deactivate-button')}
-        centered
+        withCloseButton
+        size='lg'
+        position={{ top: '10vh', left: '50%' }}
+        styles={{
+          root: {
+            transform: 'translateX(-50%)',
+            maxWidth: 'min(calc(100vw - 2rem), var(--dialog-size))',
+          },
+        }}
+        shadow='md'
+        withBorder
+        zIndex={320}
+        transitionProps={{ transition: 'fade', duration: 200 }}
       >
         <Stack gap='md'>
+          <Text fw={600} size='lg'>
+            {t('org-management-delete-modal-title')}
+          </Text>
           <Alert color='orange' variant='light'>
-            {t('org-management-deactivate-confirm')}
+            {t('org-management-delete-confirm', { count: membersLosingLicenseCount })}
           </Alert>
           <Group justify='flex-end'>
             <Button variant='subtle' onClick={() => setIsDeactivateConfirmOpen(false)}>
@@ -1191,11 +1333,11 @@ export default function OrganizationManagementPage() {
               onClick={handleConfirmDeactivateOrganization}
               loading={isDeactivatingOrg}
             >
-              {t('org-management-deactivate-button')}
+              {t('org-management-delete-button')}
             </Button>
           </Group>
         </Stack>
-      </Modal>
+      </Dialog>
     </Container>
   )
 }

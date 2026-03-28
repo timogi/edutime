@@ -31,8 +31,8 @@ This test plan covers the org flow.
 
 ## Payment notice e-mails (overdue invoice)
 
-- Run `run_org_renewal_reminder_sweep` with `p_reference_time` on **due + 45** and **due + 90** calendar days (latest open invoice per org subscription).
-  - Expected: at most one reminder row per `(subscription_id, reminder_type, scheduled_for)` for `invoice_overdue_45` / `invoice_overdue_90`.
+- Run `run_org_renewal_reminder_sweep` with `p_reference_time` on **due date** and **due + 45** calendar days (latest open invoice per org subscription).
+  - Expected: at most one reminder row per `(subscription_id, reminder_type, scheduled_for)` for `payment_deadline_passed` / `pre_org_deactivation` (legacy: `invoice_overdue_45` / `invoice_overdue_90` in old data).
 - Run `org-billing-jobs` with pending reminders.
   - Expected: reminder status changes `pending -> sent` on success.
   - Expected: reminder status changes `pending -> failed` with `last_error` on send failure.

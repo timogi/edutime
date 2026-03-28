@@ -478,6 +478,10 @@ export type Database = {
         }
         Returns: string
       }
+      purge_organizations_past_scheduled_deletion: {
+        Args: { p_reference_time?: string }
+        Returns: Json
+      }
       process_payrexx_payment: {
         Args: {
           p_payrexx_gateway_id?: number
@@ -1171,6 +1175,7 @@ export type Database = {
           id: number
           is_active: boolean
           name: string
+          scheduled_deletion_at: string | null
           seats: number
         }
         Insert: {
@@ -1178,6 +1183,7 @@ export type Database = {
           id?: number
           is_active?: boolean
           name: string
+          scheduled_deletion_at?: string | null
           seats: number
         }
         Update: {
@@ -1185,6 +1191,7 @@ export type Database = {
           id?: number
           is_active?: boolean
           name?: string
+          scheduled_deletion_at?: string | null
           seats?: number
         }
         Relationships: []

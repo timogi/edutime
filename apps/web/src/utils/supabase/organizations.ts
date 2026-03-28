@@ -29,12 +29,13 @@ export const getOrganizations = async (userId: string): Promise<Organization[]> 
             organizations (
                 id,
                 name,
-                seats
+                seats,
+                is_active,
+                scheduled_deletion_at
             )
         `,
     )
     .eq('user_id', userId)
-    .eq('organizations.is_active', true)
 
   if (error) {
     console.error('error', error)
@@ -45,16 +46,27 @@ export const getOrganizations = async (userId: string): Promise<Organization[]> 
 
   return rows
     .map((item) => {
-      const organization = item.organizations as { id: number; name: string; seats: number } | null
+      const organization = item.organizations as {
+        id: number
+        name: string
+        seats: number
+        is_active: boolean | null
+        scheduled_deletion_at: string | null
+      } | null
       if (!organization) return null
 
       return {
         id: organization.id,
         name: organization.name,
         seats: organization.seats,
+        is_active: organization.is_active !== false,
+        scheduled_deletion_at: organization.scheduled_deletion_at ?? null,
       }
     })
-    .filter((organization): organization is Organization => organization !== null)
+    .filter(
+      (organization): organization is Organization =>
+        organization !== null && organization.scheduled_deletion_at === null,
+    )
 }
 
 type OrgBillingStatusApiResponse = {

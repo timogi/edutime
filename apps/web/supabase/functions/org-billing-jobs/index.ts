@@ -353,10 +353,29 @@ function buildCheckoutLinkTemplate(
   }
 }
 
-type PaymentInvoiceNoticeType = 'invoice_overdue_45' | 'invoice_overdue_90'
+type PaymentInvoiceNoticeType =
+  | 'payment_deadline_passed'
+  | 'pre_org_deactivation'
+  | 'invoice_overdue_45'
+  | 'invoice_overdue_90'
+
+/** Legacy types map to the same templates as the current reminder kinds. */
+function paymentInvoiceNoticePhase(
+  reminderType: PaymentInvoiceNoticeType,
+): 'deadline_passed' | 'final_warning' {
+  if (reminderType === 'payment_deadline_passed' || reminderType === 'invoice_overdue_45') {
+    return 'deadline_passed'
+  }
+  return 'final_warning'
+}
 
 function isPaymentInvoiceNoticeType(t: string): t is PaymentInvoiceNoticeType {
-  return t === 'invoice_overdue_45' || t === 'invoice_overdue_90'
+  return (
+    t === 'payment_deadline_passed' ||
+    t === 'pre_org_deactivation' ||
+    t === 'invoice_overdue_45' ||
+    t === 'invoice_overdue_90'
+  )
 }
 
 function buildPaymentInvoiceNoticeTemplate(
@@ -366,18 +385,18 @@ function buildPaymentInvoiceNoticeTemplate(
   managementUrl: string,
 ): TemplateContent {
   const name = orgName || 'Organization'
-  const is45 = reminderType === 'invoice_overdue_45'
+  const phase = paymentInvoiceNoticePhase(reminderType)
 
   if (locale === 'fr') {
-    if (is45) {
+    if (phase === 'deadline_passed') {
       return {
-        subject: `EduTime: délai de paiement dépassé — ${name}`,
+        subject: `EduTime: date d’échéance atteinte — ${name}`,
         text: [
           'Bonjour',
           '',
-          `La période de paiement après l’échéance de la facture EduTime pour l’organisation « ${name} » est dépassée. Veuillez régler le montant sans délai.`,
+          `La date d’échéance de la facture EduTime ouverte pour l’organisation « ${name} » est atteinte. Veuillez régler le montant sans délai.`,
           '',
-          `Sans paiement, l’accès peut être restreint. Si la facture reste impayée, le compte organisation peut être désactivé dans les 45 jours au plus tard.`,
+          `Sans paiement, l’accès peut être restreint. Si la facture reste impayée pendant 45 jours après cette échéance, le compte organisation sera désactivé et les licences prendront fin.`,
           '',
           `Gestion de la licence et de l’organisation : ${managementUrl}`,
           '',
@@ -388,8 +407,8 @@ function buildPaymentInvoiceNoticeTemplate(
           'Equipe EduTime',
         ].join('\n'),
         html: `<p>Bonjour</p>
-<p>La période de paiement après l’échéance de la facture EduTime pour l’organisation « ${name} » est dépassée. Veuillez régler le montant sans délai.</p>
-<p>Sans paiement, l’accès peut être restreint. Si la facture reste impayée, le compte organisation peut être désactivé dans les <strong>45 jours</strong> au plus tard.</p>
+<p>La date d’échéance de la facture EduTime ouverte pour l’organisation « ${name} » est atteinte. Veuillez régler le montant sans délai.</p>
+<p>Sans paiement, l’accès peut être restreint. Si la facture reste impayée pendant <strong>45 jours</strong> après cette échéance, le compte organisation sera désactivé et les licences prendront fin.</p>
 <p><a href="${managementUrl}">Gestion de la licence et de l’organisation</a></p>
 <p>Merci de ne pas répondre directement à cet e-mail. Pour toute question : <a href="mailto:info@edutime.ch">info@edutime.ch</a></p>
 <p>Ce message a été envoyé à tous les administrateurs de l’organisation.</p>
@@ -397,11 +416,13 @@ function buildPaymentInvoiceNoticeTemplate(
       }
     }
     return {
-      subject: `EduTime: compte désactivé — ${name}`,
+      subject: `EduTime: dernière relance avant désactivation — ${name}`,
       text: [
         'Bonjour',
         '',
-        `Le compte organisation « ${name} » a été désactivé pour facture impayée après expiration des délais. Vous pouvez régler le montant dans la gestion ; après paiement, l’accès peut être rétabli selon les règles du compte.`,
+        `La période de 45 jours après l’échéance de la facture EduTime pour l’organisation « ${name} » est échue aujourd’hui et la facture est toujours impayée. Dans la même exécution automatique des tâches de facturation, le compte organisation sera désactivé et les licences prendront fin.`,
+        '',
+        `Réglez la facture via le lien ci-dessous ; après paiement, vous pourrez réactiver l’organisation dans la gestion et rétablir l’accès pour vos utilisateurs.`,
         '',
         `Gestion de la licence et de l’organisation : ${managementUrl}`,
         '',
@@ -412,7 +433,8 @@ function buildPaymentInvoiceNoticeTemplate(
         'Equipe EduTime',
       ].join('\n'),
       html: `<p>Bonjour</p>
-<p>Le compte organisation « ${name} » a été désactivé pour facture impayée après expiration des délais. Vous pouvez régler le montant dans la gestion ; après paiement, l’accès peut être rétabli selon les règles du compte.</p>
+<p>La période de <strong>45 jours</strong> après l’échéance de la facture EduTime pour l’organisation « ${name} » est échue aujourd’hui et la facture est toujours impayée. Dans la même exécution automatique des tâches de facturation, le compte organisation sera <strong>désactivé</strong> et les licences prendront fin.</p>
+<p>Réglez la facture via le lien ci-dessous ; après paiement, vous pourrez <strong>réactiver</strong> l’organisation dans la gestion et rétablir l’accès pour vos utilisateurs.</p>
 <p><a href="${managementUrl}">Gestion de la licence et de l’organisation</a></p>
 <p>Merci de ne pas répondre directement à cet e-mail. Pour toute question : <a href="mailto:info@edutime.ch">info@edutime.ch</a></p>
 <p>Ce message a été envoyé à tous les administrateurs de l’organisation.</p>
@@ -421,15 +443,15 @@ function buildPaymentInvoiceNoticeTemplate(
   }
 
   if (locale === 'en') {
-    if (is45) {
+    if (phase === 'deadline_passed') {
       return {
-        subject: `EduTime: payment deadline passed — ${name}`,
+        subject: `EduTime: invoice due date reached — ${name}`,
         text: [
           'Hello',
           '',
-          `The payment period after the EduTime invoice due date for organization «${name}» has expired. Please settle the amount without delay.`,
+          `The due date of the open EduTime invoice for organization «${name}» has been reached. Please settle the amount without delay.`,
           '',
-          `Without payment, access may be restricted. If the invoice remains unpaid, the organization account may be deactivated within 45 days at the earliest.`,
+          `Without payment, access may be restricted. If the invoice remains unpaid for 45 days after this due date, the organization will be deactivated and licenses will expire.`,
           '',
           `License and organization management: ${managementUrl}`,
           '',
@@ -440,8 +462,8 @@ function buildPaymentInvoiceNoticeTemplate(
           'EduTime Team',
         ].join('\n'),
         html: `<p>Hello</p>
-<p>The payment period after the EduTime invoice due date for organization «${name}» has expired. Please settle the amount without delay.</p>
-<p>Without payment, access may be restricted. If the invoice remains unpaid, the organization account may be deactivated within <strong>45 days</strong> at the earliest.</p>
+<p>The due date of the open EduTime invoice for organization «${name}» has been reached. Please settle the amount without delay.</p>
+<p>Without payment, access may be restricted. If the invoice remains unpaid for <strong>45 days</strong> after this due date, the organization will be deactivated and licenses will expire.</p>
 <p><a href="${managementUrl}">License and organization management</a></p>
 <p>Please do not reply to this email directly. For questions: <a href="mailto:info@edutime.ch">info@edutime.ch</a></p>
 <p>This message was sent to all organization administrators.</p>
@@ -449,11 +471,13 @@ function buildPaymentInvoiceNoticeTemplate(
       }
     }
     return {
-      subject: `EduTime: account deactivated — ${name}`,
+      subject: `EduTime: final notice before deactivation — ${name}`,
       text: [
         'Hello',
         '',
-        `The organization account «${name}» has been deactivated for non-payment after the deadlines expired. You can pay in the management area; after payment, access may be restored according to your account rules.`,
+        `The 45-day period after the EduTime invoice due date for organization «${name}» ends today and the invoice is still unpaid. In the same automated billing run, the organization will be deactivated and licenses will end.`,
+        '',
+        `Pay the invoice using the link below; after payment you can reactivate the organization in management and restore access for your users.`,
         '',
         `License and organization management: ${managementUrl}`,
         '',
@@ -464,7 +488,8 @@ function buildPaymentInvoiceNoticeTemplate(
         'EduTime Team',
       ].join('\n'),
       html: `<p>Hello</p>
-<p>The organization account «${name}» has been deactivated for non-payment after the deadlines expired. You can pay in the management area; after payment, access may be restored according to your account rules.</p>
+<p>The <strong>45-day</strong> period after the EduTime invoice due date for organization «${name}» ends today and the invoice is still unpaid. In the same automated billing run, the organization will be <strong>deactivated</strong> and licenses will end.</p>
+<p>Pay the invoice using the link below; after payment you can <strong>reactivate</strong> the organization in management and restore access for your users.</p>
 <p><a href="${managementUrl}">License and organization management</a></p>
 <p>Please do not reply to this email directly. For questions: <a href="mailto:info@edutime.ch">info@edutime.ch</a></p>
 <p>This message was sent to all organization administrators.</p>
@@ -472,15 +497,15 @@ function buildPaymentInvoiceNoticeTemplate(
     }
   }
 
-  if (is45) {
+  if (phase === 'deadline_passed') {
     return {
-      subject: `EduTime: Zahlungsfrist abgelaufen — ${name}`,
+      subject: `EduTime: Zahlungsfrist erreicht — ${name}`,
       text: [
         'Guten Tag',
         '',
-        `Die Zahlungsfrist für die offene EduTime-Rechnung Ihrer Organisation «${name}» ist abgelaufen. Bitte begleichen Sie den Betrag umgehend.`,
+        `Die Zahlungsfrist (Fälligkeit) der offenen EduTime-Rechnung für Ihre Organisation «${name}» ist erreicht. Bitte begleichen Sie den Betrag umgehend.`,
         '',
-        `Ohne rechtzeitige Zahlung kann der Zugriff auf die Organisation eingeschränkt werden. Bleibt die Rechnung offen, wird der Organisations-Account frühestens in 45 Tagen deaktiviert.`,
+        `Ohne Zahlung kann der Zugriff eingeschränkt werden. Bleibt die Rechnung 45 Tage nach dieser Fälligkeit unbezahlt, wird die Organisation deaktiviert und die Lizenzen laufen aus.`,
         '',
         `Zur Lizenz- und Organisationsverwaltung: ${managementUrl}`,
         '',
@@ -493,8 +518,8 @@ function buildPaymentInvoiceNoticeTemplate(
         'EduTime Team',
       ].join('\n'),
       html: `<p>Guten Tag</p>
-<p>Die Zahlungsfrist für die offene EduTime-Rechnung Ihrer Organisation «${name}» ist abgelaufen. Bitte begleichen Sie den Betrag umgehend.</p>
-<p>Ohne rechtzeitige Zahlung kann der Zugriff auf die Organisation eingeschränkt werden. Bleibt die Rechnung offen, wird der Organisations-Account frühestens in <strong>45 Tagen</strong> deaktiviert.</p>
+<p>Die Zahlungsfrist (Fälligkeit) der offenen EduTime-Rechnung für Ihre Organisation «${name}» ist erreicht. Bitte begleichen Sie den Betrag umgehend.</p>
+<p>Ohne Zahlung kann der Zugriff eingeschränkt werden. Bleibt die Rechnung <strong>45 Tage</strong> nach dieser Fälligkeit unbezahlt, wird die Organisation deaktiviert und die Lizenzen laufen aus.</p>
 <p><a href="${managementUrl}">Zur Lizenz- und Organisationsverwaltung</a></p>
 <p>Bitte antworten Sie nicht direkt auf diese E-Mail. Bei Fragen: <a href="mailto:info@edutime.ch">info@edutime.ch</a></p>
 <p>Diese Nachricht wurde an alle Organisations-Admins gesendet.</p>
@@ -503,11 +528,13 @@ function buildPaymentInvoiceNoticeTemplate(
     }
   }
   return {
-    subject: `EduTime: Organisations-Account deaktiviert — ${name}`,
+    subject: `EduTime: Letzte Mahnung vor Deaktivierung — ${name}`,
     text: [
       'Guten Tag',
       '',
-      `Der Organisations-Account «${name}» wurde nach Ablauf der Fristen wegen unbezahlter Rechnung deaktiviert. Sie können in der Verwaltung zahlen; nach Zahlung kann der Zugriff wieder freigeschaltet werden.`,
+      `Die Nachfrist von 45 Tagen nach Rechnungsfälligkeit für Ihre Organisation «${name}» ist heute abgelaufen und die Rechnung ist weiterhin unbezahlt. Im selben automatischen Abrechnungslauf wird Ihre Organisation jetzt deaktiviert; Organisationssitze und Lizenzen werden beendet.`,
+      '',
+      `Bitte begleichen Sie die offene Rechnung über die Lizenz- und Organisationsverwaltung. Nach erfolgreicher Zahlung können Sie die Organisation dort wieder aktivieren und den Zugang für Ihre Nutzer wiederherstellen.`,
       '',
       `Zur Lizenz- und Organisationsverwaltung: ${managementUrl}`,
       '',
@@ -520,7 +547,8 @@ function buildPaymentInvoiceNoticeTemplate(
       'EduTime Team',
     ].join('\n'),
     html: `<p>Guten Tag</p>
-<p>Der Organisations-Account «${name}» wurde nach Ablauf der Fristen wegen unbezahlter Rechnung deaktiviert. Sie können in der Verwaltung zahlen; nach Zahlung kann der Zugriff wieder freigeschaltet werden.</p>
+<p>Die Nachfrist von <strong>45 Tagen</strong> nach Rechnungsfälligkeit für Ihre Organisation «${name}» ist heute abgelaufen und die Rechnung ist weiterhin unbezahlt. Im <strong>selben automatischen Abrechnungslauf</strong> wird Ihre Organisation <strong>jetzt deaktiviert</strong>; Organisationssitze und Lizenzen werden beendet.</p>
+<p>Bitte begleichen Sie die offene Rechnung über die Lizenz- und Organisationsverwaltung. Nach erfolgreicher Zahlung können Sie die Organisation dort <strong>wieder aktivieren</strong> und den Zugang für Ihre Nutzer wiederherstellen.</p>
 <p><a href="${managementUrl}">Zur Lizenz- und Organisationsverwaltung</a></p>
 <p>Bitte antworten Sie nicht direkt auf diese E-Mail. Bei Fragen: <a href="mailto:info@edutime.ch">info@edutime.ch</a></p>
 <p>Diese Nachricht wurde an alle Organisations-Admins gesendet.</p>
@@ -983,12 +1011,21 @@ Deno.serve(async (req: Request) => {
       throw new Error(`run_org_hard_delinquency_sweep failed: ${hardDelinquencyError.message}`)
     }
 
+    const { data: scheduledOrgPurgeSummary, error: scheduledOrgPurgeError } = await billing.rpc(
+      'purge_organizations_past_scheduled_deletion',
+      { p_reference_time: nowIso },
+    )
+    if (scheduledOrgPurgeError) {
+      throw new Error(`purge_organizations_past_scheduled_deletion failed: ${scheduledOrgPurgeError.message}`)
+    }
+
     return new Response(
       JSON.stringify({
         ok: true,
         renewalReminderSweepResult,
         delinquencySummary,
         hardDelinquencySummary,
+        scheduledOrgPurgeSummary,
         cancellationFinalizationSummary,
         autoRenewCheckoutsCreated: autoRenewCreatedCount,
         autoRenewCheckoutsFailed: autoRenewFailedCount,

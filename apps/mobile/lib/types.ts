@@ -103,6 +103,8 @@ export type Organization = {
   id: number
   name: string
   seats: number
+  is_active: boolean
+  scheduled_deletion_at: string | null
 }
 
 export type Membership = {

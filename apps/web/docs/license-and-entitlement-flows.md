@@ -87,15 +87,15 @@ Shared helper: `hasActiveEntitlement` / active entitlement queries in `@edutime/
 | Step | What happens |
 |------|----------------|
 | **Renewal payment link** | Scheduled **org-billing-jobs** (see [jobs.md](./jobs.md)): for **auto-renew** org subscriptions due at period end, can create Payrexx renewal checkout when no blocking open invoice; **Resend** sends the checkout link only when that link exists (no pre-renewal “empty” reminders). |
-| **Overdue payment notices** | `billing.run_org_renewal_reminder_sweep` queues e-mails on latest open invoice **due + 45** (“pay now”) and **due + 90** (blocked / pay to restore), same recipient rules as in [jobs.md](./jobs.md). |
+| **Overdue payment notices** | `billing.run_org_renewal_reminder_sweep` queues e-mails on latest open invoice **due date** (deadline reached) and **due + 45 days** (final notice before deactivation), same recipient rules as in [jobs.md](./jobs.md). |
 | **Auto-renew off** | Org admin cancels at period end → remains active until `current_period_end`; then cancellation finalization sweep applies. |
 
 ### 4. Delinquency and “org runs out”
 
 | Step | What happens |
 |------|----------------|
-| **Overdue invoice + grace** | `billing.run_org_delinquency_sweep`: latest open invoice past **due + grace_days** (default **45**): subscription metadata → **suspended**, org seats **revoked** (`revocation_reason = payment_failed`). |
-| **Long-overdue (hard)** | `billing.run_org_hard_delinquency_sweep`: latest open invoice past **due + 90 days** → `billing.deactivate_organization_for_nonpayment` (org deactivated, memberships/invites cleared, seats expired). |
+| **Invoice due (soft)** | `billing.run_org_delinquency_sweep`: latest open invoice **on or after due date**: subscription metadata → **suspended**, org seats **revoked** (`revocation_reason = payment_failed`). |
+| **Long-overdue (hard)** | `billing.run_org_hard_delinquency_sweep`: latest open invoice past **due + 45 days** → `billing.deactivate_organization_for_nonpayment` (org deactivated, memberships/invites cleared, seats expired). |
 | **Period end + canceled** | `billing.run_org_cancellation_finalization_sweep`: orgs **canceled at period end** or **deactivated** (`organizations.is_active = false`) → suspend subscription, **expire** `org_seat` entitlements with allowed enum reasons (e.g. `subscription_canceled`). |
 
 ### 5. Seat count changes (buy more seats)
@@ -132,10 +132,10 @@ Shared helper: `hasActiveEntitlement` / active entitlement queries in `@edutime/
 |----------------|------|
 | `org-billing-jobs` (daily) | Renewal checkouts, reminders, soft + hard delinquency sweeps, cancellation finalization, reminder queue processing. |
 | `billing.run_individual_lifecycle_sweep` | Trial + personal expiry + stale individual subscriptions. |
-| `billing.run_org_delinquency_sweep` | Soft: revoke seats after due + grace (default 45 days). |
-| `billing.run_org_hard_delinquency_sweep` | Hard: deactivate org after due + 90 days (unpaid). |
+| `billing.run_org_delinquency_sweep` | Soft: suspend subscription and revoke seats from invoice due date (calendar day). |
+| `billing.run_org_hard_delinquency_sweep` | Hard: deactivate org after due + 45 days (unpaid). |
 | `billing.run_org_cancellation_finalization_sweep` | Post–period-end / deactivated org cleanup. |
-| `billing.run_org_renewal_reminder_sweep` | Inserts `org_renewal_reminders` rows on invoice **due + 45** / **due + 90** for Resend payment notices (not sent by delinquency RPCs). |
+| `billing.run_org_renewal_reminder_sweep` | Inserts `org_renewal_reminders` rows on invoice **due date** and **due + 45** for Resend payment notices (not sent by delinquency RPCs). |
 
 ---
 

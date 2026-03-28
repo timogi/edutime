@@ -16,7 +16,7 @@ import {
 } from '@mantine/core'
 import { useTranslations } from 'next-intl'
 import { useUser } from '@/contexts/UserProvider'
-import { IconSettings, IconLogout, IconInfoCircle, IconCheck } from '@tabler/icons-react'
+import { IconSettings, IconLogout, IconInfoCircle, IconCheck, IconAlertTriangle } from '@tabler/icons-react'
 import { showNotification } from '@mantine/notifications'
 import { useRouter } from 'next/router'
 import { Account } from '@/components/Account/Account'
@@ -494,7 +494,9 @@ export function NoLicenseView() {
                         label={t('org-license-organization')}
                         data={organizations.map((org) => ({
                           value: String(org.id),
-                          label: org.name,
+                          label: org.is_active
+                            ? org.name
+                            : `${org.name} (${t_noLicense('org-select-inactive-suffix')})`,
                         }))}
                         value={selectedOrgId}
                         onChange={(value) => {
@@ -507,6 +509,13 @@ export function NoLicenseView() {
                         {selectedOrganization?.name ?? '—'}
                       </Text>
                     )}
+                    {selectedOrganization &&
+                    !selectedOrganization.is_active &&
+                    !selectedOrganization.scheduled_deletion_at ? (
+                      <Alert icon={<IconAlertTriangle size={16} />} color='orange' variant='light'>
+                        <Text size='sm'>{t_noLicense('org-inactive-billing-hint')}</Text>
+                      </Alert>
+                    ) : null}
                     <Stack gap='sm' w='100%' mt='xs'>
                       {orgBillingGate === 'licensed_no_seat' ? (
                         <>

@@ -1,6 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { createClient } from '@supabase/supabase-js'
+import { EDUTIME_TRANSACTIONAL_FROM } from '@edutime/shared'
 import { getAuthenticatedUser } from '@/utils/supabase/api-auth'
+import {
+  normalizeUserLanguageToEmailLocale,
+  sendOrgDeletionScheduledEmail,
+} from '@/utils/email/orgDeletionScheduledEmail'
+import {
+  type OrgMemberInviteEmailLocale,
+  resolveOrgInviteEmailLocale,
+} from '@/utils/email/orgMemberInviteEmail'
 import { paymentProvider } from '@/utils/payments'
 import { createPayrexxClientFromEnv } from '@/utils/payments/payrexxClient'
 import {
@@ -28,7 +37,11 @@ type OrgManagementGetResponse = {
     id: number
     name: string
     seats: number
+    is_active: boolean
+    scheduled_deletion_at: string | null
   }
+  /** Rows in `organization_members` with status active or invited (matches voluntary org shutdown RPC). */
+  membersLosingLicenseCount?: number
   admins?: OrgAdminRow[]
   billing?: {
     subscriptionId: string
@@ -60,6 +73,7 @@ type OrgManagementGetResponse = {
       provider_invoice_id: string | null
       paid_at: string | null
       created_at: string
+      due_date: string | null
     }>
   } | null
   error?: string
@@ -87,6 +101,8 @@ type OrgManagementMutationResponse = {
   paymentRequired?: boolean
   proratedAmountCents?: number
   graceWindowApplied?: boolean
+  /** Present after successful `deactivateOrg` when notice emails were attempted. */
+  deletionNoticeEmailsSent?: number
   error?: string
 }
 
@@ -286,11 +302,15 @@ export default async function handler(
 
       const { data: org, error: orgError } = await publicClient
         .from('organizations')
-        .select('id, name, seats')
+        .select('id, name, seats, is_active, scheduled_deletion_at')
         .eq('id', organizationId)
         .single()
 
       if (orgError || !org) {
+        return res.status(404).json({ error: 'Organization not found' })
+      }
+
+      if (org.scheduled_deletion_at != null && String(org.scheduled_deletion_at).length > 0) {
         return res.status(404).json({ error: 'Organization not found' })
       }
 
@@ -340,7 +360,7 @@ export default async function handler(
 
         const { data: invoicesRows, error: invoicesError } = await billingClient
           .from('invoices')
-          .select('id, amount_cents, currency, status, provider_invoice_id, paid_at, created_at')
+          .select('id, amount_cents, currency, status, provider_invoice_id, paid_at, created_at, due_date')
           .eq('subscription_id', subscriptionId)
           .order('created_at', { ascending: false })
           .limit(30)
@@ -417,12 +437,34 @@ export default async function handler(
         }
       }
 
+      const { count: membersLosingLicenseRaw, error: membersCountError } = await publicClient
+        .from('organization_members')
+        .select('*', { count: 'exact', head: true })
+        .eq('organization_id', organizationId)
+        .in('status', ['active', 'invited'])
+
+      if (membersCountError) {
+        console.error('Failed to count organization members for delete confirmation', {
+          organizationId,
+          error: membersCountError,
+        })
+      }
+
+      const membersLosingLicenseCount =
+        typeof membersLosingLicenseRaw === 'number' && Number.isFinite(membersLosingLicenseRaw)
+          ? membersLosingLicenseRaw
+          : 0
+
       return res.status(200).json({
         organization: {
           id: org.id,
           name: org.name,
           seats: org.seats,
+          is_active: org.is_active !== false,
+          scheduled_deletion_at:
+            typeof org.scheduled_deletion_at === 'string' ? org.scheduled_deletion_at : null,
         },
+        membersLosingLicenseCount,
         admins,
         billing,
       })
@@ -443,6 +485,22 @@ export default async function handler(
       }
       if (!name) {
         return res.status(400).json({ error: 'Missing organization name' })
+      }
+
+      const { data: orgPatchRow, error: orgPatchErr } = await publicClient
+        .from('organizations')
+        .select('scheduled_deletion_at')
+        .eq('id', organizationId)
+        .maybeSingle()
+
+      if (orgPatchErr || !orgPatchRow) {
+        return res.status(404).json({ error: 'Organization not found' })
+      }
+      if (
+        orgPatchRow.scheduled_deletion_at != null &&
+        String(orgPatchRow.scheduled_deletion_at).length > 0
+      ) {
+        return res.status(404).json({ error: 'Organization not found' })
       }
 
       const { data, error } = await billingClient.rpc('update_organization_name', {
@@ -471,6 +529,22 @@ export default async function handler(
       })
       if (legalCheck) {
         return res.status(legalCheck.status).json({ error: legalCheck.error })
+      }
+
+      const { data: orgDeletionRow, error: orgDeletionErr } = await publicClient
+        .from('organizations')
+        .select('scheduled_deletion_at')
+        .eq('id', organizationId)
+        .maybeSingle()
+
+      if (orgDeletionErr || !orgDeletionRow) {
+        return res.status(404).json({ error: 'Organization not found' })
+      }
+      if (
+        orgDeletionRow.scheduled_deletion_at != null &&
+        String(orgDeletionRow.scheduled_deletion_at).length > 0
+      ) {
+        return res.status(404).json({ error: 'Organization not found' })
       }
 
       if (action === 'addAdmin') {
@@ -548,6 +622,26 @@ export default async function handler(
         }
         if (targetSeatCount === currentSeatCount) {
           return res.status(400).json({ error: 'Seat count unchanged' })
+        }
+
+        const { count: occupiedSeatsRaw, error: occupiedSeatsError } = await publicClient
+          .from('organization_members')
+          .select('*', { count: 'exact', head: true })
+          .eq('organization_id', organizationId)
+          .in('status', ['active', 'invited'])
+
+        if (occupiedSeatsError) {
+          console.error('adjustSeats: failed to count active or invited members', {
+            organizationId,
+            error: occupiedSeatsError,
+          })
+          return res.status(500).json({ error: 'Failed to verify member seat usage' })
+        }
+
+        const occupiedSeats =
+          typeof occupiedSeatsRaw === 'number' && Number.isFinite(occupiedSeatsRaw) ? occupiedSeatsRaw : 0
+        if (targetSeatCount < occupiedSeats) {
+          return res.status(400).json({ error: 'SEAT_REDUCTION_REQUIRES_REMOVING_MEMBERS' })
         }
 
         const currentPeriodStart = String(billingRow.current_period_start || '')
@@ -733,6 +827,63 @@ export default async function handler(
       }
 
       if (action === 'deactivateOrg') {
+        const { data: orgBeforeRow, error: orgBeforeErr } = await publicClient
+          .from('organizations')
+          .select('name')
+          .eq('id', organizationId)
+          .maybeSingle()
+
+        const { data: adminsBeforeData, error: adminsBeforeErr } = await billingClient.rpc(
+          'list_organization_admins',
+          {
+            p_actor_user_id: auth.user.id,
+            p_organization_id: organizationId,
+          },
+        )
+
+        let organizationNameForEmail = 'Organization'
+        if (!orgBeforeErr && orgBeforeRow?.name) {
+          const trimmed = String(orgBeforeRow.name).trim()
+          if (trimmed.length > 0) organizationNameForEmail = trimmed
+        }
+
+        const adminsBefore = ((adminsBeforeData as OrgAdminRow[] | null) || []).filter(
+          (row) => typeof row.email === 'string' && row.email.includes('@'),
+        )
+
+        const adminUserIds = Array.from(new Set(adminsBefore.map((a) => a.user_id)))
+        const languageByUserId = new Map<string, OrgMemberInviteEmailLocale>()
+        if (adminUserIds.length > 0) {
+          const { data: userLangRows, error: userLangErr } = await publicClient
+            .from('users')
+            .select('user_id, language')
+            .in('user_id', adminUserIds)
+
+          if (userLangErr) {
+            console.error('Org deletion notice: failed to load user languages', {
+              organizationId,
+              error: userLangErr,
+            })
+          } else {
+            for (const row of userLangRows || []) {
+              if (row && typeof row.user_id === 'string') {
+                languageByUserId.set(row.user_id, normalizeUserLanguageToEmailLocale(row.language))
+              }
+            }
+          }
+        }
+
+        const fallbackEmailLocale = resolveOrgInviteEmailLocale(
+          typeof req.headers['accept-language'] === 'string' ? req.headers['accept-language'] : undefined,
+        )
+
+        if (adminsBeforeErr) {
+          console.error('Org deletion notice: list_organization_admins failed before deactivate', {
+            organizationId,
+            error: adminsBeforeErr,
+          })
+        }
+
         const { error: revokeError } = await billingClient.rpc('deactivate_organization_revoke_access', {
           p_actor_user_id: auth.user.id,
           p_organization_id: organizationId,
@@ -753,7 +904,42 @@ export default async function handler(
           return res.status(mapped.status).json({ error: mapped.error })
         }
 
-        return res.status(200).json({ success: true })
+        const resendApiKey = process.env.RESEND_API_KEY
+        let deletionNoticeEmailsSent = 0
+
+        if (!resendApiKey) {
+          console.warn('Org deletion notice emails skipped: RESEND_API_KEY is not configured')
+        } else if (adminsBeforeErr || adminsBefore.length === 0) {
+          if (!adminsBeforeErr && adminsBefore.length === 0) {
+            console.warn('Org deletion notice: no admin emails to notify', { organizationId })
+          }
+        } else {
+          const seenEmails = new Set<string>()
+          for (const admin of adminsBefore) {
+            const toEmail = (admin.email || '').toLowerCase().trim()
+            if (!toEmail || seenEmails.has(toEmail)) continue
+            seenEmails.add(toEmail)
+            const locale = languageByUserId.get(admin.user_id) ?? fallbackEmailLocale
+            try {
+              await sendOrgDeletionScheduledEmail({
+                resendApiKey,
+                fromEmail: EDUTIME_TRANSACTIONAL_FROM,
+                toEmail,
+                organizationName: organizationNameForEmail,
+                locale,
+              })
+              deletionNoticeEmailsSent += 1
+            } catch (sendErr) {
+              console.error('Org deletion notice email failed', {
+                organizationId,
+                toEmail,
+                error: sendErr,
+              })
+            }
+          }
+        }
+
+        return res.status(200).json({ success: true, deletionNoticeEmailsSent })
       }
 
       return res.status(400).json({ error: 'Unknown action' })
