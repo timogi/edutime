@@ -14,6 +14,8 @@ const EMAIL_COPY: Record<
     bodyIntro: (args: { orgName: string }) => string
     bodySignIn: (inviteeEmail: string) => string
     ctaLabel: string
+    loginHint: string
+    loginLabel: string
     footer: string
     replyHint: string
   }
@@ -26,6 +28,8 @@ const EMAIL_COPY: Record<
     bodySignIn: (inviteeEmail) =>
       `Melde dich mit derselben E-Mail-Adresse (${inviteeEmail}) bei EduTime an und nimm die Einladung unter Konto an.`,
     ctaLabel: 'Zu EduTime',
+    loginHint: 'Du hast bereits ein Konto?',
+    loginLabel: 'Einloggen',
     footer:
       'Wenn du diese Einladung nicht erwartet hast, kannst du diese E-Mail ignorieren.',
     replyHint: `Bitte antworte nicht direkt auf diese E-Mail. Bei Fragen erreichst du uns unter ${CONTACT_EMAIL}.`,
@@ -38,6 +42,8 @@ const EMAIL_COPY: Record<
     bodySignIn: (inviteeEmail) =>
       `Sign in to EduTime with the same email address (${inviteeEmail}) and accept the invitation under Account.`,
     ctaLabel: 'Open EduTime',
+    loginHint: 'Already have an account?',
+    loginLabel: 'Log in',
     footer: 'If you did not expect this invitation, you can ignore this email.',
     replyHint: `Please do not reply directly to this email. For questions, contact us at ${CONTACT_EMAIL}.`,
   },
@@ -49,6 +55,8 @@ const EMAIL_COPY: Record<
     bodySignIn: (inviteeEmail) =>
       `Connecte-toi à EduTime avec la même adresse e-mail (${inviteeEmail}) et accepte l’invitation sous Compte.`,
     ctaLabel: 'Ouvrir EduTime',
+    loginHint: 'Tu as déjà un compte ?',
+    loginLabel: 'Se connecter',
     footer:
       'Si tu n’attendais pas cette invitation, tu peux ignorer ce message.',
     replyHint: `Merci de ne pas répondre directement à ce message. Pour toute question, écris-nous à ${CONTACT_EMAIL}.`,
@@ -79,11 +87,13 @@ export interface SendOrgMemberInviteEmailParams {
   organizationName: string
   inviteeEmail: string
   acceptUrl: string
+  loginUrl: string
   locale: OrgMemberInviteEmailLocale
 }
 
 export async function sendOrgMemberInviteEmail(params: SendOrgMemberInviteEmailParams): Promise<void> {
-  const { resendApiKey, fromEmail, toEmail, organizationName, inviteeEmail, acceptUrl, locale } = params
+  const { resendApiKey, fromEmail, toEmail, organizationName, inviteeEmail, acceptUrl, loginUrl, locale } =
+    params
 
   const copy = EMAIL_COPY[locale]
   const safeInvitee = escapeHtml(inviteeEmail)
@@ -112,6 +122,9 @@ export async function sendOrgMemberInviteEmail(params: SendOrgMemberInviteEmailP
             <p style="margin:24px 0 0 0;">
               <a href="${escapeHtml(acceptUrl)}" style="display:inline-block;background:#845ef7;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;">${escapeHtml(copy.ctaLabel)}</a>
             </p>
+            <p style="margin:12px 0 0 0;font-size:14px;line-height:1.45;">
+              ${escapeHtml(copy.loginHint)} <a href="${escapeHtml(loginUrl)}" style="color:#845ef7;text-decoration:underline;">${escapeHtml(copy.loginLabel)}</a>
+            </p>
             <p style="margin:20px 0 0 0;font-size:13px;color:#868e96;line-height:1.45;">${escapeHtml(copy.footer)}</p>
             <p style="margin:12px 0 0 0;font-size:13px;color:#868e96;line-height:1.45;">${replyHintHtml}</p>
           </td></tr>
@@ -131,6 +144,7 @@ export async function sendOrgMemberInviteEmail(params: SendOrgMemberInviteEmailP
     copy.bodySignIn(inviteeEmail),
     '',
     `${copy.ctaLabel}: ${acceptUrl}`,
+    `${copy.loginHint} ${copy.loginLabel}: ${loginUrl}`,
     '',
     copy.footer,
     '',

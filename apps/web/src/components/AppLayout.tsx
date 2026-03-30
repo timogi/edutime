@@ -133,7 +133,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         padding={0}
       >
         <AppShell.Header>
-          <Header opened={opened} setOpened={setOpened} />
+          <Header opened={opened} setOpened={setOpened} showBurger={!isNoLicensePage} />
         </AppShell.Header>
         {showSidebar && (
           <AppShell.Navbar>

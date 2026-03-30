@@ -14,8 +14,9 @@ This test plan covers the org flow.
 
 - Org admin creates checkout for 3+ seats.
   - Expected: checkout link returned, org billing status becomes `active_unpaid`.
-- Org checkout creates immediate access state.
-  - Expected: org seat entitlements are `active` before invoice is paid.
+- Org checkout does not auto-assign seats.
+  - Expected: no new `org_seat` entitlement is created during checkout creation alone.
+  - Expected: seats are assigned only when a member/admin is assigned and capacity allows.
 - Successful Payrexx webhook for org checkout.
   - Expected: invoice set to `paid`, checkout marked `completed`, subscription set `active`.
 - Failed/cancelled Payrexx webhook for org checkout.

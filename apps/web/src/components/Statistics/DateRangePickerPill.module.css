@@ -4,6 +4,8 @@
   overflow: hidden;
   min-height: 42px;
   height: 42px;
+  width: min(100%, 420px);
+  max-width: 100%;
 }
 
 .dateRangePickerGroup {
@@ -84,4 +86,25 @@
   display: flex;
   align-items: center;
   font-size: var(--mantine-font-size-md);
+}
+
+@media (max-width: 480px) {
+  .dateRangePickerCard {
+    min-height: 36px;
+    height: 36px;
+    width: min(100%, 330px);
+  }
+
+  .dateRangePickerArrow {
+    min-width: 36px;
+  }
+
+  .dateRangePickerInput {
+    min-width: 105px;
+  }
+
+  .dateSeparator {
+    padding: 0 calc(var(--mantine-spacing-xs) / 2);
+    font-size: var(--mantine-font-size-sm);
+  }
 }

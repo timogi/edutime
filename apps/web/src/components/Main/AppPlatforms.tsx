@@ -8,7 +8,6 @@ import {
   Group,
   Card,
   Flex,
-  useMantineColorScheme,
 } from '@mantine/core'
 import { useTranslations } from 'next-intl'
 import { useMediaQuery } from '@mantine/hooks'
@@ -29,9 +28,6 @@ export function AppPlatforms() {
   const t = useTranslations('AppPlatforms')
   const isSmallScreen = useMediaQuery('(max-width: 768px)')
   const isMediumScreen = useMediaQuery('(min-width: 769px) and (max-width: 1024px)')
-  const { colorScheme } = useMantineColorScheme()
-  const iconColor =
-    colorScheme === 'dark' ? 'var(--mantine-color-gray-2)' : 'var(--mantine-color-gray-9)'
 
   return (
     <div className={classes.wrapper}>
@@ -71,25 +67,21 @@ export function AppPlatforms() {
                       size={40}
                       stroke={1.5}
                       className={classes.browserIcon}
-                      color={iconColor}
                     />
                     <IconBrandFirefox
                       size={40}
                       stroke={1.5}
                       className={classes.browserIcon}
-                      color={iconColor}
                     />
                     <IconBrandSafari
                       size={40}
                       stroke={1.5}
                       className={classes.browserIcon}
-                      color={iconColor}
                     />
                     <IconBrandEdge
                       size={40}
                       stroke={1.5}
                       className={classes.browserIcon}
-                      color={iconColor}
                     />
                   </Group>
                 </div>
@@ -123,13 +115,11 @@ export function AppPlatforms() {
                       size={40}
                       stroke={1.5}
                       className={classes.browserIcon}
-                      color={iconColor}
                     />
                     <IconBrandGooglePlay
                       size={40}
                       stroke={1.5}
                       className={classes.browserIcon}
-                      color={iconColor}
                     />
                   </Group>
                 </div>

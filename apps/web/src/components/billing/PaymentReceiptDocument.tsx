@@ -65,6 +65,7 @@ const receiptStyles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderColor: '#e2e8f0',
     borderWidth: 1,
+    borderRadius: 10,
     padding: 20,
   },
   header: {
@@ -88,24 +89,28 @@ const receiptStyles = StyleSheet.create({
   brand: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#845ef7',
+    color: '#111827',
   },
   headerRight: {
     alignItems: 'flex-end',
   },
   statusChip: {
-    backgroundColor: '#ede9fe',
-    color: '#6d28d9',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: '#e8f5e9',
+    color: '#2e7d32',
+    borderColor: '#a5d6a7',
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
     fontSize: 9,
     fontWeight: 'bold',
+    lineHeight: 1,
   },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#111827',
-    marginBottom: 6,
+    marginBottom: 14,
   },
   subtitle: {
     color: '#4b5563',
@@ -117,15 +122,35 @@ const receiptStyles = StyleSheet.create({
     color: '#111827',
     marginBottom: 7,
   },
+  issuerTitle: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#6b7280',
+    marginBottom: 5,
+  },
   block: {
     marginBottom: 14,
   },
   line: {
     marginBottom: 2,
   },
+  issuerLine: {
+    marginBottom: 2,
+    fontSize: 10,
+    color: '#6b7280',
+  },
+  issuerBox: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    padding: 10,
+    backgroundColor: '#fafafa',
+    marginBottom: 14,
+  },
   detailsBox: {
     borderWidth: 1,
     borderColor: '#e2e8f0',
+    borderRadius: 8,
     padding: 10,
     backgroundColor: '#f8fafc',
   },
@@ -177,17 +202,16 @@ export function PaymentReceiptDocument({ invoice, locale, translations }: Paymen
           </View>
 
           <PdfText style={receiptStyles.title}>{translations.title}</PdfText>
-          <PdfText style={receiptStyles.subtitle}>{translations.subtitle}</PdfText>
 
-          <View style={receiptStyles.block}>
-            <PdfText style={receiptStyles.blockTitle}>{translations.issuer}</PdfText>
-            <PdfText style={receiptStyles.line}>{EDU_TIME_IMPRINT.company}</PdfText>
-            <PdfText style={receiptStyles.line}>{EDU_TIME_IMPRINT.careOf}</PdfText>
-            <PdfText style={receiptStyles.line}>{EDU_TIME_IMPRINT.street}</PdfText>
-            <PdfText style={receiptStyles.line}>{EDU_TIME_IMPRINT.city}</PdfText>
-            <PdfText style={receiptStyles.line}>UID: {EDU_TIME_IMPRINT.uid}</PdfText>
-            <PdfText style={receiptStyles.line}>{EDU_TIME_IMPRINT.email}</PdfText>
-            <PdfText style={receiptStyles.line}>{EDU_TIME_IMPRINT.website}</PdfText>
+          <View style={receiptStyles.issuerBox}>
+            <PdfText style={receiptStyles.issuerTitle}>{translations.issuer}</PdfText>
+            <PdfText style={receiptStyles.issuerLine}>{EDU_TIME_IMPRINT.company}</PdfText>
+            <PdfText style={receiptStyles.issuerLine}>{EDU_TIME_IMPRINT.careOf}</PdfText>
+            <PdfText style={receiptStyles.issuerLine}>{EDU_TIME_IMPRINT.street}</PdfText>
+            <PdfText style={receiptStyles.issuerLine}>{EDU_TIME_IMPRINT.city}</PdfText>
+            <PdfText style={receiptStyles.issuerLine}>UID: {EDU_TIME_IMPRINT.uid}</PdfText>
+            <PdfText style={receiptStyles.issuerLine}>{EDU_TIME_IMPRINT.email}</PdfText>
+            <PdfText style={receiptStyles.issuerLine}>{EDU_TIME_IMPRINT.website}</PdfText>
           </View>
 
           <View style={receiptStyles.block}>
@@ -215,10 +239,6 @@ export function PaymentReceiptDocument({ invoice, locale, translations }: Paymen
             <View style={receiptStyles.row}>
               <PdfText style={receiptStyles.rowLabel}>{translations.amount}</PdfText>
               <PdfText style={receiptStyles.rowValue}>{amountFormatted}</PdfText>
-            </View>
-            <View style={receiptStyles.row}>
-              <PdfText style={receiptStyles.rowLabel}>{translations.currency}</PdfText>
-              <PdfText style={receiptStyles.rowValue}>{invoice.currency}</PdfText>
             </View>
             <View style={receiptStyles.row}>
               <PdfText style={receiptStyles.rowLabel}>{translations.reference}</PdfText>

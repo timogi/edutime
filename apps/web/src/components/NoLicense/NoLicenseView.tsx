@@ -10,26 +10,21 @@ import {
   Group,
   Divider,
   Alert,
-  SimpleGrid,
   Loader,
   Select,
 } from '@mantine/core'
 import { useTranslations } from 'next-intl'
 import { useUser } from '@/contexts/UserProvider'
-import { IconSettings, IconLogout, IconInfoCircle, IconCheck, IconAlertTriangle } from '@tabler/icons-react'
+import { IconSettings, IconLogout, IconInfoCircle, IconAlertTriangle } from '@tabler/icons-react'
 import { showNotification } from '@mantine/notifications'
 import { useRouter } from 'next/router'
 import { Account } from '@/components/Account/Account'
 import { Footer } from '@/components/Footer/Footer'
-import { LicenseManagementEntry } from '@/components/LicenseManagement/LicenseManagementEntry'
-import { OrgPriceCalculatorModal } from '@/components/Main/OrgPriceCalculatorModal'
+import { PricingCards } from '@/components/Main/Pricing'
 import { acceptOrganizationInvite, rejectOrganizationInvite } from '@/utils/supabase/organizations'
 import { supabase } from '@/utils/supabase/client'
 import { hasActiveEntitlement, hasEverHadTrial } from '@edutime/shared'
-import { INDIVIDUAL_ANNUAL_PRICE_CHF } from '@/utils/payments/pricing'
-import { showLicenseTestOptions } from '@/utils/licenseUiFlags'
 import classes from './NoLicenseView.module.css'
-import pricingClasses from '../Main/Pricing.module.css'
 
 type OrgBillingGateStatus =
   | 'idle'
@@ -41,7 +36,6 @@ type OrgBillingGateStatus =
 export function NoLicenseView() {
   const t = useTranslations('Index')
   const t_noLicense = useTranslations('NoLicense')
-  const t_pricing = useTranslations('Pricing')
   const {
     user,
     categories,
@@ -58,7 +52,6 @@ export function NoLicenseView() {
   const [isStartingDemo, setIsStartingDemo] = useState(false)
   const [hasUsedDemo, setHasUsedDemo] = useState<boolean | null>(null)
   const [isRefreshingLicense, setIsRefreshingLicense] = useState(false)
-  const [orgModalOpened, setOrgModalOpened] = useState(false)
   const [orgBillingGate, setOrgBillingGate] = useState<OrgBillingGateStatus>('idle')
 
   // Check if user is an administrator
@@ -149,16 +142,6 @@ export function NoLicenseView() {
     isOrgAdminWithoutActiveSubscription &&
     (orgBillingGate === 'idle' || orgBillingGate === 'loading')
 
-  const licenseTestOptionsVisible = showLicenseTestOptions()
-
-  const noLicensePricingGridCols = useMemo(() => {
-    const demoCard = hasUsedDemo === false ? 1 : 0
-    const purchaseCard = 1
-    const testRenewCard = licenseTestOptionsVisible ? 1 : 0
-    const multipleLicensesCard = 1
-    const total = demoCard + purchaseCard + testRenewCard + multipleLicensesCard
-    return { base: 1, md: 2, xl: total }
-  }, [hasUsedDemo, licenseTestOptionsVisible])
 
   // Check if user has ever had a trial on component mount
   useEffect(() => {
@@ -343,10 +326,6 @@ export function NoLicenseView() {
     router.push('/checkout?plan=annual')
   }
 
-  const handleStartDailyTestSubscription = () => {
-    router.push('/checkout?plan=annual&billingCycle=daily_test')
-  }
-
   const handleRefreshLicenseStatus = async () => {
     setIsRefreshingLicense(true)
     try {
@@ -388,7 +367,7 @@ export function NoLicenseView() {
       <Container size={1200} py='xl'>
         <Stack gap='xl'>
           <Group>
-            <Button variant='subtle' onClick={() => setActiveSection(null)}>
+            <Button variant='subtle' onClick={() => void router.push('/app/settings')}>
               ← {t_noLicense('back')}
             </Button>
           </Group>
@@ -417,23 +396,17 @@ export function NoLicenseView() {
 
   return (
     <>
-      <Container size={1000} py='xl'>
+      <Container size={1200} py='xl'>
         <Stack gap='xl' align='center'>
           <div className={classes.header}>
             <Title order={1} ta='center' mb='md'>
               {t_noLicense('title')}
             </Title>
-            <Text size='lg' c='dimmed' ta='center' maw={isOrgAdminWithoutActiveSubscription ? 700 : 600}>
-              {isOrgAdminWithoutActiveSubscription
-                ? orgBillingUnresolved
-                  ? t_noLicense('org-billing-status-loading')
-                  : orgBillingGate === 'licensed_no_seat'
-                    ? t_noLicense('org-admin-licensed-lead')
-                    : t_noLicense('org-no-license-description')
-                : isAdministrator
-                  ? t_noLicense('description-admin')
-                  : t_noLicense('description')}
-            </Text>
+            {!isOrgAdminWithoutActiveSubscription && (
+              <Text size='lg' c='dimmed' ta='center' maw={isOrgAdminWithoutActiveSubscription ? 700 : 600}>
+                {isAdministrator ? t_noLicense('description-admin') : t_noLicense('description')}
+              </Text>
+            )}
           </div>
 
           {showOrgCheckoutPendingAlert && (
@@ -442,7 +415,6 @@ export function NoLicenseView() {
               color='orange'
               variant='light'
               w='100%'
-              maw={800}
             >
               <Stack gap='xs'>
                 <Text size='sm'>{t_noLicense('activationPendingMessage')}</Text>
@@ -459,7 +431,7 @@ export function NoLicenseView() {
           )}
 
           {showIndividualCheckoutPendingAlert && (
-            <Alert icon={<IconInfoCircle size={16} />} color='orange' variant='light' w='100%' maw={800}>
+            <Alert icon={<IconInfoCircle size={16} />} color='orange' variant='light' w='100%'>
               <Stack gap='xs'>
                 <Text size='sm'>{t_noLicense('activationPendingMessage')}</Text>
                 <Button
@@ -475,7 +447,7 @@ export function NoLicenseView() {
           )}
 
           {isOrgAdminWithoutActiveSubscription && (
-            <Card padding='xl' radius='md' withBorder w='100%' maw={800}>
+            <Card padding='xl' radius='md' withBorder w='100%'>
               <Stack gap='md' align='stretch'>
                 {orgBillingUnresolved ? (
                   <>
@@ -539,7 +511,7 @@ export function NoLicenseView() {
 
           {/* Pending Invitations */}
           {pendingInvitations.length > 0 && (
-            <Card padding='xl' radius='md' withBorder w='100%' maw={800}>
+            <Card padding='xl' radius='md' withBorder w='100%'>
               <Stack gap='md'>
                 <Group justify='space-between' align='center'>
                   <Title order={3}>{t('pending-invitations') || 'Offene Einladungen'}</Title>
@@ -594,288 +566,30 @@ export function NoLicenseView() {
           {/* Pricing Cards - hide for administrators who manage members */}
           {!isAdministrator && (
             <>
-              <OrgPriceCalculatorModal
-                opened={orgModalOpened}
-                onClose={() => setOrgModalOpened(false)}
+              <PricingCards
+                embedded
+                hideDemoCard={hasUsedDemo !== false}
+                onDemoClick={handleStartDemo}
+                onStandardClick={handlePurchase}
+                demoButtonLabel={t_noLicense('start-demo')}
+                standardButtonLabel={t_noLicense('purchase-now')}
               />
-
-              <SimpleGrid cols={noLicensePricingGridCols} spacing='lg' w='100%'>
-                {/* Demo Card - Only show if user hasn't used a trial */}
-                {hasUsedDemo === false && (
-                  <Card
-                    className={pricingClasses.pricingCard}
-                    padding='xl'
-                    radius='md'
-                    withBorder
-                    style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
-                  >
-                    <Stack gap='lg' h='100%' justify='space-between' style={{ flex: 1 }}>
-                      <div>
-                        <Badge size='lg' variant='light' color='violet' mb='sm'>
-                          {t_noLicense('demo-badge')}
-                        </Badge>
-                        <Title order={3} className={pricingClasses.planTitle}>
-                          {t_pricing('demoTitle')}
-                        </Title>
-                        <Text size='sm' c='dimmed' mt='xs'>
-                          {t_pricing('demoSubtitle')}
-                        </Text>
-                      </div>
-
-                      <Divider />
-
-                      <Stack gap='sm' className={pricingClasses.features} style={{ flex: 1 }}>
-                        <Group gap='sm' align='flex-start'>
-                          <IconCheck size={20} className={pricingClasses.checkIcon} />
-                          <Text size='sm'>{t_pricing('demoFeature1')}</Text>
-                        </Group>
-                        <Group gap='sm' align='flex-start'>
-                          <IconCheck size={20} className={pricingClasses.checkIcon} />
-                          <Text size='sm'>{t_pricing('demoFeature2')}</Text>
-                        </Group>
-                        <Group gap='sm' align='flex-start'>
-                          <IconCheck size={20} className={pricingClasses.checkIcon} />
-                          <Text size='sm'>{t_pricing('demoFeature3')}</Text>
-                        </Group>
-                        <Group gap='sm' align='flex-start'>
-                          <IconCheck size={20} className={pricingClasses.checkIcon} />
-                          <Text size='sm'>{t_pricing('demoFeature4')}</Text>
-                        </Group>
-                      </Stack>
-
-                      <Button
-                        onClick={handleStartDemo}
-                        size='lg'
-                        variant='filled'
-                        fullWidth
-                        mt='auto'
-                        loading={isStartingDemo}
-                        disabled={isStartingDemo}
-                      >
-                        {t_noLicense('start-demo')}
-                      </Button>
-                    </Stack>
-                  </Card>
-                )}
-
-                {/* Purchase License Card */}
-                <Card
-                  className={`${pricingClasses.pricingCard} ${pricingClasses.popularCard}`}
-                  padding='xl'
-                  radius='lg'
-                  withBorder
-                  shadow='xl'
-                  style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
-                >
-                  <Stack gap='lg' h='100%' justify='space-between' style={{ flex: 1 }}>
-                    <div>
-                      <Badge size='lg' variant='filled' color='violet' mb='sm'>
-                        {t_pricing('mostPopular')}
-                      </Badge>
-                      <Title order={3} className={pricingClasses.planTitle}>
-                        {t_pricing('planName')}
-                      </Title>
-                    </div>
-
-                    <div className={pricingClasses.priceSection}>
-                      <Group gap='xs' align='flex-start' justify='center' wrap='nowrap'>
-                        <Text size='3.5rem' fw={700} className={pricingClasses.price} lh={1}>
-                          {INDIVIDUAL_ANNUAL_PRICE_CHF}
-                        </Text>
-                        <Text size='lg' c='dimmed' mt='md' lh={1}>
-                          CHF
-                        </Text>
-                      </Group>
-                      <Text size='sm' c='dimmed' mt='xs' ta='center'>
-                        {t_pricing('perYear')}
-                      </Text>
-                    </div>
-
-                    <Divider />
-
-                    <Stack gap='sm' className={pricingClasses.features}>
-                      <Group gap='sm' align='flex-start'>
-                        <IconCheck size={20} className={pricingClasses.checkIcon} />
-                        <Text size='sm'>{t_pricing('feature1')}</Text>
-                      </Group>
-                      <Group gap='sm' align='flex-start'>
-                        <IconCheck size={20} className={pricingClasses.checkIcon} />
-                        <Text size='sm'>{t_pricing('feature2')}</Text>
-                      </Group>
-                      <Group gap='sm' align='flex-start'>
-                        <IconCheck size={20} className={pricingClasses.checkIcon} />
-                        <Text size='sm'>{t_pricing('feature3')}</Text>
-                      </Group>
-                      <Group gap='sm' align='flex-start'>
-                        <IconCheck size={20} className={pricingClasses.checkIcon} />
-                        <Text size='sm'>{t_pricing('feature4')}</Text>
-                      </Group>
-                    </Stack>
-
-                    <Button onClick={handlePurchase} size='lg' variant='filled' fullWidth mt='auto'>
-                      {t_noLicense('purchase-now')}
-                    </Button>
-                  </Stack>
-                </Card>
-
-                {licenseTestOptionsVisible && (
-                  <Card
-                    className={pricingClasses.pricingCard}
-                    padding='xl'
-                    radius='md'
-                    withBorder
-                    style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
-                  >
-                    <Stack gap='lg' h='100%' justify='space-between' style={{ flex: 1 }}>
-                      <div>
-                        <Badge size='lg' variant='light' color='violet' mb='sm'>
-                          {t_pricing('testRenewBadge')}
-                        </Badge>
-                        <Title order={3} className={pricingClasses.planTitle}>
-                          {t_pricing('testRenewTitle')}
-                        </Title>
-                        <Text size='sm' c='dimmed' mt='xs'>
-                          {t_pricing('testRenewSubtitle')}
-                        </Text>
-                      </div>
-
-                      <div className={pricingClasses.priceSection}>
-                        <Group gap='xs' align='flex-start' justify='center' wrap='nowrap'>
-                          <Text size='3rem' fw={700} className={pricingClasses.price} lh={1}>
-                            1
-                          </Text>
-                          <Text size='lg' c='dimmed' mt='md' lh={1}>
-                            CHF
-                          </Text>
-                        </Group>
-                        <Text size='sm' c='dimmed' mt='xs' ta='center'>
-                          {t_pricing('testRenewPerDay')}
-                        </Text>
-                      </div>
-
-                      <Divider />
-
-                      <Stack gap='sm' className={pricingClasses.features}>
-                        <Group gap='sm' align='flex-start'>
-                          <IconCheck size={20} className={pricingClasses.checkIcon} />
-                          <Text size='sm'>{t_pricing('testRenewFeature1')}</Text>
-                        </Group>
-                        <Group gap='sm' align='flex-start'>
-                          <IconCheck size={20} className={pricingClasses.checkIcon} />
-                          <Text size='sm'>{t_pricing('testRenewFeature2')}</Text>
-                        </Group>
-                        <Group gap='sm' align='flex-start'>
-                          <IconCheck size={20} className={pricingClasses.checkIcon} />
-                          <Text size='sm'>{t_pricing('testRenewFeature3')}</Text>
-                        </Group>
-                        <Group gap='sm' align='flex-start'>
-                          <IconCheck size={20} className={pricingClasses.checkIcon} />
-                          <Text size='sm'>{t_pricing('testRenewFeature4')}</Text>
-                        </Group>
-                      </Stack>
-
-                      <Button
-                        onClick={handleStartDailyTestSubscription}
-                        size='lg'
-                        variant='filled'
-                        fullWidth
-                        mt='auto'
-                      >
-                        {t_noLicense('start-test-renew')}
-                      </Button>
-                    </Stack>
-                  </Card>
-                )}
-
-                {/* Multiple Licenses Card */}
-                <Card
-                  className={pricingClasses.pricingCard}
-                  padding='xl'
-                  radius='md'
-                  withBorder
-                  style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
-                >
-                  <Stack gap='lg' h='100%' justify='space-between' style={{ flex: 1 }}>
-                    <div>
-                      <Badge size='lg' variant='light' color='violet' mb='sm'>
-                        {t_pricing('multipleLicenses')}
-                      </Badge>
-                      <Title order={3} className={pricingClasses.planTitle}>
-                        {t_pricing('multipleLicensesTitle')}
-                      </Title>
-                    </div>
-
-                    <div className={pricingClasses.priceSection}>
-                      <Group gap='xs' align='flex-start' justify='center' wrap='nowrap'>
-                        <Text size='3rem' fw={700} className={pricingClasses.price} lh={1}>
-                          3+
-                        </Text>
-                        <Text size='lg' c='dimmed' mt='md' lh={1}>
-                          {t_pricing('licenses')}
-                        </Text>
-                      </Group>
-                    </div>
-
-                    <Divider />
-
-                    <Stack gap='sm' className={pricingClasses.features}>
-                      <Group gap='sm' align='flex-start'>
-                        <IconCheck size={20} className={pricingClasses.checkIcon} />
-                        <Text size='sm'>{t_pricing('multipleFeature1')}</Text>
-                      </Group>
-                      <Group gap='sm' align='flex-start'>
-                        <IconCheck size={20} className={pricingClasses.checkIcon} />
-                        <Text size='sm'>{t_pricing('multipleFeature2')}</Text>
-                      </Group>
-                      <Group gap='sm' align='flex-start'>
-                        <IconCheck size={20} className={pricingClasses.checkIcon} />
-                        <Text size='sm'>{t_pricing('multipleFeature3')}</Text>
-                      </Group>
-                      <Group gap='sm' align='flex-start'>
-                        <IconCheck size={20} className={pricingClasses.checkIcon} />
-                        <Text size='sm'>{t_pricing('multipleFeature4')}</Text>
-                      </Group>
-                    </Stack>
-
-                    <Button
-                      onClick={() => setOrgModalOpened(true)}
-                      size='lg'
-                      variant='filled'
-                      fullWidth
-                      mt='auto'
-                    >
-                      {t_pricing('requestQuote')}
-                    </Button>
-                  </Stack>
-                </Card>
-              </SimpleGrid>
             </>
           )}
 
           {isAdministrator ? (
             <Divider
               w='100%'
-              maw={800}
               label={t_noLicense('personal-license-section-label')}
               labelPosition='center'
               my='lg'
             />
           ) : null}
 
-          <Card padding='xl' radius='md' withBorder w='100%' maw={800}>
-            <Stack gap='md'>
-              <Title order={3}>{t('license-management-title')}</Title>
-              <Text size='sm' c='dimmed'>
-                {t_noLicense('licenseRequiredMessage')}
-              </Text>
-              <LicenseManagementEntry showPersonalButton />
-            </Stack>
-          </Card>
-
-          <Divider w='100%' maw={800} my='md' />
+          <Divider w='100%' my='md' />
 
           {/* User Info and Actions */}
-          <Card padding='xl' radius='md' withBorder w='100%' maw={800}>
+          <Card padding='xl' radius='md' withBorder w='100%'>
             <Stack gap='lg'>
               {/* Email Display */}
               <Group justify='space-between'>

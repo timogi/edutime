@@ -8,7 +8,7 @@
 .table {
   width: 100%;
   max-width: 100%;
-  min-width: min(100%, 640px);
+  min-width: 920px;
 }
 
 .table th {
@@ -39,16 +39,116 @@
   background-color: light-dark(var(--mantine-color-blue-0), var(--mantine-color-blue-9));
 }
 
+.toolbar {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-sm);
+}
+
+.toolbarTop {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--mantine-spacing-sm);
+  width: 100%;
+}
+
+.toolbarSearch {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.toolbarActions {
+  margin-left: auto;
+}
+
+.statusFilterIconButton {
+  flex: 0 0 auto;
+}
+
+@media (min-width: 769px) {
+  .toolbar {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+
+  .toolbarTop {
+    max-width: 640px;
+  }
+
+  .toolbarActions {
+    margin-left: auto;
+    justify-content: flex-end;
+    flex: 0 0 auto;
+  }
+}
+
+.emailHeader {
+  width: 320px;
+}
+
+.emailCell {
+  width: 320px;
+}
+
+.emailText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.commentHeader {
+  width: 180px;
+}
+
+.commentCell {
+  width: 180px;
+  max-width: 180px;
+}
+
+.commentText {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.actionsHeader {
+  width: 110px;
+}
+
+.actionsCell {
+  width: 110px;
+}
+
+.mobileBottomActions {
+  width: 100%;
+  margin-top: var(--mantine-spacing-xs);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
+  .toolbarActions {
+    margin-left: 0;
+    justify-content: flex-end;
+    width: 100%;
+  }
+
   .table {
-    min-width: 500px;
+    min-width: 860px;
+  }
+
+  .mobileBottomActions {
+    align-items: center;
   }
 }
 
 @media (max-width: 475px) {
   .table {
-    min-width: 400px;
+    min-width: 820px;
     font-size: var(--mantine-font-size-xs);
   }
 }

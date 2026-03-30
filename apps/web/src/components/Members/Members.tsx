@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import TableSelection from './TableSelection'
 import { Organization, UserData } from '@/types/globals'
 import { supabase } from '@/utils/supabase/client'
+import { OrganizationPicker } from '@/components/Organization/OrganizationPicker'
 
 interface MembersProps {
   organizations: Organization[]
@@ -24,7 +25,7 @@ export const Members = ({
   const t = useTranslations('Index')
   const tNoLicense = useTranslations('NoLicense')
   const [activePage, setActivePage] = useState(1)
-  const [selectedOrg, setSelectedOrg] = useState<string | null>(null)
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
   const [isCheckingOrgLicense, setIsCheckingOrgLicense] = useState(false)
 
   const orgIdFromQuery = useMemo(() => {
@@ -113,12 +114,12 @@ export const Members = ({
 
   useEffect(() => {
     if (organizations.length === 0) {
-      setSelectedOrg(null)
+      setSelectedOrgId(null)
       return
     }
 
     if (!router.isReady) {
-      setSelectedOrg(organizations[0].name)
+      setSelectedOrgId(String(organizations[0].id))
       return
     }
 
@@ -127,13 +128,13 @@ export const Members = ({
     if (idStr) {
       const match = organizations.find((o) => String(o.id) === idStr)
       if (match) {
-        setSelectedOrg(match.name)
+        setSelectedOrgId(String(match.id))
         return
       }
     }
 
-    setSelectedOrg((prev) =>
-      prev && organizations.some((o) => o.name === prev) ? prev : organizations[0].name,
+    setSelectedOrgId((prev) =>
+      prev && organizations.some((o) => String(o.id) === prev) ? prev : String(organizations[0].id),
     )
   }, [router.isReady, router.query.organizationId, organizations])
 
@@ -153,19 +154,27 @@ export const Members = ({
   return (
     <Container fluid py='xl' px={{ base: 'xs', sm: 'md', lg: 'xl' }}>
       <Stack gap='lg' w='100%'>
-        {showBackToNoLicense ? (
-          <Button variant='subtle' onClick={() => void router.push('/app/no-license')}>
-            ← {t('back')}
-          </Button>
-        ) : null}
+        <Stack gap='xs' align='flex-start'>
+          {showBackToNoLicense ? (
+            <Button variant='subtle' w='fit-content' onClick={() => void router.push('/app/no-license')}>
+              ← {t('back')}
+            </Button>
+          ) : null}
+          <OrganizationPicker
+            organizations={organizations}
+            value={selectedOrgId}
+            onChange={setSelectedOrgId}
+            placeholder={t('Select organization')}
+            minWidth={300}
+          />
+        </Stack>
         <TableSelection
           organizations={organizations}
           currentUserEmail={userData.email}
           onMembersChanged={onMembersChanged}
           activePage={activePage}
           setActivePage={setActivePage}
-          selectedOrg={selectedOrg}
-          setSelectedOrg={setSelectedOrg}
+          selectedOrgId={selectedOrgId}
         />
       </Stack>
     </Container>

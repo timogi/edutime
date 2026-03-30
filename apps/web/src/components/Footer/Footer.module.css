@@ -15,8 +15,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: var(--mantine-spacing-xl);
-  padding-bottom: var(--mantine-spacing-xl);
+  gap: var(--mantine-spacing-sm);
+  padding-top: var(--mantine-spacing-md);
+  padding-bottom: var(--mantine-spacing-md);
   background-color: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
 }
 
@@ -29,10 +30,18 @@
 .links {
   display: flex;
   gap: var(--mantine-spacing-md);
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 @media (max-width: 575px) {
+  .link {
+    line-height: 20px;
+  }
+
   .links {
-    margin-top: var(--mantine-spacing-md);
+    margin-top: 0;
+    justify-content: center;
+    gap: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
   }
 }

@@ -13,7 +13,7 @@ import {
   Modal,
   NumberInput,
   Paper,
-  Select,
+  SimpleGrid,
   Stack,
   Table,
   Text,
@@ -33,6 +33,7 @@ import {
   type PaymentReceiptTranslations,
 } from '@/components/billing/PaymentReceiptDocument'
 import { useUser } from '@/contexts/UserProvider'
+import { OrganizationPicker } from '@/components/Organization/OrganizationPicker'
 import { MIN_ORG_LICENSES } from '@/utils/payments/pricing'
 import { supabase } from '@/utils/supabase/client'
 
@@ -656,6 +657,7 @@ export default function OrganizationManagementPage() {
   const minimumSeatPlanTarget = Math.max(MIN_ORG_LICENSES, membersLosingLicenseCount)
   const canRemoveAdmins = adminCount > 1
   const isOrgCanceled = Boolean(payload?.billing?.cancelAtPeriodEnd)
+  const isOrgSuspended = payload?.billing?.subscriptionStatus === 'suspended'
   const hasOrgSubscription = Boolean(payload?.billing)
   const organizationRowInactive = payload?.organization ? !payload.organization.is_active : false
   const showOrgDeleteSection = Boolean(payload?.organization?.is_active)
@@ -847,27 +849,19 @@ export default function OrganizationManagementPage() {
   return (
     <Container size={1000} py='xl'>
       <Stack gap='lg'>
-        <Group justify='space-between'>
+        <Stack gap='xs' align='flex-start'>
           {showBackButton ? (
-            <Button variant='subtle' onClick={() => router.push(backPath)}>
+            <Button variant='subtle' w='fit-content' onClick={() => router.push(backPath)}>
               ← {t('back')}
             </Button>
-          ) : (
-            <div />
-          )}
-          <Select
-            data={organizations.map((org) => ({
-              value: String(org.id),
-              label: org.is_active
-                ? org.name
-                : `${org.name} (${t('org-management-select-inactive-suffix')})`,
-            }))}
+          ) : null}
+          <OrganizationPicker
+            organizations={organizations}
             value={selectedOrganizationId}
             onChange={setSelectedOrganizationId}
-            style={{ minWidth: 280 }}
-            label={t('org-license-organization')}
+            minWidth={300}
           />
-        </Group>
+        </Stack>
 
         {!isLoading && organizationRowInactive ? (
           <Alert color='orange' variant='light' icon={<IconAlertTriangle size={16} />}>
@@ -878,9 +872,6 @@ export default function OrganizationManagementPage() {
         <Card withBorder>
           <Stack gap='sm'>
             <Text size='xl'>{t('org-management-title')}</Text>
-            <Text size='sm' c='dimmed'>
-              {t('org-management-description')}
-            </Text>
             <TextInput
               label={t('org-management-name-label')}
               value={renameValue}
@@ -913,35 +904,37 @@ export default function OrganizationManagementPage() {
                 {t('org-management-admin-add')}
               </Button>
             </Group>
-            <Table withTableBorder striped>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>{t('email')}</Table.Th>
-                  <Table.Th>{t('created_at')}</Table.Th>
-                  <Table.Th>{t('Actions')}</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {(payload?.admins || []).map((admin) => (
-                  <Table.Tr key={admin.user_id}>
-                    <Table.Td>{admin.email || '-'}</Table.Td>
-                    <Table.Td>{formatDate(admin.created_at, locale, '-')}</Table.Td>
-                    <Table.Td>
-                      <Button
-                        variant='light'
-                        color='red'
-                        size='xs'
-                        disabled={!canRemoveAdmins || admin.user_id === user.user_id}
-                        loading={removingAdminUserId === admin.user_id}
-                        onClick={() => handleRemoveAdmin(admin.user_id)}
-                      >
-                        {t('org-management-admin-remove')}
-                      </Button>
-                    </Table.Td>
+            <Table.ScrollContainer minWidth={640}>
+              <Table withTableBorder striped>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>{t('email')}</Table.Th>
+                    <Table.Th>{t('created_at')}</Table.Th>
+                    <Table.Th>{t('Actions')}</Table.Th>
                   </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
+                </Table.Thead>
+                <Table.Tbody>
+                  {(payload?.admins || []).map((admin) => (
+                    <Table.Tr key={admin.user_id}>
+                      <Table.Td>{admin.email || '-'}</Table.Td>
+                      <Table.Td>{formatDate(admin.created_at, locale, '-')}</Table.Td>
+                      <Table.Td>
+                        <Button
+                          variant='light'
+                          color='red'
+                          size='xs'
+                          disabled={!canRemoveAdmins || admin.user_id === user.user_id}
+                          loading={removingAdminUserId === admin.user_id}
+                          onClick={() => handleRemoveAdmin(admin.user_id)}
+                        >
+                          {t('org-management-admin-remove')}
+                        </Button>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
           </Stack>
         </Card>
 
@@ -976,46 +969,54 @@ export default function OrganizationManagementPage() {
               </Stack>
             ) : (
               <Stack gap='xs'>
-                <Text size='sm' c='dimmed'>
-                  {t('org-management-seat-plan-current')}: {currentSeatCount}
-                </Text>
-                <Text size='sm' c='dimmed'>
-                  {t('org-management-billing-annual-amount')}:{' '}
-                  {formatAmount(payload.billing.amountCents, payload.billing.currency, locale)}
-                </Text>
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing='sm'>
+                  <Paper withBorder radius='md' p='sm'>
+                    <Text size='xs' c='dimmed'>
+                      {t('org-management-seat-plan-current')}
+                    </Text>
+                    <Text size='lg' fw={700}>
+                      {currentSeatCount}
+                    </Text>
+                  </Paper>
+                  <Paper withBorder radius='md' p='sm'>
+                    <Text size='xs' c='dimmed'>
+                      {t('org-management-billing-annual-amount')}
+                    </Text>
+                    <Text size='lg' fw={700}>
+                      {formatAmount(payload.billing.amountCents, payload.billing.currency, locale)}
+                    </Text>
+                  </Paper>
+                </SimpleGrid>
                 {isOrgCanceled ? (
-                  <>
-                    <Text size='sm' c='dimmed'>
-                      {t('org-management-billing-subscription-ends')}:{' '}
-                      {formatDate(payload.billing.currentPeriodEnd, locale, t('license-unlimited'))}
-                    </Text>
-                    <Text size='sm' c='dimmed'>
-                      {t('org-management-billing-next-payment-none-after-cancel')}
-                    </Text>
-                  </>
+                  <Text size='sm' c='dimmed'>
+                    {t('org-management-billing-subscription-ends')}:{' '}
+                    {formatDate(payload.billing.currentPeriodEnd, locale, t('license-unlimited'))}
+                  </Text>
                 ) : (
                   <Text size='sm' c='dimmed'>
                     {t('org-management-billing-renewal-on')}:{' '}
                     {formatDate(payload.billing.currentPeriodEnd, locale, t('license-unlimited'))}
                   </Text>
                 )}
-                {isOrgCanceled ? <WarningNotice>{t('org-management-cancel-pending-note')}</WarningNotice> : null}
+                {isOrgSuspended ? (
+                  <WarningNotice>{t('org-management-suspended-licenses-revoked-note')}</WarningNotice>
+                ) : null}
 
                 <Group>
-                  {isOrgCanceled ? (
+                  {isOrgCanceled && !isOrgSuspended ? (
                     <Button variant='light' onClick={handleReactivate} loading={isReactivating}>
                       {t('org-management-reactivate-button')}
                     </Button>
-                  ) : (
+                  ) : !isOrgCanceled ? (
                     <Button color='red' variant='light' onClick={handleCancel} loading={isCanceling}>
                       {t('org-management-cancel-button')}
                     </Button>
-                  )}
+                  ) : null}
                 </Group>
 
-                {payload.billing.subscriptionStatus === 'suspended' ? (
+                {isOrgSuspended ? (
                   <Button variant='outline' onClick={handleStartOrganizationCheckout}>
-                    {tNoLicense('org-no-license-checkout')}
+                    {t('org-management-reactivate-paid-button')}
                   </Button>
                 ) : null}
 
@@ -1025,60 +1026,62 @@ export default function OrganizationManagementPage() {
                       {t('org-management-open-invoices-title')}
                     </Text>
                     <Paper withBorder radius='md' p='xs'>
-                      <Table striped highlightOnHover withTableBorder>
-                        <Table.Thead>
-                          <Table.Tr>
-                            <Table.Th>{t('license-management-history-date')}</Table.Th>
-                            <Table.Th>{t('license-management-history-amount')}</Table.Th>
-                            <Table.Th>{t('org-management-invoice-payable-until')}</Table.Th>
-                            <Table.Th>{t('license-management-history-status')}</Table.Th>
-                            <Table.Th>{t('license-management-history-reference')}</Table.Th>
-                            <Table.Th>{t('org-management-payment-link-column')}</Table.Th>
-                          </Table.Tr>
-                        </Table.Thead>
-                        <Table.Tbody>
-                          {orgOpenInvoices.map((invoice) => {
-                            const payLink =
-                              payload.billing?.payrexxInvoicePaymentLink || payload.billing?.payrexxGatewayLink
-                            const showPayLink =
-                              Boolean(payLink) &&
-                              (invoice.status === 'open' ||
-                                invoice.status === 'draft' ||
-                                invoice.status === 'failed')
-                            return (
-                              <Table.Tr key={invoice.id}>
-                                <Table.Td>{formatDate(invoice.created_at, locale, '-')}</Table.Td>
-                                <Table.Td>{formatAmount(invoice.amount_cents, invoice.currency, locale)}</Table.Td>
-                                <Table.Td>
-                                  {typeof invoice.due_date === 'string' && invoice.due_date.trim().length > 0
-                                    ? formatDate(invoice.due_date, locale, '-')
-                                    : '-'}
-                                </Table.Td>
-                                <Table.Td>{getInvoiceStatusLabel(invoice.status)}</Table.Td>
-                                <Table.Td>{invoice.provider_invoice_id || '-'}</Table.Td>
-                                <Table.Td>
-                                  {showPayLink ? (
-                                    <Button
-                                      component='a'
-                                      href={payLink!}
-                                      target='_blank'
-                                      rel='noreferrer'
-                                      variant='light'
-                                      size='xs'
-                                    >
-                                      {t('org-management-payment-link-button')}
-                                    </Button>
-                                  ) : (
-                                    <Text size='sm' c='dimmed'>
-                                      -
-                                    </Text>
-                                  )}
-                                </Table.Td>
-                              </Table.Tr>
-                            )
-                          })}
-                        </Table.Tbody>
-                      </Table>
+                      <Table.ScrollContainer minWidth={860}>
+                        <Table striped highlightOnHover withTableBorder>
+                          <Table.Thead>
+                            <Table.Tr>
+                              <Table.Th>{t('license-management-history-date')}</Table.Th>
+                              <Table.Th>{t('license-management-history-amount')}</Table.Th>
+                              <Table.Th>{t('org-management-invoice-payable-until')}</Table.Th>
+                              <Table.Th>{t('license-management-history-status')}</Table.Th>
+                              <Table.Th>{t('license-management-history-reference')}</Table.Th>
+                              <Table.Th>{t('org-management-payment-link-column')}</Table.Th>
+                            </Table.Tr>
+                          </Table.Thead>
+                          <Table.Tbody>
+                            {orgOpenInvoices.map((invoice) => {
+                              const payLink =
+                                payload.billing?.payrexxInvoicePaymentLink || payload.billing?.payrexxGatewayLink
+                              const showPayLink =
+                                Boolean(payLink) &&
+                                (invoice.status === 'open' ||
+                                  invoice.status === 'draft' ||
+                                  invoice.status === 'failed')
+                              return (
+                                <Table.Tr key={invoice.id}>
+                                  <Table.Td>{formatDate(invoice.created_at, locale, '-')}</Table.Td>
+                                  <Table.Td>{formatAmount(invoice.amount_cents, invoice.currency, locale)}</Table.Td>
+                                  <Table.Td>
+                                    {typeof invoice.due_date === 'string' && invoice.due_date.trim().length > 0
+                                      ? formatDate(invoice.due_date, locale, '-')
+                                      : '-'}
+                                  </Table.Td>
+                                  <Table.Td>{getInvoiceStatusLabel(invoice.status)}</Table.Td>
+                                  <Table.Td>{invoice.provider_invoice_id || '-'}</Table.Td>
+                                  <Table.Td>
+                                    {showPayLink ? (
+                                      <Button
+                                        component='a'
+                                        href={payLink!}
+                                        target='_blank'
+                                        rel='noreferrer'
+                                        variant='light'
+                                        size='xs'
+                                      >
+                                        {t('org-management-payment-link-button')}
+                                      </Button>
+                                    ) : (
+                                      <Text size='sm' c='dimmed'>
+                                        -
+                                      </Text>
+                                    )}
+                                  </Table.Td>
+                                </Table.Tr>
+                              )
+                            })}
+                          </Table.Tbody>
+                        </Table>
+                      </Table.ScrollContainer>
                     </Paper>
                   </>
                 ) : null}
@@ -1090,44 +1093,46 @@ export default function OrganizationManagementPage() {
                   <Text c='dimmed'>{t('license-management-history-empty')}</Text>
                 ) : (
                   <Paper withBorder radius='md' p='xs'>
-                    <Table striped highlightOnHover withTableBorder>
-                      <Table.Thead>
-                        <Table.Tr>
-                          <Table.Th>{t('license-management-history-date')}</Table.Th>
-                          <Table.Th>{t('license-management-history-amount')}</Table.Th>
-                          <Table.Th>{t('license-management-history-status')}</Table.Th>
-                          <Table.Th>{t('license-management-history-reference')}</Table.Th>
-                          <Table.Th>{t('license-management-history-receipt')}</Table.Th>
-                        </Table.Tr>
-                      </Table.Thead>
-                      <Table.Tbody>
-                        {orgPaymentHistoryInvoices.map((invoice) => (
-                          <Table.Tr key={invoice.id}>
-                            <Table.Td>{formatDate(invoice.paid_at || invoice.created_at, locale, '-')}</Table.Td>
-                            <Table.Td>{formatAmount(invoice.amount_cents, invoice.currency, locale)}</Table.Td>
-                            <Table.Td>{getInvoiceStatusLabel(invoice.status)}</Table.Td>
-                            <Table.Td>{invoice.provider_invoice_id || '-'}</Table.Td>
-                            <Table.Td>
-                              {invoice.status === 'paid' ? (
-                                <Button
-                                  size='xs'
-                                  variant='light'
-                                  leftSection={<IconFileTypePdf size='0.875rem' />}
-                                  onClick={() => void handleDownloadOrgReceipt(invoice)}
-                                  loading={generatingOrgReceiptInvoiceId === invoice.id}
-                                >
-                                  {t('license-management-history-receipt-download')}
-                                </Button>
-                              ) : (
-                                <Text size='sm' c='dimmed'>
-                                  -
-                                </Text>
-                              )}
-                            </Table.Td>
+                    <Table.ScrollContainer minWidth={820}>
+                      <Table striped highlightOnHover withTableBorder>
+                        <Table.Thead>
+                          <Table.Tr>
+                            <Table.Th>{t('license-management-history-date')}</Table.Th>
+                            <Table.Th>{t('license-management-history-amount')}</Table.Th>
+                            <Table.Th>{t('license-management-history-status')}</Table.Th>
+                            <Table.Th>{t('license-management-history-reference')}</Table.Th>
+                            <Table.Th>{t('license-management-history-receipt')}</Table.Th>
                           </Table.Tr>
-                        ))}
-                      </Table.Tbody>
-                    </Table>
+                        </Table.Thead>
+                        <Table.Tbody>
+                          {orgPaymentHistoryInvoices.map((invoice) => (
+                            <Table.Tr key={invoice.id}>
+                              <Table.Td>{formatDate(invoice.paid_at || invoice.created_at, locale, '-')}</Table.Td>
+                              <Table.Td>{formatAmount(invoice.amount_cents, invoice.currency, locale)}</Table.Td>
+                              <Table.Td>{getInvoiceStatusLabel(invoice.status)}</Table.Td>
+                              <Table.Td>{invoice.provider_invoice_id || '-'}</Table.Td>
+                              <Table.Td>
+                                {invoice.status === 'paid' ? (
+                                  <Button
+                                    size='xs'
+                                    variant='light'
+                                    leftSection={<IconFileTypePdf size='0.875rem' />}
+                                    onClick={() => void handleDownloadOrgReceipt(invoice)}
+                                    loading={generatingOrgReceiptInvoiceId === invoice.id}
+                                  >
+                                    {t('license-management-history-receipt-download')}
+                                  </Button>
+                                ) : (
+                                  <Text size='sm' c='dimmed'>
+                                    -
+                                  </Text>
+                                )}
+                              </Table.Td>
+                            </Table.Tr>
+                          ))}
+                        </Table.Tbody>
+                      </Table>
+                    </Table.ScrollContainer>
                   </Paper>
                 )}
               </Stack>

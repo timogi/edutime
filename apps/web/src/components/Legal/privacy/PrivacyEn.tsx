@@ -6,7 +6,7 @@ export const privacyMetaEn = {
   tocLabel: 'Table of Contents',
   meta: {
     version: 'Version 1.0',
-    lastUpdated: 'March 3, 2025',
+    lastUpdated: 'March 30, 2026',
   },
 }
 
@@ -624,6 +624,27 @@ export function PrivacyEn() {
             use Plausible Analytics for website analysis and optimization. The service works without
             cookies and does not collect any personal data. Processing takes place entirely within
             the EU. More information can be found at: https://plausible.io/privacy;
+          </li>
+          <li>
+            Payrexx by Payrexx AG, Burgstrasse 20, 3600 Thun, Switzerland. We use Payrexx as our
+            payment service provider for checkout and payment processing. Depending on the checkout
+            flow, we transmit personal data such as email address, first name, last name, language
+            preference, and transaction-related data (especially purchase details, amount, currency,
+            purpose, and reference identifiers). We also process payment-related response data, such
+            as transaction identifiers and, where applicable, invoice/payment links and
+            purchase-on-invoice references (e.g., IBAN, bank name, reference). Data processing may
+            involve transfers abroad depending on Payrexx subprocessors and is subject to applicable
+            transfer safeguards under data protection law. More information can be found at:
+            https://payrexx.com/legal/privacy-policy;
+          </li>
+          <li>
+            Resend by Plus Five Five, Inc., 2261 Market Street #5039, San Francisco, CA 94114, USA.
+            We use Resend to send transactional emails. For this purpose, we transmit email-related personal
+            data, especially recipient email address, sender details, language/locale, and message
+            content and metadata required for delivery (e.g., organization name, invite details,
+            action links). Processing may include transfer to countries outside Switzerland/EEA and
+            is carried out subject to applicable safeguards under data protection law. More
+            information can be found at: https://resend.com/legal/privacy-policy;
           </li>
         </ul>
       </LegalDocumentSection>

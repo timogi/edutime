@@ -59,8 +59,8 @@ export default function LicenseManagementPage() {
   const tPricing = useTranslations('Pricing')
   const tNoLicense = useTranslations('NoLicense')
   const router = useRouter()
-  const { user, organizations, userEmail, hasActiveSubscription } = useUser()
-  const backPath = hasActiveSubscription ? '/app/settings' : '/app/no-license'
+  const { user, organizations, userEmail } = useUser()
+  const backPath = '/app/settings'
 
   const [licenseManagementData, setLicenseManagementData] = useState<LicenseManagementData | null>(null)
   const [isLoadingLicenseManagement, setIsLoadingLicenseManagement] = useState(false)
@@ -264,7 +264,7 @@ export default function LicenseManagementPage() {
   if (!user) return null
 
   return (
-    <Container size={1000} py='xl'>
+    <Container size={1200} py='xl'>
       <Modal
         opened={cancelModalOpened}
         onClose={closeCancelModal}
@@ -308,9 +308,6 @@ export default function LicenseManagementPage() {
         <Card radius='md' withBorder>
           <Stack gap='sm' p='lg'>
             <Text size='xl'>{t('license-management-title')}</Text>
-            <Text size='sm' c='dimmed'>
-              {t('license-management-description')}
-            </Text>
 
             {isLoadingLicenseManagement ? (
               <Text c='dimmed'>{t('license-management-loading')}</Text>
@@ -406,44 +403,46 @@ export default function LicenseManagementPage() {
                 {licenseManagementData.invoices.length === 0 ? (
                   <Text c='dimmed'>{t('license-management-history-empty')}</Text>
                 ) : (
-                  <Table striped highlightOnHover withTableBorder>
-                    <Table.Thead>
-                      <Table.Tr>
-                        <Table.Th>{t('license-management-history-date')}</Table.Th>
-                        <Table.Th>{t('license-management-history-amount')}</Table.Th>
-                        <Table.Th>{t('license-management-history-status')}</Table.Th>
-                        <Table.Th>{t('license-management-history-reference')}</Table.Th>
-                        <Table.Th>{t('license-management-history-receipt')}</Table.Th>
-                      </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                      {licenseManagementData.invoices.map((invoice) => (
-                        <Table.Tr key={invoice.id}>
-                          <Table.Td>{formatDate(invoice.paid_at || invoice.created_at)}</Table.Td>
-                          <Table.Td>{formatAmount(invoice.amount_cents, invoice.currency)}</Table.Td>
-                          <Table.Td>{getInvoiceStatusLabel(invoice.status)}</Table.Td>
-                          <Table.Td>{invoice.provider_invoice_id || '-'}</Table.Td>
-                          <Table.Td>
-                            {invoice.status === 'paid' ? (
-                              <Button
-                                size='xs'
-                                variant='light'
-                                leftSection={<IconFileTypePdf size='0.875rem' />}
-                                onClick={() => void handleDownloadReceipt(invoice)}
-                                loading={generatingReceiptInvoiceId === invoice.id}
-                              >
-                                {t('license-management-history-receipt-download')}
-                              </Button>
-                            ) : (
-                              <Text size='sm' c='dimmed'>
-                                -
-                              </Text>
-                            )}
-                          </Table.Td>
+                  <Table.ScrollContainer minWidth={820}>
+                    <Table striped highlightOnHover withTableBorder>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>{t('license-management-history-date')}</Table.Th>
+                          <Table.Th>{t('license-management-history-amount')}</Table.Th>
+                          <Table.Th>{t('license-management-history-status')}</Table.Th>
+                          <Table.Th>{t('license-management-history-reference')}</Table.Th>
+                          <Table.Th>{t('license-management-history-receipt')}</Table.Th>
                         </Table.Tr>
-                      ))}
-                    </Table.Tbody>
-                  </Table>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {licenseManagementData.invoices.map((invoice) => (
+                          <Table.Tr key={invoice.id}>
+                            <Table.Td>{formatDate(invoice.paid_at || invoice.created_at)}</Table.Td>
+                            <Table.Td>{formatAmount(invoice.amount_cents, invoice.currency)}</Table.Td>
+                            <Table.Td>{getInvoiceStatusLabel(invoice.status)}</Table.Td>
+                            <Table.Td>{invoice.provider_invoice_id || '-'}</Table.Td>
+                            <Table.Td>
+                              {invoice.status === 'paid' ? (
+                                <Button
+                                  size='xs'
+                                  variant='light'
+                                  leftSection={<IconFileTypePdf size='0.875rem' />}
+                                  onClick={() => void handleDownloadReceipt(invoice)}
+                                  loading={generatingReceiptInvoiceId === invoice.id}
+                                >
+                                  {t('license-management-history-receipt-download')}
+                                </Button>
+                              ) : (
+                                <Text size='sm' c='dimmed'>
+                                  -
+                                </Text>
+                              )}
+                            </Table.Td>
+                          </Table.Tr>
+                        ))}
+                      </Table.Tbody>
+                    </Table>
+                  </Table.ScrollContainer>
                 )}
               </Stack>
               )

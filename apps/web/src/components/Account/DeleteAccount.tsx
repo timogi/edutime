@@ -24,6 +24,48 @@ type PersonalSubscriptionResponse = {
   error?: string
 }
 
+const clearSupabaseAuthStorage = () => {
+  if (typeof window === 'undefined') return
+
+  const removeMatchingKeys = (storage: Storage) => {
+    const keysToRemove: string[] = []
+    for (let i = 0; i < storage.length; i += 1) {
+      const key = storage.key(i)
+      if (!key) continue
+      if (key.startsWith('sb-') && key.includes('-auth-token')) {
+        keysToRemove.push(key)
+      }
+    }
+    keysToRemove.forEach((key) => storage.removeItem(key))
+  }
+
+  try {
+    removeMatchingKeys(window.localStorage)
+  } catch (error) {
+    console.error('Failed to clear localStorage auth keys:', error)
+  }
+
+  try {
+    removeMatchingKeys(window.sessionStorage)
+  } catch (error) {
+    console.error('Failed to clear sessionStorage auth keys:', error)
+  }
+
+  try {
+    const cookies = document.cookie ? document.cookie.split(';') : []
+    cookies.forEach((cookie) => {
+      const trimmed = cookie.trim()
+      const equalIndex = trimmed.indexOf('=')
+      const name = equalIndex > 0 ? trimmed.slice(0, equalIndex) : trimmed
+      if (name.startsWith('sb-')) {
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
+      }
+    })
+  } catch (error) {
+    console.error('Failed to clear auth cookies:', error)
+  }
+}
+
 export const DeleteAccount: React.FC<DeleteAccountProps> = ({ user_id }) => {
   const t = useTranslations('Index')
   const [error, setError] = useState('')
@@ -88,6 +130,10 @@ export const DeleteAccount: React.FC<DeleteAccountProps> = ({ user_id }) => {
   }, [checkDeletionEligibility])
 
   const handleDelete = async (skipPersonalLicenseConfirm = false) => {
+    if (isDeleting || isCheckingEligibility) {
+      return
+    }
+
     setIsDeleting(true)
     setError('')
     setBlockedOrganizations([])
@@ -156,13 +202,20 @@ export const DeleteAccount: React.FC<DeleteAccountProps> = ({ user_id }) => {
         throw new Error(result.error || 'Failed to delete account')
       }
 
-      // User no longer exists server-side — global signOut hits the API and surfaces
-      // "Invalid or expired token". Local sign-out only clears client session/storage.
+      // User no longer exists server-side; make sure we fully clear all local auth state.
+      try {
+        await supabase.auth.signOut()
+      } catch (signOutError: unknown) {
+        console.error('Global sign-out after account deletion:', signOutError)
+      }
+
       try {
         await supabase.auth.signOut({ scope: 'local' })
       } catch (signOutError: unknown) {
         console.error('Local sign-out after account deletion:', signOutError)
       }
+
+      clearSupabaseAuthStorage()
 
       const defaultLocale = router.defaultLocale ?? 'de'
       const locale = router.locale ?? defaultLocale
@@ -236,6 +289,8 @@ export const DeleteAccount: React.FC<DeleteAccountProps> = ({ user_id }) => {
             <Button
               color='red'
               variant='light'
+              loading={isDeleting || isCheckingEligibility}
+              disabled={isDeleting || isCheckingEligibility}
               onClick={async () => {
                 setShowPersonalLicenseConfirm(false)
                 await handleDelete(true)

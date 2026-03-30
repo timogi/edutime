@@ -138,8 +138,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         } else if (orgRowError) {
           console.error('Org invite email: could not load organization:', orgRowError)
         } else {
-          const acceptUrl = new URL('/app/no-license', `${getAppBaseUrl()}/`)
-          acceptUrl.searchParams.set('invite', inviteRow.token)
+          const acceptUrl = new URL('/register', `${getAppBaseUrl()}/`)
 
           const locale = resolveOrgInviteEmailLocale(
             typeof req.headers['accept-language'] === 'string'
@@ -148,6 +147,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           )
 
           try {
+            const loginUrl = new URL('/login', `${getAppBaseUrl()}/`)
             await sendOrgMemberInviteEmail({
               resendApiKey,
               fromEmail: EDUTIME_TRANSACTIONAL_FROM,
@@ -155,6 +155,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
               organizationName: orgRow?.name?.trim() || 'Organization',
               inviteeEmail: inviteRow.email,
               acceptUrl: acceptUrl.toString(),
+              loginUrl: loginUrl.toString(),
               locale,
             })
             emailSent = true
@@ -320,9 +321,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         .schema('license')
         .from('entitlements')
         .update({
-          user_id: null,
+          status: 'expired',
+          valid_until: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          revocation_reason: null,
+          revocation_reason: 'other',
         })
         .eq('organization_id', organizationId)
         .eq('kind', 'org_seat')

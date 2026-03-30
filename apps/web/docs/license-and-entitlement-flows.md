@@ -29,7 +29,7 @@ This document maps **product flows** to **data** (`billing.*`, `license.*`, `pub
 |--------|-------------|
 | `trial` | Time-limited demo. |
 | `personal` | Individual paid (or related) access. |
-| `org_seat` | One seat in an organization pool; may be unassigned (`user_id` null) or assigned. |
+| `org_seat` | One organization seat entitlement. Seats are always assigned to a user (`user_id` is never null). |
 
 ### Access check (apps)
 
@@ -80,7 +80,7 @@ Shared helper: `hasActiveEntitlement` / active entitlement queries in `@edutime/
 |------|----------------|
 | **Start checkout** | `billing.create_org_checkout` (from web checkout API, org management payment links, or jobs): creates/updates **subscription**, **open invoice**, `billing.checkout_sessions` (**pending**), Payrexx Gateway. **Does not** bulk-insert `org_seat` rows at checkout start (see migrations under org seat provisioning). |
 | **Payment terms** | Open invoice has **due date**; UI shows “payment due” / next payment date from `get_org_billing_status` / management API. |
-| **Webhook success** | Payrexx webhook → `billing.process_payrexx_org_payment(reference_id, transaction_id, …)`: marks invoice **paid**, subscription **active_paid**, completes **checkout_sessions**, reactivates eligible **expired/revoked** `org_seat` rows (e.g. after cancellation sweep or delinquency). **New** unassigned seats are **not** bulk-created here; the pool is grown via **`billing.update_org_seat_plan`** (org management, apply immediately) or related flows. |
+| **Webhook success** | Payrexx webhook → `billing.process_payrexx_org_payment(reference_id, transaction_id, …)`: marks invoice **paid**, subscription **active_paid**, completes **checkout_sessions**, reactivates eligible **expired/revoked** `org_seat` rows (e.g. after cancellation sweep or delinquency). |
 
 ### 3. Renewal and reminders
 
@@ -109,8 +109,8 @@ Shared helper: `hasActiveEntitlement` / active entitlement queries in `@edutime/
 
 | Step | What happens |
 |------|----------------|
-| **Pool** | `org_seat` rows tied to org + `billing_subscription_id`; unassigned seats have `user_id` null. |
-| **Assign seat** | Flows such as **`billing.ensure_org_actor_entitlement`** (admin self-invite, seat from pool), member invite acceptance, or management actions — consume an **unassigned** active seat where rules allow. |
+| **Capacity model** | Maximum seats come from `billing.subscriptions.seat_count`; entitlement rows represent assigned seats only. |
+| **Assign seat** | Flows such as **`billing.ensure_org_actor_entitlement`** (admin self-assignment) and invite acceptance create/restore a user-assigned active seat only if capacity allows. |
 | **Invites** | `billing.create_org_member_invite` + `license.org_invites`: pending → accepted / canceled; ties into membership and seat assignment. |
 | **Accept / decline** | App updates `organization_members` / invite status; may trigger entitlement assignment when accepting (and subscription allows). |
 | **Org access ends** | Deactivation admin RPC, cancellation sweep, or delinquency → seats **expired/revoked**; members lose app access via entitlement checks. |
@@ -179,4 +179,4 @@ flowchart LR
 
 ---
 
-*Last updated: org checkout does **not** insert `org_seat` rows up front; first payment completes billing state and may reactivate old seats; **`update_org_seat_plan`** (and similar) adds entitlement rows when admins change seat count. If behavior changes, update this doc and [payment-architecture.md](./payment-architecture.md) together.*
+*Last updated: org checkout does **not** insert `org_seat` rows up front. Seat capacity is governed by subscription `seat_count`, while entitlement rows are always user-assigned. If behavior changes, update this doc and [payment-architecture.md](./payment-architecture.md) together.*

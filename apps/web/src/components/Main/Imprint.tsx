@@ -1,4 +1,4 @@
-import { Container, Text, Stack, rem } from '@mantine/core'
+import { Container, Text, Stack } from '@mantine/core'
 import { useTranslations } from 'next-intl'
 import { GetStaticPropsContext } from 'next/types'
 import classes from './Imprint.module.css'
@@ -24,7 +24,7 @@ export function ImprintContent() {
         <br />
         Website: https://edutime.ch/
       </Text>
-      <Text c='dimmed'>{t('responsible')}: Tim Ogi</Text>
+      <Text c='dimmed'>{t('responsible')}</Text>
     </Stack>
   )
 }

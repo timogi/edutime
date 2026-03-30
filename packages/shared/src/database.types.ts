@@ -20,21 +20,21 @@ export type Database = {
           id: string
           kind: string
           organization_id: number | null
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           kind: string
           organization_id?: number | null
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           created_at?: string
           id?: string
           kind?: string
           organization_id?: number | null
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -859,7 +859,7 @@ export type Database = {
           source: Database["license"]["Enums"]["entitlement_source"]
           status: Database["license"]["Enums"]["entitlement_status"]
           updated_at: string
-          user_id: string | null
+          user_id: string
           valid_from: string
           valid_until: string | null
         }

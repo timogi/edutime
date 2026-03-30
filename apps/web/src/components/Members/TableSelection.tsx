@@ -3,13 +3,12 @@ import cx from 'clsx'
 import {
   Table,
   Checkbox,
-  ScrollArea,
   Button,
   TextInput,
   Stack,
   Menu,
+  Popover,
   Card,
-  Select,
   Pagination,
   Group,
   Textarea,
@@ -35,6 +34,7 @@ import {
   IconArrowUp,
   IconArrowDown,
   IconArrowsSort,
+  IconFilter,
 } from '@tabler/icons-react'
 import { useDisclosure, useMediaQuery, useClipboard } from '@mantine/hooks'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -48,6 +48,7 @@ import {
 import Progress from './Progress'
 import InviteModal from './InviteModal'
 import { useTranslations } from 'next-intl'
+import { useRouter } from 'next/router'
 import { showNotification } from '@mantine/notifications'
 import { Organization } from '@/types/globals'
 import classes from './TableSelection.module.css'
@@ -65,8 +66,7 @@ interface TableSelectionProps {
   onMembersChanged: () => Promise<void>
   activePage: number
   setActivePage: (page: number) => void
-  selectedOrg: string | null
-  setSelectedOrg: (org: string | null) => void
+  selectedOrgId: string | null
 }
 
 type SortField = 'email' | 'status' | 'created_at' | 'comment'
@@ -83,9 +83,9 @@ const TableSelection = ({
   onMembersChanged,
   activePage,
   setActivePage,
-  selectedOrg,
-  setSelectedOrg,
+  selectedOrgId,
 }: TableSelectionProps) => {
+  const router = useRouter()
   const [selection, setSelection] = useState<string[]>([])
   const [searchEmail, setSearchEmail] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
@@ -99,15 +99,17 @@ const TableSelection = ({
   const clipboard = useClipboard()
   const [copiedId, setCopiedId] = useState<number | null>(null)
   const [statusFilter, setStatusFilter] = useState<MemberStatus[]>(DEFAULT_STATUS_FILTER)
+  const [statusFilterPopoverOpened, setStatusFilterPopoverOpened] = useState(false)
 
   const t = useTranslations('Index')
   const isSmallScreen = useMediaQuery('(max-width: 768px)')
+  const isMediumScreen = useMediaQuery('(max-width: 1200px)')
   const queryClient = useQueryClient()
 
   // Get current organization
   const currentOrg = useMemo(
-    () => organizations.find((org) => org.name === selectedOrg),
-    [organizations, selectedOrg],
+    () => organizations.find((org) => String(org.id) === selectedOrgId),
+    [organizations, selectedOrgId],
   )
 
   React.useEffect(() => {
@@ -118,7 +120,6 @@ const TableSelection = ({
   const {
     data: users = [],
     isLoading,
-    refetch,
   } = useQuery({
     queryKey: ['organizationMembers', currentOrg?.id],
     queryFn: () => {
@@ -486,11 +487,6 @@ const TableSelection = ({
     URL.revokeObjectURL(url)
   }
 
-  const organizationOptions = organizations.map((org) => ({
-    value: org.name,
-    label: org.name,
-  }))
-
   const rows = paginatedUsers.map((item) => {
     const selected = selection.includes(item.id.toString())
     return (
@@ -501,9 +497,9 @@ const TableSelection = ({
             onChange={() => toggleRow(item.id.toString())}
           />
         </Table.Td>
-        <Table.Td style={{ verticalAlign: 'middle' }}>
+        <Table.Td style={{ verticalAlign: 'middle' }} className={classes.emailCell}>
           <Group gap='sm' wrap='nowrap'>
-            <Text size='sm' style={{ wordBreak: 'break-word' }}>
+            <Text size='sm' className={classes.emailText}>
               {item.email}
             </Text>
             <ActionIcon
@@ -530,14 +526,10 @@ const TableSelection = ({
             })}
           </Text>
         </Table.Td>
-        <Table.Td style={{ verticalAlign: 'middle', minWidth: 0, width: '28%' }}>
+        <Table.Td style={{ verticalAlign: 'middle' }} className={classes.commentCell}>
           {item.comment ? (
             <Tooltip label={item.comment} multiline w={300} withArrow>
-              <Text
-                size='sm'
-                lineClamp={1}
-                style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}
-              >
+              <Text size='sm' lineClamp={3} className={classes.commentText}>
                 {item.comment}
               </Text>
             </Tooltip>
@@ -547,7 +539,7 @@ const TableSelection = ({
             </Text>
           )}
         </Table.Td>
-        <Table.Td style={{ verticalAlign: 'middle' }}>
+        <Table.Td style={{ verticalAlign: 'middle' }} className={classes.actionsCell}>
           <Menu>
             <Menu.Target>
               <Button variant='subtle' size='xs'>
@@ -591,30 +583,26 @@ const TableSelection = ({
         align='stretch'
         gap='lg'
         w='100%'
-        style={{ flexDirection: isSmallScreen ? 'column' : 'row' }}
+        style={{ flexDirection: isMediumScreen ? 'column' : 'row' }}
       >
-        <Stack w={isSmallScreen ? '100%' : 300} maw={isSmallScreen ? '100%' : 300} flex='none'>
-          <Select
-            data={organizationOptions}
-            placeholder={t('Select organization')}
-            value={selectedOrg}
-            onChange={setSelectedOrg}
-            size='md'
-            searchable
-            styles={{
-              option: {
-                backgroundColor: 'var(--mantine-color-body)',
-              },
-              dropdown: {
-                backgroundColor: 'var(--mantine-color-body)',
-              },
-            }}
-          />
+        <Stack
+          w={isSmallScreen ? '100%' : 300}
+          maw={isSmallScreen ? '100%' : 300}
+          mx={isMediumScreen ? 'auto' : undefined}
+          flex='none'
+        >
           <Card p={0} radius='md' withBorder>
             <Stack gap={0}>
               <Progress takenSeats={takenSeats} totalSeats={totalSeats} />
-              <Button radius={0} variant='light' component='a' href={'mailto:info@edutime.ch'}>
-                {t('Order More Licenses')}
+              <Button
+                radius={0}
+                variant='light'
+                onClick={() => {
+                  if (!currentOrg?.id) return
+                  void router.push(`/app/organization-management?organizationId=${currentOrg.id}`)
+                }}
+              >
+                {t('org-management-seat-plan-title')}
               </Button>
               <Button
                 onClick={open}
@@ -640,50 +628,70 @@ const TableSelection = ({
 
         <Card radius='md' withBorder style={{ flex: 1, minWidth: 0, width: '100%' }}>
           <Stack gap='sm'>
-            <Group justify='apart' wrap='wrap' gap='sm' align='flex-end'>
-              <TextInput
-                placeholder={t('Search by email')}
-                value={searchEmail}
-                onChange={handleSearch}
-                leftSection={<IconSearch size='0.9rem' stroke={1.5} />}
-                size='md'
-                style={{ flexGrow: 1, minWidth: isSmallScreen ? '100%' : '200px' }}
-              />
-              <MultiSelect
-                label={t('members-status-filter-label')}
-                placeholder={t('members-status-filter-placeholder')}
-                data={statusFilterOptions}
-                value={statusFilter}
-                onChange={handleStatusFilterChange}
-                size='md'
-                clearable
-                searchable
-                style={{ minWidth: isSmallScreen ? '100%' : 260, flexGrow: isSmallScreen ? 1 : 0 }}
-                styles={{
-                  dropdown: { backgroundColor: 'var(--mantine-color-body)' },
-                  option: { backgroundColor: 'var(--mantine-color-body)' },
-                }}
-              />
-              <Group gap='xs' wrap='nowrap'>
-                <Button
-                  variant='subtle'
-                  size='sm'
-                  onClick={() => refetch()}
-                  leftSection={<IconRefresh size='0.875rem' />}
+            <div className={classes.toolbar}>
+              <div className={classes.toolbarTop}>
+                <div className={classes.toolbarSearch}>
+                  <TextInput
+                    placeholder={t('Search by email')}
+                    value={searchEmail}
+                    onChange={handleSearch}
+                    leftSection={<IconSearch size='0.9rem' stroke={1.5} />}
+                    size='md'
+                  />
+                </div>
+                <Popover
+                  opened={statusFilterPopoverOpened}
+                  onChange={setStatusFilterPopoverOpened}
+                  position='bottom-end'
+                  withArrow
+                  shadow='md'
+                  withinPortal
                 >
-                  {!isSmallScreen && t('Refresh')}
-                </Button>
-                <Button
-                  variant='outline'
-                  leftSection={<IconDownload size='0.875rem' />}
-                  onClick={exportToCsv}
-                  size='sm'
-                >
-                  {!isSmallScreen && t('export-csv')}
-                </Button>
+                  <Popover.Target>
+                    <ActionIcon
+                      variant='default'
+                      size='input-md'
+                      onClick={() => setStatusFilterPopoverOpened((open) => !open)}
+                      className={classes.statusFilterIconButton}
+                      aria-label={t('members-status-filter-label')}
+                      title={t('members-status-filter-label')}
+                    >
+                      <IconFilter size='1rem' />
+                    </ActionIcon>
+                  </Popover.Target>
+                  <Popover.Dropdown>
+                    <MultiSelect
+                      label={t('members-status-filter-label')}
+                      placeholder={t('members-status-filter-placeholder')}
+                      data={statusFilterOptions}
+                      value={statusFilter}
+                      onChange={handleStatusFilterChange}
+                      size='md'
+                      clearable
+                      searchable
+                      w={isSmallScreen ? 260 : 320}
+                      styles={{
+                        dropdown: { backgroundColor: 'var(--mantine-color-body)' },
+                        option: { backgroundColor: 'var(--mantine-color-body)' },
+                      }}
+                    />
+                  </Popover.Dropdown>
+                </Popover>
+              </div>
+              <Group gap='xs' wrap='nowrap' className={classes.toolbarActions}>
+                {!isSmallScreen && (
+                  <Button
+                    variant='outline'
+                    leftSection={<IconDownload size='0.875rem' />}
+                    onClick={exportToCsv}
+                    size='sm'
+                  >
+                    {t('export-csv')}
+                  </Button>
+                )}
               </Group>
-            </Group>
-            {selection.length > 0 && (
+            </div>
+            {selection.length > 0 && !isSmallScreen && (
               <Group gap='xs'>
                 <Button
                   variant='outline'
@@ -697,7 +705,7 @@ const TableSelection = ({
                 </Button>
               </Group>
             )}
-            <ScrollArea type='auto' offsetScrollbars w='100%' maw='100%'>
+            <Table.ScrollContainer minWidth={920}>
               {isLoading ? (
                 <Center p='xl'>
                   <Loader />
@@ -719,9 +727,10 @@ const TableSelection = ({
                           indeterminate={someFilteredSelected && !allFilteredSelected}
                         />
                       </Table.Th>
-                      <Table.Th>
+                      <Table.Th className={classes.emailHeader}>
                         <Group
                           gap='xs'
+                          wrap='nowrap'
                           style={{ cursor: 'pointer', userSelect: 'none' }}
                           onClick={() => handleSort('email')}
                         >
@@ -734,6 +743,7 @@ const TableSelection = ({
                       <Table.Th>
                         <Group
                           gap='xs'
+                          wrap='nowrap'
                           style={{ cursor: 'pointer', userSelect: 'none' }}
                           onClick={() => handleSort('status')}
                         >
@@ -746,6 +756,7 @@ const TableSelection = ({
                       <Table.Th>
                         <Group
                           gap='xs'
+                          wrap='nowrap'
                           style={{ cursor: 'pointer', userSelect: 'none' }}
                           onClick={() => handleSort('created_at')}
                         >
@@ -755,9 +766,10 @@ const TableSelection = ({
                           {getSortIcon('created_at')}
                         </Group>
                       </Table.Th>
-                      <Table.Th style={{ width: '28%', minWidth: 0 }}>
+                      <Table.Th className={classes.commentHeader}>
                         <Group
                           gap='xs'
+                          wrap='nowrap'
                           style={{ cursor: 'pointer', userSelect: 'none' }}
                           onClick={() => handleSort('comment')}
                         >
@@ -767,7 +779,7 @@ const TableSelection = ({
                           {getSortIcon('comment')}
                         </Group>
                       </Table.Th>
-                      <Table.Th>{t('Actions')}</Table.Th>
+                      <Table.Th className={classes.actionsHeader}>{t('Actions')}</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
@@ -785,10 +797,36 @@ const TableSelection = ({
                   </Table.Tbody>
                 </Table>
               )}
-            </ScrollArea>
+            </Table.ScrollContainer>
             {totalPages > 1 && (
               <Group mt='md' justify='center'>
                 <Pagination value={activePage} onChange={setActivePage} total={totalPages} />
+              </Group>
+            )}
+            {isSmallScreen && (
+              <Group className={classes.mobileBottomActions} justify='space-between' wrap='nowrap'>
+                {selection.length > 0 ? (
+                  <Button
+                    variant='outline'
+                    color='red'
+                    leftSection={<IconTrash size='0.875rem' />}
+                    onClick={handleRemove}
+                    disabled={removeMultipleMembersMutation.isPending}
+                    size='sm'
+                  >
+                    {t('Remove Selected')} ({selection.length})
+                  </Button>
+                ) : (
+                  <div />
+                )}
+                <Button
+                  variant='outline'
+                  leftSection={<IconDownload size='0.875rem' />}
+                  onClick={exportToCsv}
+                  size='sm'
+                >
+                  {t('export-csv')}
+                </Button>
               </Group>
             )}
           </Stack>
@@ -802,6 +840,7 @@ const TableSelection = ({
         setInviteEmail={setInviteEmail}
         handleInvite={handleInvite}
         users={users}
+        isInviting={addMemberMutation.isPending}
       />
 
       <Modal

@@ -80,10 +80,11 @@
   width: 100%;
   margin: 1rem 0;
   padding: var(--mantine-spacing-md);
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-white));
 }
 
 .browserIcon {
-  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-gray-2)) !important;
+  color: inherit !important;
   transition: all 0.2s ease;
   opacity: 0.8;
 }

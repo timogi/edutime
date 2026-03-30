@@ -2,6 +2,7 @@ import React from 'react'
 import { Card, Group, Button } from '@mantine/core'
 import { IconArrowLeft, IconArrowRight } from '@tabler/icons-react'
 import { DatePickerInput } from '@mantine/dates'
+import { useMediaQuery } from '@mantine/hooks'
 import { addDays, subDays } from 'date-fns'
 import classes from './DateRangePickerPill.module.css'
 
@@ -18,6 +19,9 @@ export function DateRangePickerPill({
   setStartDate,
   setEndDate,
 }: DateRangePickerPillProps) {
+  const isSmallScreen = useMediaQuery('(max-width: 480px)')
+  const inputSize = isSmallScreen ? 'sm' : 'md'
+
   const handleStartDateChange = (value: Date | string | null) => {
     if (value) {
       const newDate = typeof value === 'string' ? new Date(value) : value
@@ -51,7 +55,7 @@ export function DateRangePickerPill({
           onClick={moveRangeBack}
           variant='subtle'
           c='gray'
-          size='md'
+          size={inputSize}
           className={classes.dateRangePickerArrow}
         >
           <IconArrowLeft size='1.25rem' />
@@ -60,7 +64,7 @@ export function DateRangePickerPill({
           value={startDate}
           valueFormat='DD.MM.YYYY'
           onChange={handleStartDateChange}
-          size='md'
+          size={inputSize}
           variant='default'
           className={classes.dateRangePickerInput}
           styles={{
@@ -79,7 +83,7 @@ export function DateRangePickerPill({
           value={endDate}
           valueFormat='DD.MM.YYYY'
           onChange={handleEndDateChange}
-          size='md'
+          size={inputSize}
           variant='default'
           className={classes.dateRangePickerInput}
           styles={{
@@ -97,7 +101,7 @@ export function DateRangePickerPill({
           onClick={moveRangeForward}
           variant='subtle'
           c='gray'
-          size='md'
+          size={inputSize}
           className={classes.dateRangePickerArrow}
         >
           <IconArrowRight size='1.25rem' />

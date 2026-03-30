@@ -59,6 +59,7 @@ export const Account = ({ userData, reloadUserData }: AccountProps) => {
   const [licenseManagementData, setLicenseManagementData] = useState<LicenseManagementData | null>(null)
   const [isLoadingLicenseManagement, setIsLoadingLicenseManagement] = useState(false)
   const t = useTranslations('Index')
+  const tNoLicense = useTranslations('NoLicense')
   const visibleEntitlements = entitlements.filter((entitlement) => entitlement.status !== 'expired')
 
   const getLicenseStatusColor = (status: Entitlement['status']) => {
@@ -392,7 +393,10 @@ export const Account = ({ userData, reloadUserData }: AccountProps) => {
               {isLoadingEntitlements ? (
                 <Text c='dimmed'>{t('loading')}</Text>
               ) : visibleEntitlements.length === 0 ? (
-                <Text c='dimmed'>{t('no-licenses')}</Text>
+                <Stack gap='sm'>
+                  <Text c='dimmed'>{tNoLicense('licenseRequiredMessage')}</Text>
+                  <LicenseManagementEntry showPersonalButton />
+                </Stack>
               ) : (
                 <Stack gap='sm'>
                   <SimpleGrid cols={{ base: 1, sm: 2 }} spacing='sm'>
@@ -484,7 +488,9 @@ export const Account = ({ userData, reloadUserData }: AccountProps) => {
               <Text size='xl'>{t('account')}</Text>
               <TextInput label='Email' placeholder='Email' value={email} disabled size='md' />
               <Group justify='space-between'>
-                <Button onClick={() => router.push('/reset')}>{t('change_password')}</Button>
+                <Button onClick={() => router.push('/reset')} variant='subtle' color='gray'>
+                  {t('change_password')}
+                </Button>
               </Group>
             </Stack>
           </div>

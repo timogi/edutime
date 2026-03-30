@@ -6,7 +6,7 @@ export const privacyMetaDe = {
   tocLabel: 'Inhaltsverzeichnis',
   meta: {
     version: 'Version 1.0',
-    lastUpdated: '3. März 2025',
+    lastUpdated: '30. März 2026',
   },
 }
 
@@ -675,6 +675,28 @@ export function PrivacyDe() {
             kommt ohne Cookies aus und erhebt keine personenbezogenen Daten. Die Verarbeitung
             erfolgt vollständig innerhalb der EU. Weitere Informationen finden Sie unter:
             https://plausible.io/privacy;
+          </li>
+          <li>
+            Payrexx von Payrexx AG, Burgstrasse 20, 3600 Thun, Schweiz. Wir verwenden Payrexx als
+            Zahlungsdienstleister für Checkout und Zahlungsabwicklung. Je nach Checkout-Prozess
+            übermitteln wir Personendaten wie E-Mail-Adresse, Vorname, Nachname, Sprachpräferenz
+            sowie transaktionsbezogene Daten (insb. Kaufangaben, Betrag, Währung, Verwendungszweck
+            und Referenzkennungen). Zudem bearbeiten wir zahlungsbezogene Rückmeldedaten wie
+            Transaktionskennungen und – soweit anwendbar – Rechnungs-/Zahlungslinks sowie Angaben
+            für den Rechnungskauf (z.B. IBAN, Bankname, Referenz). Die Bearbeitung kann je nach
+            Unterauftragsbearbeitern von Payrexx auch Datenübermittlungen ins Ausland umfassen und
+            erfolgt unter Beachtung der datenschutzrechtlich anwendbaren Garantien. Weitere
+            Informationen finden Sie unter: https://payrexx.com/legal/privacy-policy;
+          </li>
+          <li>
+            Resend von Plus Five Five, Inc., 2261 Market Street #5039, San Francisco, CA 94114, USA.
+            Wir verwenden Resend zum Versand transaktionaler E-Mails. Zu diesem
+            Zweck übermitteln wir E-Mail-bezogene Personendaten, insbesondere Empfängeradresse,
+            Absenderangaben, Sprache/Locale sowie für die Zustellung erforderliche Inhalts- und
+            Metadaten (z.B. Organisationsname, Einladungsangaben, Aktionslinks). Die Bearbeitung
+            kann Datenübermittlungen in Staaten ausserhalb der Schweiz/des EWR umfassen und erfolgt
+            unter Beachtung der datenschutzrechtlich anwendbaren Garantien. Weitere Informationen
+            finden Sie unter: https://resend.com/legal/privacy-policy;
           </li>
         </ul>
       </LegalDocumentSection>

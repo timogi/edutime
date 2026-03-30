@@ -4,7 +4,7 @@ import type { TocLink } from '../PrivacyLayout'
 export const privacyMetaFr = {
   title: 'Politique de Confidentialité EduTime',
   tocLabel: 'Table des matières',
-  meta: { version: 'Version 1.0', lastUpdated: '3 mars 2025' },
+  meta: { version: 'Version 1.0', lastUpdated: '30 mars 2026' },
 }
 
 export const tocLinksFr: TocLink[] = [
@@ -745,6 +745,32 @@ export function PrivacyFr() {
             et ne collecte aucune donnée personnelle. Le traitement des données est effectué
             exclusivement au sein de l&apos;UE. Pour plus d&apos;informations :
             https://plausible.io/privacy ;
+          </li>
+          <li>
+            Payrexx de Payrexx AG, Burgstrasse 20, 3600 Thun, Suisse. Nous utilisons Payrexx comme
+            prestataire de paiement pour le checkout et le traitement des paiements. Selon le flux
+            de checkout, nous transmettons des données personnelles telles que l&apos;adresse
+            e-mail, le prénom, le nom, la préférence linguistique, ainsi que des données liées à la
+            transaction (notamment détails d&apos;achat, montant, devise, motif et identifiants de
+            référence). Nous traitons également des données de retour liées au paiement, telles que
+            les identifiants de transaction et, le cas échéant, les liens de
+            facture/paiement et les références de paiement sur facture (p. ex. IBAN, nom de la
+            banque, référence). Le traitement peut impliquer des transferts à l&apos;étranger selon
+            les sous-traitants de Payrexx et est effectué sous réserve des garanties applicables en
+            matière de protection des données. Pour plus d&apos;informations :
+            https://payrexx.com/legal/privacy-policy ;
+          </li>
+          <li>
+            Resend de Plus Five Five, Inc., 2261 Market Street #5039, San Francisco, CA 94114,
+            USA. Nous utilisons Resend pour l&apos;envoi d&apos;e-mails transactionnels. À
+            cette fin, nous transmettons des données personnelles liées à l&apos;e-mail, en
+            particulier l&apos;adresse e-mail du destinataire, les informations d&apos;expéditeur,
+            la langue/locale ainsi que les données de contenu et métadonnées nécessaires à la
+            délivrabilité (p. ex. nom de l&apos;organisation, détails d&apos;invitation, liens
+            d&apos;action). Le traitement peut inclure des transferts de données vers des pays
+            situés hors de la Suisse/de l&apos;EEE et est effectué sous réserve des garanties
+            applicables en matière de protection des données. Pour plus d&apos;informations :
+            https://resend.com/legal/privacy-policy ;
           </li>
         </ul>
       </LegalDocumentSection>

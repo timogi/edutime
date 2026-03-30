@@ -1,3 +1,10 @@
+/**
+ * ARCHIVED — not mounted from the app shell (previously used from Settings).
+ *
+ * Modal for importing CSV exports from the legacy EduTime mobile app.
+ * Kept next to `ArchivedOldAppImportSection.tsx` for reference if the feature is re-enabled.
+ */
+
 import React, { useRef, useState } from 'react'
 import {
   Stack,

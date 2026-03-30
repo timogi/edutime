@@ -82,6 +82,16 @@
   margin: 1.5rem 0;
 }
 
+.featureRow {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+
+.featureText {
+  flex: 1;
+  min-width: 0;
+}
+
 .checkIcon {
   color: var(--mantine-color-green-6);
   flex-shrink: 0;

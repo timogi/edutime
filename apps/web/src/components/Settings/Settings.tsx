@@ -19,7 +19,7 @@ import { GetStaticPropsContext } from 'next/types'
 import { CantonPicker } from './CantonPicker'
 import LocaleSwitcher from './LocaleSwitcher'
 import { useTranslations } from 'next-intl'
-import { useDisclosure } from '@mantine/hooks'
+import { useDisclosure, useMediaQuery } from '@mantine/hooks'
 import {
   updateUserCustomTarget,
   createUserCustomTarget,
@@ -35,13 +35,11 @@ import {
   IconCheck,
   IconCircleFilled,
   IconPlus,
-  IconTableImport,
   IconTable,
 } from '@tabler/icons-react'
 import { notifications } from '@mantine/notifications'
 import { CategoryModal } from './CategoryModal'
 import { ProfileCategoryModal } from './ProfileCategoryModal'
-import ImportModal from './ImportModal'
 import { getCantonData } from '@/utils/supabase/canton'
 import {
   getOrCreateConfigProfile,
@@ -75,8 +73,6 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
     useDisclosure(false)
   const [profileCategoryModalOpened, { open: openProfileCategoryModal, close: closeProfileCategoryModal }] =
     useDisclosure(false)
-  const [importModalOpened, { open: openImportModal, close: closeImportModal }] =
-    useDisclosure(false)
   const [calculatorModalOpened, { open: openCalculatorModal, close: closeCalculatorModal }] =
     useDisclosure(false)
   const [currentCategory, setCurrentCategory] = useState<EmploymentCategory>({
@@ -99,6 +95,7 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
 
   const t = useTranslations('Index')
   const t_cat = useTranslations('Categories')
+  const isSmallScreen = useMediaQuery('(max-width: 768px)')
 
   const formatSwissNumber = (num: number): string => {
     return num.toString()
@@ -436,11 +433,14 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
   }
 
   const totalProfileWeight = profileCategories.reduce((sum, cat) => sum + cat.weight, 0)
+  const customCategoriesInvalid =
+    configMode === 'custom' &&
+    (profileCategories.length === 0 || Math.abs(totalProfileWeight - 100) > 0.01)
 
   return (
     <>
-      <Stack className={classes.wrapper} p={'lg'}>
-        <Card radius='md' withBorder>
+      <Stack className={classes.wrapper} p={{ base: 'xs', sm: 'lg' }}>
+        <Card radius='md' withBorder p={isSmallScreen ? 'sm' : 'md'}>
           <Stack gap='sm'>
             <Text size='xl'>{t('employment')}</Text>
 
@@ -480,8 +480,8 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
               )}
 
               {configMode === 'default' && (
-                <Card radius='md' withBorder>
-                  <Stack gap='md' p='lg'>
+                <Card radius='md' withBorder={!isSmallScreen} className={classes.nestedCard}>
+                  <Stack gap='md' p={isSmallScreen ? 'sm' : 'lg'}>
                     <Text size='lg' fw={500}>
                       {t('cantonConfigureTitle')}
                     </Text>
@@ -601,58 +601,72 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
               )}
 
               {configMode === 'custom' && (
-                <Card radius='md' withBorder>
-                  <Stack gap='sm' p='lg'>
+                <Card radius='md' withBorder={!isSmallScreen} className={classes.nestedCard}>
+                  <Stack gap='sm' p={isSmallScreen ? 'sm' : 'lg'}>
                     <Text size='lg' fw={500}>{t('customCategoriesTitle')}</Text>
                     <Text size='sm' c='dimmed'>
-                      {t('customCategoriesInfo')}
+                      {profileCategories.length > 0
+                        ? t('customCategoriesInfo')
+                        : t('customCategoriesInfoEmpty')}
                     </Text>
+                    {customCategoriesInvalid && (
+                      <Alert color='violet' variant='light'>
+                        {profileCategories.length === 0
+                          ? t('customCategoriesWarningNoCategories')
+                          : t('customCategoriesWarningTotal')}
+                      </Alert>
+                    )}
 
-                    <Table.ScrollContainer minWidth={400}>
-                      <Table
-                        striped
-                        highlightOnHover
-                        withColumnBorders
-                        withTableBorder
-                        horizontalSpacing='md'
-                        verticalSpacing='sm'
-                      >
-                        <Table.Thead>
-                          <Table.Tr>
-                            <Table.Th w='70%'>{t('Title')}</Table.Th>
-                            <Table.Th w='10%'>{t('color')}</Table.Th>
-                            <Table.Th w='20%'>{t('weight')}</Table.Th>
-                          </Table.Tr>
-                        </Table.Thead>
-                        <Table.Tbody>
-                          {profileCategories.map((category) => (
-                            <Table.Tr
-                              key={category.id}
-                              onClick={() => handleEditProfileCategory(category)}
-                              style={{ cursor: 'pointer' }}
-                            >
-                              <Table.Td>{category.title}</Table.Td>
-                              <Table.Td>
-                                <IconCircleFilled
-                                  style={{ color: category.color ?? undefined, width: 16, opacity: 0.5 }}
-                                />
-                              </Table.Td>
-                              <Table.Td>{category.weight}%</Table.Td>
+                    {profileCategories.length > 0 && (
+                      <Table.ScrollContainer minWidth={isSmallScreen ? 320 : 400}>
+                        <Table
+                          striped
+                          highlightOnHover
+                          withColumnBorders
+                          withTableBorder
+                          horizontalSpacing='md'
+                          verticalSpacing='sm'
+                        >
+                          <Table.Thead>
+                            <Table.Tr>
+                              <Table.Th w='70%'>{t('Title')}</Table.Th>
+                              <Table.Th w='10%'>{t('color')}</Table.Th>
+                              <Table.Th w='20%'>{t('weight')}</Table.Th>
                             </Table.Tr>
-                          ))}
-                          <Table.Tr>
-                            <Table.Td fw={600}>{t('total')}</Table.Td>
-                            <Table.Td />
-                            <Table.Td fw={600} c={Math.abs(totalProfileWeight - 100) > 0.01 ? 'orange' : undefined}>
-                              {totalProfileWeight.toFixed(0)}%
-                            </Table.Td>
-                          </Table.Tr>
-                        </Table.Tbody>
-                      </Table>
-                    </Table.ScrollContainer>
+                          </Table.Thead>
+                          <Table.Tbody>
+                            {profileCategories.map((category) => (
+                              <Table.Tr
+                                key={category.id}
+                                onClick={() => handleEditProfileCategory(category)}
+                                style={{ cursor: 'pointer' }}
+                              >
+                                <Table.Td>{category.title}</Table.Td>
+                                <Table.Td>
+                                  <IconCircleFilled
+                                    style={{ color: category.color ?? undefined, width: 16, opacity: 0.5 }}
+                                  />
+                                </Table.Td>
+                                <Table.Td>{category.weight}%</Table.Td>
+                              </Table.Tr>
+                            ))}
+                            <Table.Tr>
+                              <Table.Td fw={600}>{t('total')}</Table.Td>
+                              <Table.Td />
+                              <Table.Td
+                                fw={600}
+                                c={Math.abs(totalProfileWeight - 100) > 0.01 ? 'orange' : undefined}
+                              >
+                                {totalProfileWeight.toFixed(0)}%
+                              </Table.Td>
+                            </Table.Tr>
+                          </Table.Tbody>
+                        </Table>
+                      </Table.ScrollContainer>
+                    )}
 
                     <Group justify='flex-start'>
-                      <Button onClick={handleCreateProfileCategory} leftSection={<IconPlus />}>
+                      <Button onClick={handleCreateProfileCategory} leftSection={<IconPlus />} variant='subtle' color='gray'>
                         {t('createCategory')}
                       </Button>
                     </Group>
@@ -671,7 +685,7 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
           </Stack>
         </Card>
 
-        <Card radius='md' withBorder>
+        <Card radius='md' withBorder p={isSmallScreen ? 'sm' : 'md'}>
           <Stack gap='sm'>
             <Text size='xl'>{t('additionalCategories')}</Text>
             <Text size='sm' c='dimmed'>
@@ -679,7 +693,7 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
             </Text>
 
             {userData.user_categories.length > 0 && (
-              <Table.ScrollContainer minWidth={500}>
+              <Table.ScrollContainer minWidth={isSmallScreen ? 360 : 500}>
                 <Table
                   striped
                   highlightOnHover
@@ -718,25 +732,12 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
               </Table.ScrollContainer>
             )}
             <Group justify='flex-start'>
-              <Button onClick={handleCreateCategory} leftSection={<IconPlus />}>
+              <Button onClick={handleCreateCategory} leftSection={<IconPlus />} variant='subtle' color='gray'>
                 {t('createAdditionalTask')}
               </Button>
             </Group>
           </Stack>
         </Card>
-        {configMode === 'default' && canton === 'BE' && (
-          <Card radius='md' withBorder>
-            <Stack gap='sm'>
-              <Text size='xl'>{t('importData')}</Text>
-              <Text>{t('importDataInfo')}</Text>
-              <Group justify='flex-start'>
-                <Button onClick={openImportModal} leftSection={<IconTableImport />}>
-                  {t('startImport')}
-                </Button>
-              </Group>
-            </Stack>
-          </Card>
-        )}
       </Stack>
 
       <CategoryModal
@@ -752,12 +753,6 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
         onDelete={currentProfileCategory ? () => handleDeleteProfileCategory(currentProfileCategory.id) : undefined}
         onClose={closeProfileCategoryModal}
         opened={profileCategoryModalOpened}
-      />
-      <ImportModal
-        onClose={closeImportModal}
-        opened={importModalOpened}
-        userData={userData}
-        reloadUserData={reloadUserData}
       />
       <Modal
         opened={calculatorModalOpened}

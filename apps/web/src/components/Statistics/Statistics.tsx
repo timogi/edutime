@@ -99,8 +99,17 @@ const Statistics: React.FC<StatisticsProps> = ({ userData, categories, reloadUse
     loadCantonData()
   }, [userData])
 
+  const hasRequiredCategories =
+    configMode === 'custom' ? profileCategories.length > 0 : categories.length > 0
+
   useEffect(() => {
     const loadCategoryStatistics = async () => {
+      if (!hasRequiredCategories) {
+        setCategoryStatistics(null)
+        setRemainingCategoryStatistics(null)
+        return
+      }
+
       if (configMode === 'custom' && configProfile && profileCategories.length > 0) {
         try {
           const stats = await getCustomCategoryStatisticsData(
@@ -164,7 +173,18 @@ const Statistics: React.FC<StatisticsProps> = ({ userData, categories, reloadUse
     }
 
     loadCategoryStatistics()
-  }, [cantonData, startDate, endDate, userData, categories, t_cat, configMode, configProfile, profileCategories])
+  }, [
+    cantonData,
+    startDate,
+    endDate,
+    userData,
+    categories,
+    t_cat,
+    configMode,
+    configProfile,
+    profileCategories,
+    hasRequiredCategories,
+  ])
 
   // Check if canton has working hours disabled (no annual work time)
   const hasNoAnnualWorkTime = cantonData?.is_working_hours_disabled === true
@@ -186,124 +206,133 @@ const Statistics: React.FC<StatisticsProps> = ({ userData, categories, reloadUse
           <Text size='sm'>{t_stats('tgNoAnnualWorkTime')}</Text>
         </Alert>
       )}
+      {!hasRequiredCategories && (
+        <Alert c='violet' variant='light' mx='lg' mt='md'>
+          <Text size='sm'>{t_stats('missingCategoriesForStatistics')}</Text>
+        </Alert>
+      )}
 
-      {/* Card for Category Statistics with conditional skeleton */}
-      <Card radius='md' m='lg' p={0} withBorder style={{ overflow: 'hidden' }}>
-        {categoryStatistics ? (
-          <CategoryStatsTable data={categoryStatistics} hideTargetColumn={hasNoAnnualWorkTime} />
-        ) : (
-          <Table.ScrollContainer minWidth={600}>
-            <Table withTableBorder withColumnBorders>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>
-                    <Skeleton height={20} />
-                  </Table.Th>
-                  <Table.Th>
-                    <Skeleton height={20} />
-                  </Table.Th>
-                  {!hasNoAnnualWorkTime && (
-                    <Table.Th>
-                      <Skeleton height={20} />
-                    </Table.Th>
-                  )}
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Table.Tr key={i}>
-                    <Table.Td>
-                      <Skeleton height={16} />
-                    </Table.Td>
-                    <Table.Td>
-                      <Skeleton height={16} />
-                    </Table.Td>
-                    {!hasNoAnnualWorkTime && (
-                      <Table.Td>
-                        <Skeleton height={16} />
-                      </Table.Td>
-                    )}
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </Table.ScrollContainer>
-        )}
-      </Card>
+      {hasRequiredCategories && (
+        <>
+          {/* Card for Category Statistics with conditional skeleton */}
+          <Card radius='md' m='lg' p={0} withBorder style={{ overflow: 'hidden' }}>
+            {categoryStatistics ? (
+              <CategoryStatsTable data={categoryStatistics} hideTargetColumn={hasNoAnnualWorkTime} />
+            ) : (
+              <Table.ScrollContainer minWidth={600}>
+                <Table withTableBorder withColumnBorders>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>
+                        <Skeleton height={20} />
+                      </Table.Th>
+                      <Table.Th>
+                        <Skeleton height={20} />
+                      </Table.Th>
+                      {!hasNoAnnualWorkTime && (
+                        <Table.Th>
+                          <Skeleton height={20} />
+                        </Table.Th>
+                      )}
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Table.Tr key={i}>
+                        <Table.Td>
+                          <Skeleton height={16} />
+                        </Table.Td>
+                        <Table.Td>
+                          <Skeleton height={16} />
+                        </Table.Td>
+                        {!hasNoAnnualWorkTime && (
+                          <Table.Td>
+                            <Skeleton height={16} />
+                          </Table.Td>
+                        )}
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Table.ScrollContainer>
+            )}
+          </Card>
 
-      <Title
-        order={3}
-        mx='lg'
-        c='light-dark(var(--mantine-color-dark-7), var(--mantine-color-gray-0))'
-      >
-        {t_cat('additionalCategories')}:
-      </Title>
+          <Title
+            order={3}
+            mx='lg'
+            c='light-dark(var(--mantine-color-dark-7), var(--mantine-color-gray-0))'
+          >
+            {t_cat('additionalCategories')}:
+          </Title>
 
-      <Card radius='md' mx='lg' mb={'lg'} p={0} withBorder style={{ overflow: 'hidden' }}>
-        {remainingCategoryStatistics ? (
-          <CategoryStatsTable
-            data={remainingCategoryStatistics}
-            hideTargetColumn={hasNoAnnualWorkTime}
-          />
-        ) : (
-          <Table.ScrollContainer minWidth={600}>
-            <Table withTableBorder withColumnBorders>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>
-                    <Skeleton height={20} />
-                  </Table.Th>
-                  <Table.Th>
-                    <Skeleton height={20} />
-                  </Table.Th>
-                  {!hasNoAnnualWorkTime && (
-                    <Table.Th>
-                      <Skeleton height={20} />
-                    </Table.Th>
-                  )}
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Table.Tr key={i}>
-                    <Table.Td>
-                      <Skeleton height={16} />
-                    </Table.Td>
-                    <Table.Td>
-                      <Skeleton height={16} />
-                    </Table.Td>
-                    {!hasNoAnnualWorkTime && (
-                      <Table.Td>
-                        <Skeleton height={16} />
-                      </Table.Td>
-                    )}
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </Table.ScrollContainer>
-        )}
-      </Card>
-      {remainingCategoryStatistics && categoryStatistics ? (
-        <ReportingComponent
-          startDate={startDate}
-          endDate={endDate}
-          userData={userData}
-          categoryStatistics={categoryStatistics}
-          remainingCategoryStatistics={remainingCategoryStatistics}
-          categories={categories}
-          hideTargetColumn={hasNoAnnualWorkTime}
-          cantonData={cantonData}
-        />
-      ) : (
-        <Card radius='md' mx='lg' mb={'lg'} p='lg' withBorder>
-          <Stack gap='md'>
-            <Skeleton height={40} radius='md' />
-            <Skeleton height={20} radius='sm' />
-            <Skeleton height={20} radius='sm' />
-            <Skeleton height={20} radius='sm' />
-          </Stack>
-        </Card>
+          <Card radius='md' mx='lg' mb={'lg'} p={0} withBorder style={{ overflow: 'hidden' }}>
+            {remainingCategoryStatistics ? (
+              <CategoryStatsTable
+                data={remainingCategoryStatistics}
+                hideTargetColumn={hasNoAnnualWorkTime}
+              />
+            ) : (
+              <Table.ScrollContainer minWidth={600}>
+                <Table withTableBorder withColumnBorders>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>
+                        <Skeleton height={20} />
+                      </Table.Th>
+                      <Table.Th>
+                        <Skeleton height={20} />
+                      </Table.Th>
+                      {!hasNoAnnualWorkTime && (
+                        <Table.Th>
+                          <Skeleton height={20} />
+                        </Table.Th>
+                      )}
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <Table.Tr key={i}>
+                        <Table.Td>
+                          <Skeleton height={16} />
+                        </Table.Td>
+                        <Table.Td>
+                          <Skeleton height={16} />
+                        </Table.Td>
+                        {!hasNoAnnualWorkTime && (
+                          <Table.Td>
+                            <Skeleton height={16} />
+                          </Table.Td>
+                        )}
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Table.ScrollContainer>
+            )}
+          </Card>
+          {remainingCategoryStatistics && categoryStatistics ? (
+            <ReportingComponent
+              startDate={startDate}
+              endDate={endDate}
+              userData={userData}
+              categoryStatistics={categoryStatistics}
+              remainingCategoryStatistics={remainingCategoryStatistics}
+              categories={categories}
+              hideTargetColumn={hasNoAnnualWorkTime}
+              cantonData={cantonData}
+            />
+          ) : (
+            <Card radius='md' mx='lg' mb={'lg'} p='lg' withBorder>
+              <Stack gap='md'>
+                <Skeleton height={40} radius='md' />
+                <Skeleton height={20} radius='sm' />
+                <Skeleton height={20} radius='sm' />
+                <Skeleton height={20} radius='sm' />
+              </Stack>
+            </Card>
+          )}
+        </>
       )}
     </Stack>
   )

@@ -13,6 +13,7 @@ interface InviteModalProps {
   setInviteEmail: (email: string) => void
   handleInvite: (comment: string) => void
   users: OrganizationMember[]
+  isInviting: boolean
 }
 
 const InviteModal = ({
@@ -22,6 +23,7 @@ const InviteModal = ({
   setInviteEmail,
   handleInvite,
   users,
+  isInviting,
 }: InviteModalProps) => {
   const t = useTranslations('Index')
   const [emailError, setEmailError] = useState<string | null>(null)
@@ -54,7 +56,7 @@ const InviteModal = ({
   }
 
   const handleKeyPress = (event: KeyboardEvent) => {
-    if (event.key === 'Enter' || event.key === 'NumpadEnter') {
+    if ((event.key === 'Enter' || event.key === 'NumpadEnter') && !isInviting) {
       handleInviteClick()
     }
   }
@@ -103,7 +105,9 @@ const InviteModal = ({
           value={comment}
           onChange={(event) => setComment(event.currentTarget.value)}
         />
-        <Button onClick={handleInviteClick}>{t('Add Member')}</Button>
+        <Button onClick={handleInviteClick} loading={isInviting} disabled={isInviting}>
+          {t('Add Member')}
+        </Button>
       </Stack>
     </Modal>
   )

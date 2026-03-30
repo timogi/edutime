@@ -6,9 +6,10 @@ import { ActionToggle } from './ActionToggle'
 interface HeaderProps {
   opened: boolean
   setOpened: (opened: boolean) => void
+  showBurger?: boolean
 }
 
-export function Header({ opened, setOpened }: HeaderProps) {
+export function Header({ opened, setOpened, showBurger = true }: HeaderProps) {
   const theme = useMantineTheme()
 
   return (
@@ -28,13 +29,15 @@ export function Header({ opened, setOpened }: HeaderProps) {
       </div>
       <Group gap='sm' className={classes.rightGroup}>
         <ActionToggle />
-        <Burger
-          opened={opened}
-          onClick={() => setOpened(!opened)}
-          size='sm'
-          color={theme.colors.gray[6]}
-          hiddenFrom='md'
-        />
+        {showBurger && (
+          <Burger
+            opened={opened}
+            onClick={() => setOpened(!opened)}
+            size='sm'
+            color={theme.colors.gray[6]}
+            hiddenFrom='md'
+          />
+        )}
       </Group>
     </header>
   )
