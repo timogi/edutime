@@ -59,15 +59,29 @@ export async function deleteAccount(password: string, user_id: string, email: st
       throw new Error('Invalid password')
     }
 
-    // Password is correct, now safely delete the user using the main client
-    const { error: deleteError } = await supabase.from('account_deletion').insert({
-      user_id,
-      email,
+    // Password is correct — queue deletion (same eligibility rules as web via RPC)
+    const { data: enqueueResult, error: enqueueError } = await supabase.rpc('account_deletion_enqueue', {
+      p_email: email,
     })
 
-    if (deleteError) {
-      console.error('Delete error', deleteError)
-      throw new Error('Account may already be scheduled for deletion.')
+    if (enqueueError) {
+      console.error('account_deletion_enqueue failed:', enqueueError.message)
+      throw new Error('Failed to queue account deletion.')
+    }
+
+    const payload = enqueueResult as { ok?: boolean; code?: string } | null
+    if (!payload || payload.ok !== true) {
+      if (payload?.code === 'SOLE_ADMIN_BLOCKER') {
+        throw new Error(
+          'Account deletion blocked: you are the only admin in active organizations. Assign another admin or deactivate those organizations first.',
+        )
+      }
+      if (payload?.code === 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED') {
+        throw new Error(
+          'Cancel your personal subscription from license settings before deleting your account.',
+        )
+      }
+      throw new Error('Account deletion is not allowed right now.')
     }
 
     // Only sign out after successful deletion

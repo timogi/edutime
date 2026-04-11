@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { createClient } from '@supabase/supabase-js'
+import { Json } from '@edutime/shared'
 import { EDUTIME_TRANSACTIONAL_FROM } from '@edutime/shared'
 import { getAuthenticatedUser } from '@/utils/supabase/api-auth'
 import {
@@ -190,33 +190,11 @@ const buildSeatAdjustmentPreview = (params: {
   }
 }
 
-function createBillingClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!serviceRoleKey) {
-    return null
+function asRecord(v: unknown): Record<string, unknown> | null {
+  if (v != null && typeof v === 'object' && !Array.isArray(v)) {
+    return v as Record<string, unknown>
   }
-
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, {
-    db: { schema: 'billing' },
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
-}
-
-function createPublicClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!serviceRoleKey) {
-    return null
-  }
-
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
+  return null
 }
 
 const mapRpcError = (error: { message?: string }, fallback: string) => {
@@ -280,11 +258,7 @@ export default async function handler(
       return res.status(401).json({ error: 'Unauthorized' })
     }
 
-    const billingClient = createBillingClient()
-    const publicClient = createPublicClient()
-    if (!billingClient || !publicClient) {
-      return res.status(500).json({ error: 'Missing billing configuration on server' })
-    }
+    const { supabase } = auth
 
     if (req.method === 'GET') {
       const organizationId = Number(req.query.organizationId)
@@ -300,13 +274,22 @@ export default async function handler(
         return res.status(legalCheck.status).json({ error: legalCheck.error })
       }
 
-      const { data: org, error: orgError } = await publicClient
-        .from('organizations')
-        .select('id, name, seats, is_active, scheduled_deletion_at')
-        .eq('id', organizationId)
-        .single()
+      const { data: snapRaw, error: snapError } = await supabase.rpc('api_get_organization_management_snapshot', {
+        p_organization_id: organizationId,
+      })
 
-      if (orgError || !org) {
+      if (snapError) {
+        const mapped = mapRpcError(snapError, 'Failed to load organization management data')
+        return res.status(mapped.status).json({ error: mapped.error })
+      }
+
+      const snap = asRecord(snapRaw as Json)
+      if (!snap || snap.found !== true) {
+        return res.status(404).json({ error: 'Organization not found' })
+      }
+
+      const org = asRecord(snap.organization)
+      if (!org) {
         return res.status(404).json({ error: 'Organization not found' })
       }
 
@@ -314,64 +297,43 @@ export default async function handler(
         return res.status(404).json({ error: 'Organization not found' })
       }
 
-      const { data: adminsData, error: adminsError } = await billingClient.rpc('list_organization_admins', {
-        p_actor_user_id: auth.user.id,
-        p_organization_id: organizationId,
+      const adminsArr = Array.isArray(snap.admins) ? snap.admins : []
+      const admins: OrgAdminRow[] = adminsArr.map((row) => {
+        const a = asRecord(row) || {}
+        return {
+          user_id: String(a.user_id ?? ''),
+          email: a.email == null ? null : String(a.email),
+          created_at: String(a.created_at ?? ''),
+        }
       })
 
-      if (adminsError) {
-        const mapped = mapRpcError(adminsError, 'Failed to load organization admins')
-        return res.status(mapped.status).json({ error: mapped.error })
-      }
+      const membersLosingLicenseCount = Number(snap.members_losing_license_count ?? 0)
 
-      const admins = ((adminsData as OrgAdminRow[] | null) || []).map((admin) => ({
-        user_id: admin.user_id,
-        email: admin.email,
-        created_at: admin.created_at,
-      }))
-
-      const { data: billingData, error: billingError } = await billingClient.rpc('get_org_billing_status', {
-        p_actor_user_id: auth.user.id,
-        p_organization_id: organizationId,
-      })
-
-      if (billingError) {
-        const mapped = mapRpcError(billingError, 'Failed to load org billing status')
-        return res.status(mapped.status).json({ error: mapped.error })
-      }
-
-      const billingRow =
-        Array.isArray(billingData) && billingData.length > 0 ? (billingData[0] as Record<string, unknown>) : null
+      const billingStatus = asRecord(snap.billing_status)
+      const billingSub = asRecord(snap.billing_subscription)
+      const invoicesJson = Array.isArray(snap.invoices) ? snap.invoices : []
 
       let billing: OrgManagementGetResponse['billing'] = null
-      if (billingRow) {
-        const subscriptionId = String(billingRow.subscription_id || '')
+      if (billingStatus && billingStatus.subscription_id) {
+        const subscriptionId = String(billingStatus.subscription_id)
+        const invoicesRows = invoicesJson.map((inv) => {
+          const i = asRecord(inv) || {}
+          return {
+            id: String(i.id ?? ''),
+            amount_cents: Number(i.amount_cents ?? 0),
+            currency: String(i.currency ?? ''),
+            status: String(i.status ?? ''),
+            provider_invoice_id: i.provider_invoice_id == null ? null : String(i.provider_invoice_id),
+            paid_at: i.paid_at == null ? null : String(i.paid_at),
+            created_at: String(i.created_at ?? ''),
+            due_date: i.due_date == null ? null : String(i.due_date),
+          }
+        })
+
         const payrexxClient = createPayrexxClientFromEnv()
-        const { data: subscriptionsRows, error: subscriptionError } = await billingClient
-          .from('subscriptions')
-          .select('cancel_at_period_end, canceled_at, metadata')
-          .eq('id', subscriptionId)
-          .limit(1)
-          .maybeSingle()
-
-        if (subscriptionError) {
-          return res.status(500).json({ error: 'Failed to load organization subscription lifecycle status' })
-        }
-
-        const { data: invoicesRows, error: invoicesError } = await billingClient
-          .from('invoices')
-          .select('id, amount_cents, currency, status, provider_invoice_id, paid_at, created_at, due_date')
-          .eq('subscription_id', subscriptionId)
-          .order('created_at', { ascending: false })
-          .limit(30)
-
-        if (invoicesError) {
-          return res.status(500).json({ error: 'Failed to load organization invoice history' })
-        }
-
         let payrexxInvoicePaymentLink: string | null = null
         let payrexxInvoicePaymentInfo: PayrexxInvoicePaymentInfo | null = null
-        const openInvoice = (invoicesRows || []).find((invoice) => invoice.status === 'open')
+        const openInvoice = invoicesRows.find((invoice) => invoice.status === 'open')
         const providerTransactionId = Number(openInvoice?.provider_invoice_id || '')
 
         if (payrexxClient && Number.isFinite(providerTransactionId) && providerTransactionId > 0) {
@@ -398,71 +360,56 @@ export default async function handler(
           }
         }
 
+        const subMeta =
+          billingSub?.metadata && typeof billingSub.metadata === 'object' && !Array.isArray(billingSub.metadata)
+            ? (billingSub.metadata as Record<string, unknown>)
+            : null
+
         billing = {
           subscriptionId,
           subscriptionStatus: normalizeOrgSubscriptionStatus({
-            rawStatus: billingRow.subscription_status,
-            invoiceStatus: billingRow.invoice_status,
-            suspendAt: billingRow.suspend_at,
+            rawStatus: billingStatus.subscription_status,
+            invoiceStatus: billingStatus.invoice_status,
+            suspendAt: billingStatus.suspend_at,
           }),
-          amountCents: Number(billingRow.amount_cents || 0),
-          currency: String(billingRow.currency || 'CHF'),
-          seatCount: billingRow.seat_count == null ? null : Number(billingRow.seat_count),
+          amountCents: Number(billingStatus.amount_cents || 0),
+          currency: String(billingStatus.currency || 'CHF'),
+          seatCount: billingStatus.seat_count == null ? null : Number(billingStatus.seat_count),
           currentPeriodStart:
-            typeof billingRow.current_period_start === 'string' ? billingRow.current_period_start : null,
-          currentPeriodEnd: typeof billingRow.current_period_end === 'string' ? billingRow.current_period_end : null,
-          cancelAtPeriodEnd: Boolean(subscriptionsRows?.cancel_at_period_end),
-          canceledAt: subscriptionsRows?.canceled_at || null,
-          graceDays: Number(billingRow.grace_days || 0),
-          suspendAt: typeof billingRow.suspend_at === 'string' ? billingRow.suspend_at : null,
-          invoiceId: typeof billingRow.invoice_id === 'string' ? billingRow.invoice_id : null,
-          invoiceStatus: typeof billingRow.invoice_status === 'string' ? billingRow.invoice_status : null,
-          invoiceDueDate: typeof billingRow.invoice_due_date === 'string' ? billingRow.invoice_due_date : null,
-          invoicePaidAt: typeof billingRow.invoice_paid_at === 'string' ? billingRow.invoice_paid_at : null,
+            typeof billingStatus.current_period_start === 'string' ? billingStatus.current_period_start : null,
+          currentPeriodEnd:
+            typeof billingStatus.current_period_end === 'string' ? billingStatus.current_period_end : null,
+          cancelAtPeriodEnd: Boolean(billingSub?.cancel_at_period_end),
+          canceledAt: billingSub?.canceled_at == null ? null : String(billingSub.canceled_at),
+          graceDays: Number(billingStatus.grace_days || 0),
+          suspendAt: typeof billingStatus.suspend_at === 'string' ? billingStatus.suspend_at : null,
+          invoiceId: typeof billingStatus.invoice_id === 'string' ? billingStatus.invoice_id : null,
+          invoiceStatus: typeof billingStatus.invoice_status === 'string' ? billingStatus.invoice_status : null,
+          invoiceDueDate:
+            typeof billingStatus.invoice_due_date === 'string' ? billingStatus.invoice_due_date : null,
+          invoicePaidAt: typeof billingStatus.invoice_paid_at === 'string' ? billingStatus.invoice_paid_at : null,
           payrexxGatewayLink:
-            typeof billingRow.payrexx_gateway_link === 'string' ? billingRow.payrexx_gateway_link : null,
+            typeof billingStatus.payrexx_gateway_link === 'string' ? billingStatus.payrexx_gateway_link : null,
           payrexxInvoicePaymentLink,
           payrexxInvoicePaymentInfo,
           checkoutReferenceId:
-            typeof billingRow.checkout_reference_id === 'string' ? billingRow.checkout_reference_id : null,
-          responsibleEmail: typeof billingRow.responsible_email === 'string' ? billingRow.responsible_email : null,
+            typeof billingStatus.checkout_reference_id === 'string' ? billingStatus.checkout_reference_id : null,
+          responsibleEmail:
+            typeof billingStatus.responsible_email === 'string' ? billingStatus.responsible_email : null,
           nextPeriodSeatCount:
-            subscriptionsRows?.metadata &&
-            typeof subscriptionsRows.metadata === 'object' &&
-            subscriptionsRows.metadata !== null &&
-            'next_period_seat_count' in subscriptionsRows.metadata
-              ? Number((subscriptionsRows.metadata as Record<string, unknown>).next_period_seat_count)
-              : null,
-          invoices: invoicesRows || [],
+            subMeta && 'next_period_seat_count' in subMeta ? Number(subMeta.next_period_seat_count) : null,
+          invoices: invoicesRows,
         }
       }
 
-      const { count: membersLosingLicenseRaw, error: membersCountError } = await publicClient
-        .from('organization_members')
-        .select('*', { count: 'exact', head: true })
-        .eq('organization_id', organizationId)
-        .in('status', ['active', 'invited'])
-
-      if (membersCountError) {
-        console.error('Failed to count organization members for delete confirmation', {
-          organizationId,
-          error: membersCountError,
-        })
-      }
-
-      const membersLosingLicenseCount =
-        typeof membersLosingLicenseRaw === 'number' && Number.isFinite(membersLosingLicenseRaw)
-          ? membersLosingLicenseRaw
-          : 0
-
       return res.status(200).json({
         organization: {
-          id: org.id,
-          name: org.name,
-          seats: org.seats,
+          id: Number(org.id),
+          name: String(org.name ?? ''),
+          seats: Number(org.seats ?? 0),
           is_active: org.is_active !== false,
           scheduled_deletion_at:
-            typeof org.scheduled_deletion_at === 'string' ? org.scheduled_deletion_at : null,
+            org.scheduled_deletion_at == null ? null : String(org.scheduled_deletion_at),
         },
         membersLosingLicenseCount,
         admins,
@@ -487,24 +434,27 @@ export default async function handler(
         return res.status(400).json({ error: 'Missing organization name' })
       }
 
-      const { data: orgPatchRow, error: orgPatchErr } = await publicClient
-        .from('organizations')
-        .select('scheduled_deletion_at')
-        .eq('id', organizationId)
-        .maybeSingle()
+      const { data: guardRaw, error: guardErr } = await supabase.rpc('api_get_organization_admin_row', {
+        p_organization_id: organizationId,
+      })
 
-      if (orgPatchErr || !orgPatchRow) {
+      if (guardErr) {
+        const mapped = mapRpcError(guardErr, 'Failed to verify organization')
+        return res.status(mapped.status).json({ error: mapped.error })
+      }
+
+      const guard = asRecord(guardRaw as Json)
+      if (!guard || guard.found !== true) {
         return res.status(404).json({ error: 'Organization not found' })
       }
       if (
-        orgPatchRow.scheduled_deletion_at != null &&
-        String(orgPatchRow.scheduled_deletion_at).length > 0
+        guard.scheduled_deletion_at != null &&
+        String(guard.scheduled_deletion_at).length > 0
       ) {
         return res.status(404).json({ error: 'Organization not found' })
       }
 
-      const { data, error } = await billingClient.rpc('update_organization_name', {
-        p_actor_user_id: auth.user.id,
+      const { data, error } = await supabase.rpc('api_update_organization_name', {
         p_organization_id: organizationId,
         p_name: name,
       })
@@ -531,18 +481,22 @@ export default async function handler(
         return res.status(legalCheck.status).json({ error: legalCheck.error })
       }
 
-      const { data: orgDeletionRow, error: orgDeletionErr } = await publicClient
-        .from('organizations')
-        .select('scheduled_deletion_at')
-        .eq('id', organizationId)
-        .maybeSingle()
+      const { data: postGuardRaw, error: postGuardErr } = await supabase.rpc('api_get_organization_admin_row', {
+        p_organization_id: organizationId,
+      })
 
-      if (orgDeletionErr || !orgDeletionRow) {
+      if (postGuardErr) {
+        const mapped = mapRpcError(postGuardErr, 'Failed to verify organization')
+        return res.status(mapped.status).json({ error: mapped.error })
+      }
+
+      const postGuard = asRecord(postGuardRaw as Json)
+      if (!postGuard || postGuard.found !== true) {
         return res.status(404).json({ error: 'Organization not found' })
       }
       if (
-        orgDeletionRow.scheduled_deletion_at != null &&
-        String(orgDeletionRow.scheduled_deletion_at).length > 0
+        postGuard.scheduled_deletion_at != null &&
+        String(postGuard.scheduled_deletion_at).length > 0
       ) {
         return res.status(404).json({ error: 'Organization not found' })
       }
@@ -553,8 +507,7 @@ export default async function handler(
           return res.status(400).json({ error: 'Missing admin email' })
         }
 
-        const { data, error } = await billingClient.rpc('add_organization_admin_by_email', {
-          p_actor_user_id: auth.user.id,
+        const { data, error } = await supabase.rpc('api_add_organization_admin_by_email', {
           p_organization_id: organizationId,
           p_admin_email: email,
         })
@@ -573,8 +526,7 @@ export default async function handler(
           return res.status(400).json({ error: 'Missing admin user id' })
         }
 
-        const { data, error } = await billingClient.rpc('remove_organization_admin', {
-          p_actor_user_id: auth.user.id,
+        const { data, error } = await supabase.rpc('api_remove_organization_admin', {
           p_organization_id: organizationId,
           p_remove_user_id: removeUserId,
         })
@@ -601,18 +553,20 @@ export default async function handler(
           })
         }
 
-        const { data: billingData, error: billingError } = await billingClient.rpc('get_org_billing_status', {
-          p_actor_user_id: auth.user.id,
-          p_organization_id: organizationId,
-        })
-        if (billingError) {
-          const mapped = mapRpcError(billingError, 'Failed to load org billing status')
+        const { data: adjSnapRaw, error: adjSnapError } = await supabase.rpc(
+          'api_get_organization_management_snapshot',
+          { p_organization_id: organizationId },
+        )
+        if (adjSnapError) {
+          const mapped = mapRpcError(adjSnapError, 'Failed to load org billing status')
           return res.status(mapped.status).json({ error: mapped.error })
         }
 
-        const billingRow =
-          Array.isArray(billingData) && billingData.length > 0 ? (billingData[0] as Record<string, unknown>) : null
-        if (!billingRow) {
+        const adjSnap = asRecord(adjSnapRaw as Json)
+        const billingRow = adjSnap && adjSnap.found === true ? asRecord(adjSnap.billing_status) : null
+        const billingSubAdj = adjSnap && adjSnap.found === true ? asRecord(adjSnap.billing_subscription) : null
+
+        if (!billingRow?.subscription_id) {
           return res.status(400).json({ error: 'No organization subscription found' })
         }
 
@@ -624,22 +578,7 @@ export default async function handler(
           return res.status(400).json({ error: 'Seat count unchanged' })
         }
 
-        const { count: occupiedSeatsRaw, error: occupiedSeatsError } = await publicClient
-          .from('organization_members')
-          .select('*', { count: 'exact', head: true })
-          .eq('organization_id', organizationId)
-          .in('status', ['active', 'invited'])
-
-        if (occupiedSeatsError) {
-          console.error('adjustSeats: failed to count active or invited members', {
-            organizationId,
-            error: occupiedSeatsError,
-          })
-          return res.status(500).json({ error: 'Failed to verify member seat usage' })
-        }
-
-        const occupiedSeats =
-          typeof occupiedSeatsRaw === 'number' && Number.isFinite(occupiedSeatsRaw) ? occupiedSeatsRaw : 0
+        const occupiedSeats = Number(adjSnap?.occupied_seats_count ?? 0)
         if (targetSeatCount < occupiedSeats) {
           return res.status(400).json({ error: 'SEAT_REDUCTION_REQUIRES_REMOVING_MEMBERS' })
         }
@@ -653,12 +592,7 @@ export default async function handler(
         }
 
         const subscriptionId = String(billingRow.subscription_id || '')
-        const { data: subscriptionLifecycle } = await billingClient
-          .from('subscriptions')
-          .select('cancel_at_period_end')
-          .eq('id', subscriptionId)
-          .maybeSingle()
-        const autoRenewEnabled = !Boolean(subscriptionLifecycle?.cancel_at_period_end)
+        const autoRenewEnabled = !Boolean(billingSubAdj?.cancel_at_period_end)
         const preview = buildSeatAdjustmentPreview({
           currentSeatCount,
           targetSeatCount,
@@ -719,8 +653,7 @@ export default async function handler(
             ],
           })
 
-          const { error: createError } = await billingClient.rpc('create_org_checkout', {
-            p_actor_user_id: auth.user.id,
+          const { error: createError } = await supabase.rpc('api_create_org_checkout', {
             p_organization_id: organizationId,
             p_quantity: targetSeatCount,
             p_amount_cents: preview.proratedAmountCents,
@@ -746,8 +679,7 @@ export default async function handler(
           }
 
           // Keep annual subscription amount on target annual price while checkout is prorated.
-          const { error: planError } = await billingClient.rpc('update_org_seat_plan', {
-            p_actor_user_id: auth.user.id,
+          const { error: planError } = await supabase.rpc('api_update_org_seat_plan', {
             p_organization_id: organizationId,
             p_target_seat_count: targetSeatCount,
             p_apply_immediately: true,
@@ -771,8 +703,7 @@ export default async function handler(
           })
         }
 
-        const { error: planError } = await billingClient.rpc('update_org_seat_plan', {
-          p_actor_user_id: auth.user.id,
+        const { error: planError } = await supabase.rpc('api_update_org_seat_plan', {
           p_organization_id: organizationId,
           p_target_seat_count: targetSeatCount,
           p_apply_immediately: true,
@@ -799,8 +730,7 @@ export default async function handler(
       }
 
       if (action === 'cancel') {
-        const { data, error } = await billingClient.rpc('cancel_org_subscription_at_period_end', {
-          p_actor_user_id: auth.user.id,
+        const { data, error } = await supabase.rpc('api_cancel_org_subscription_at_period_end', {
           p_organization_id: organizationId,
         })
 
@@ -813,8 +743,7 @@ export default async function handler(
       }
 
       if (action === 'reactivate') {
-        const { data, error } = await billingClient.rpc('reactivate_org_subscription', {
-          p_actor_user_id: auth.user.id,
+        const { data, error } = await supabase.rpc('api_reactivate_org_subscription', {
           p_organization_id: organizationId,
         })
 
@@ -827,48 +756,44 @@ export default async function handler(
       }
 
       if (action === 'deactivateOrg') {
-        const { data: orgBeforeRow, error: orgBeforeErr } = await publicClient
-          .from('organizations')
-          .select('name')
-          .eq('id', organizationId)
-          .maybeSingle()
-
-        const { data: adminsBeforeData, error: adminsBeforeErr } = await billingClient.rpc(
-          'list_organization_admins',
-          {
-            p_actor_user_id: auth.user.id,
-            p_organization_id: organizationId,
-          },
+        const { data: preSnapRaw, error: preSnapErr } = await supabase.rpc(
+          'api_get_organization_management_snapshot',
+          { p_organization_id: organizationId },
         )
 
         let organizationNameForEmail = 'Organization'
-        if (!orgBeforeErr && orgBeforeRow?.name) {
-          const trimmed = String(orgBeforeRow.name).trim()
-          if (trimmed.length > 0) organizationNameForEmail = trimmed
-        }
-
-        const adminsBefore = ((adminsBeforeData as OrgAdminRow[] | null) || []).filter(
-          (row) => typeof row.email === 'string' && row.email.includes('@'),
-        )
-
-        const adminUserIds = Array.from(new Set(adminsBefore.map((a) => a.user_id)))
+        const adminsBefore: OrgAdminRow[] = []
         const languageByUserId = new Map<string, OrgMemberInviteEmailLocale>()
-        if (adminUserIds.length > 0) {
-          const { data: userLangRows, error: userLangErr } = await publicClient
-            .from('users')
-            .select('user_id, language')
-            .in('user_id', adminUserIds)
+        let adminsBeforeErr: Error | null = null
 
-          if (userLangErr) {
-            console.error('Org deletion notice: failed to load user languages', {
-              organizationId,
-              error: userLangErr,
-            })
-          } else {
-            for (const row of userLangRows || []) {
-              if (row && typeof row.user_id === 'string') {
-                languageByUserId.set(row.user_id, normalizeUserLanguageToEmailLocale(row.language))
-              }
+        if (preSnapErr) {
+          adminsBeforeErr = new Error(preSnapErr.message)
+          console.error('Org deletion notice: snapshot failed before deactivate', {
+            organizationId,
+            error: preSnapErr,
+          })
+        } else {
+          const preSnap = asRecord(preSnapRaw as Json)
+          const orgBefore = preSnap && preSnap.found === true ? asRecord(preSnap.organization) : null
+          if (orgBefore?.name) {
+            const trimmed = String(orgBefore.name).trim()
+            if (trimmed.length > 0) organizationNameForEmail = trimmed
+          }
+
+          const adminsLang = Array.isArray(preSnap?.admins_with_language) ? preSnap.admins_with_language : []
+          for (const row of adminsLang) {
+            const r = asRecord(row) || {}
+            const uid = r.user_id != null ? String(r.user_id) : ''
+            const em = r.email != null ? String(r.email) : ''
+            if (em.includes('@')) {
+              adminsBefore.push({
+                user_id: uid,
+                email: em,
+                created_at: '',
+              })
+            }
+            if (uid && r.language != null) {
+              languageByUserId.set(uid, normalizeUserLanguageToEmailLocale(String(r.language)))
             }
           }
         }
@@ -877,15 +802,7 @@ export default async function handler(
           typeof req.headers['accept-language'] === 'string' ? req.headers['accept-language'] : undefined,
         )
 
-        if (adminsBeforeErr) {
-          console.error('Org deletion notice: list_organization_admins failed before deactivate', {
-            organizationId,
-            error: adminsBeforeErr,
-          })
-        }
-
-        const { error: revokeError } = await billingClient.rpc('deactivate_organization_revoke_access', {
-          p_actor_user_id: auth.user.id,
+        const { error: revokeError } = await supabase.rpc('api_deactivate_organization_revoke_access', {
           p_organization_id: organizationId,
         })
 
@@ -894,8 +811,7 @@ export default async function handler(
           return res.status(mapped.status).json({ error: mapped.error })
         }
 
-        const { error: cancelError } = await billingClient.rpc('cancel_org_subscription_at_period_end', {
-          p_actor_user_id: auth.user.id,
+        const { error: cancelError } = await supabase.rpc('api_cancel_org_subscription_at_period_end', {
           p_organization_id: organizationId,
         })
 

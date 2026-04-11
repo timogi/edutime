@@ -1,5 +1,4 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { createClient } from '@supabase/supabase-js'
 import { paymentProvider } from '@/utils/payments'
 import { calculateCheckoutAmount, MAX_AUTO_PRICING_LICENSES, MIN_ORG_LICENSES } from '@/utils/payments/pricing'
 import { getAuthenticatedUser } from '@/utils/supabase/api-auth'
@@ -12,46 +11,8 @@ type ResponseData = {
 
 type BillingCycle = 'annual' | 'daily_test'
 
-const nowIso = () => new Date().toISOString()
 const DAILY_TEST_PRICE_CENTS = 100
 const DAILY_TEST_INTERVAL = 'P1D'
-
-/**
- * Create a billing schema client using service role for server-side writes.
- * Uses billing schema to access checkout_sessions table.
- */
-function createBillingClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!serviceRoleKey) {
-    return null
-  }
-
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, {
-    db: { schema: 'billing' },
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
-}
-
-/**
- * Create a license schema client using service role for server-side checks.
- */
-function createLicenseClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!serviceRoleKey) {
-    return null
-  }
-
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, {
-    db: { schema: 'license' },
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
-}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
   if (req.method !== 'POST') {
@@ -149,27 +110,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         })
       }
     } else {
-      const licenseClient = createLicenseClient()
-      if (!licenseClient) {
-        return res.status(500).json({ error: 'Missing billing configuration on server' })
-      }
-
-      const { data: activeEntitlements, error: entitlementError } = await licenseClient
-        .from('entitlements')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('kind', 'personal')
-        .eq('status', 'active')
-        .lte('valid_from', nowIso())
-        .or(`valid_until.is.null,valid_until.gte.${nowIso()}`)
-        .limit(1)
+      const { data: hasPersonal, error: entitlementError } = await supabase.rpc(
+        'api_user_has_active_personal_license',
+      )
 
       if (entitlementError) {
         console.error('Failed to check existing personal entitlement:', entitlementError)
         return res.status(500).json({ error: 'Failed to verify existing license status' })
       }
 
-      if ((activeEntitlements?.length ?? 0) > 0) {
+      if (hasPersonal === true) {
         return res.status(409).json({ error: 'You already have an active personal license' })
       }
     }
@@ -215,12 +165,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       customSubscriptionPeriod: isDailyTestCheckout ? DAILY_TEST_INTERVAL : undefined,
     })
 
-    // Store checkout session in billing.checkout_sessions for webhook reconciliation
-    const billingClient = createBillingClient()
-    if (!billingClient) {
-      return res.status(500).json({ error: 'Missing billing configuration on server' })
-    }
-
     const { amountCents, requiresCustomPricing } = calculateCheckoutAmount(plan, quantity)
     const checkoutAmountCents = isDailyTestCheckout ? DAILY_TEST_PRICE_CENTS : amountCents
     if (requiresCustomPricing) {
@@ -230,8 +174,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     if (plan === 'org') {
-      const { error: rpcError } = await billingClient.rpc('create_org_checkout', {
-        p_actor_user_id: user.id,
+      const { error: rpcError } = await supabase.rpc('api_create_org_checkout', {
         p_organization_id: Number(organizationId),
         p_quantity: quantity,
         p_amount_cents: amountCents,
@@ -265,24 +208,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
       // Org admins are not auto-assigned a seat; they assign seats via member invites / seat management.
     } else {
-      const { error: insertError } = await billingClient.from('checkout_sessions').insert({
-        user_id: user.id,
-        organization_id: null,
-        plan: 'annual',
-        quantity,
-        amount_cents: checkoutAmountCents,
-        currency: 'CHF',
-        status: 'pending',
-        reference_id: result.sessionId,
-        payrexx_gateway_id: result.gatewayId || null,
-        payrexx_gateway_link: result.checkoutUrl,
-        metadata: {
+      const { error: insertError } = await supabase.rpc('api_create_personal_checkout_session', {
+        p_amount_cents: checkoutAmountCents,
+        p_currency: 'CHF',
+        p_reference_id: result.sessionId,
+        p_payrexx_gateway_id: result.gatewayId || null,
+        p_payrexx_gateway_link: result.checkoutUrl,
+        p_billing_cycle: resolvedBillingCycle,
+        p_expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+        p_metadata: {
           source: 'web_checkout_api',
           plan: 'annual',
           billing_cycle: resolvedBillingCycle,
           user_id: user.id,
         },
-        expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // 2h
       })
 
       if (insertError) {

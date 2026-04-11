@@ -36,6 +36,40 @@ export default function AuthenticationTitle() {
 
   const t = useTranslations('Index')
 
+  const LOGIN_PENDING_DELETION_TOAST_KEY = 'edutime_login_pending_deletion_toast_shown'
+
+  useEffect(() => {
+    const onPendingSignout = () => setIsLoading(false)
+    window.addEventListener('edutime:pending-account-deletion-signout', onPendingSignout)
+    return () => window.removeEventListener('edutime:pending-account-deletion-signout', onPendingSignout)
+  }, [])
+
+  useEffect(() => {
+    if (!router.isReady || router.query.accountDeletionPending !== '1') return
+
+    const stripQuery = () => {
+      if (typeof window === 'undefined') return
+      const url = new URL(window.location.href)
+      if (!url.searchParams.has('accountDeletionPending')) return
+      url.searchParams.delete('accountDeletionPending')
+      const next = url.pathname + (url.search || '')
+      window.history.replaceState(null, '', next || url.pathname)
+    }
+
+    if (sessionStorage.getItem(LOGIN_PENDING_DELETION_TOAST_KEY) === '1') {
+      stripQuery()
+      return
+    }
+    sessionStorage.setItem(LOGIN_PENDING_DELETION_TOAST_KEY, '1')
+
+    showNotification({
+      title: t('account_deletion_pending_login_title'),
+      message: t('account_deletion_pending_login_message'),
+      color: 'orange',
+    })
+    stripQuery()
+  }, [router.isReady, router.query.accountDeletionPending, t])
+
   // Listen for route changes to reset loading state
   useEffect(() => {
     const handleRouteChange = () => {

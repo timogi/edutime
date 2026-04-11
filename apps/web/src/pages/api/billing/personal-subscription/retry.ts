@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { createClient } from '@supabase/supabase-js'
-import { Database, Json } from '@edutime/shared'
+import { Json } from '@edutime/shared'
 import { getAuthenticatedUser } from '@/utils/supabase/api-auth'
 import { paymentProvider } from '@/utils/payments'
 import { calculateCheckoutAmount } from '@/utils/payments/pricing'
@@ -14,37 +13,14 @@ type RetryResponse = {
 
 type JsonObject = Record<string, Json>
 
-function createBillingClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!serviceRoleKey) {
-    return null
+function asRecord(v: unknown): Record<string, unknown> | null {
+  if (v != null && typeof v === 'object' && !Array.isArray(v)) {
+    return v as Record<string, unknown>
   }
-
-  return createClient<Database, 'billing'>(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, {
-    db: { schema: 'billing' },
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
+  return null
 }
 
-function createLicenseClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!serviceRoleKey) {
-    return null
-  }
-
-  return createClient<Database, 'license'>(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, {
-    db: { schema: 'license' },
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
-}
-
-function extractGatewayId(providerSubscriptionId: string, metadata: Json | null): number | null {
+function extractGatewayId(providerSubscriptionId: string | null | undefined, metadata: Json | null): number | null {
   const parsedProviderId = Number(providerSubscriptionId)
   if (Number.isFinite(parsedProviderId) && parsedProviderId > 0) {
     return parsedProviderId
@@ -117,66 +93,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       return res.status(401).json({ error: 'Unauthorized' })
     }
 
-    const billingClient = createBillingClient()
-    const licenseClient = createLicenseClient()
-    if (!billingClient || !licenseClient) {
-      return res.status(500).json({ error: 'Missing billing configuration on server' })
-    }
+    const { data: summaryRaw, error: summaryError } = await auth.supabase.rpc(
+      'api_get_personal_subscription_summary',
+    )
 
-    const now = nowIso()
-    const { data: activeEntitlement, error: activeEntitlementError } = await licenseClient
-      .from('entitlements')
-      .select('id')
-      .eq('user_id', auth.user.id)
-      .eq('kind', 'personal')
-      .eq('status', 'active')
-      .lte('valid_from', now)
-      .or(`valid_until.is.null,valid_until.gte.${now}`)
-      .limit(1)
-      .maybeSingle()
-
-    if (activeEntitlementError) {
-      console.error('Failed to validate current personal entitlement before retry:', activeEntitlementError)
+    if (summaryError) {
+      console.error('Failed to validate current personal state before retry:', summaryError)
       return res.status(500).json({ error: 'Could not validate current license state' })
     }
 
-    if (activeEntitlement) {
-      return res.status(409).json({ error: 'A personal license is already active' })
+    const summary = asRecord(summaryRaw as Json)
+    if (summary?.entitlement != null) {
+      const ent = asRecord(summary.entitlement)
+      if (ent?.id) {
+        return res.status(409).json({ error: 'A personal license is already active' })
+      }
     }
 
-    const { data: subscription, error: subscriptionError } = await billingClient
-      .from('subscriptions')
-      .select(
-        `
-          id,
-          status,
-          provider_subscription_id,
-          cancel_at_period_end,
-          canceled_at,
-          metadata,
-          accounts!inner(user_id, organization_id)
-        `,
-      )
-      .eq('accounts.user_id', auth.user.id)
-      .is('accounts.organization_id', null)
-      .eq('provider', 'payrexx')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    const subscription = summary ? asRecord(summary.subscription) : null
+    const subId = subscription?.id ? String(subscription.id) : undefined
+    const metadata = (subscription?.metadata ?? null) as Json | null
 
-    if (subscriptionError) {
-      console.error('Failed to load personal subscription for retry:', subscriptionError)
-      return res.status(500).json({ error: 'Could not load existing subscription state' })
-    }
-
-    if (subscription && subscription.status === 'active' && !subscription.cancel_at_period_end) {
+    if (
+      subscription &&
+      String(subscription.status || '') === 'active' &&
+      subscription.cancel_at_period_end !== true
+    ) {
       const payrexxClient = createPayrexxClientFromEnv()
       if (!payrexxClient) {
         return res.status(500).json({ error: 'Missing Payrexx configuration on server' })
       }
 
-      const gatewayId = extractGatewayId(subscription.provider_subscription_id, subscription.metadata)
-      const managedSubscriptionId = extractSubscriptionId(subscription.metadata)
+      const providerSubId =
+        subscription.provider_subscription_id == null ? '' : String(subscription.provider_subscription_id)
+      let gatewayId = extractGatewayId(providerSubId, metadata)
+      if (!gatewayId && subscription.resolved_checkout_payrexx_gateway_id != null) {
+        const g = Number(subscription.resolved_checkout_payrexx_gateway_id)
+        if (Number.isFinite(g) && g > 0) {
+          gatewayId = g
+        }
+      }
+      const managedSubscriptionId = extractSubscriptionId(metadata)
 
       if (managedSubscriptionId) {
         await payrexxClient.cancelSubscription(managedSubscriptionId)
@@ -188,27 +145,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
       const canceledAt = nowIso()
       const previousMetadata =
-        subscription.metadata &&
-        typeof subscription.metadata === 'object' &&
-        !Array.isArray(subscription.metadata)
-          ? (subscription.metadata as JsonObject)
-          : {}
+        metadata && typeof metadata === 'object' && !Array.isArray(metadata) ? (metadata as JsonObject) : {}
 
-      const { error: updateError } = await billingClient
-        .from('subscriptions')
-        .update({
-          cancel_at_period_end: true,
-          canceled_at: canceledAt,
-          metadata: {
-            ...previousMetadata,
-            canceled_at_period_end_at: canceledAt,
-            canceled_via: 'retry_checkout',
-            cancellation_mode: managedSubscriptionId ? 'subscription_cancel' : 'gateway_cancel',
-            cancellation_gateway_id: gatewayId,
-            cancellation_subscription_id: managedSubscriptionId,
-          },
-        })
-        .eq('id', subscription.id)
+      const merge: JsonObject = {
+        ...previousMetadata,
+        canceled_at_period_end_at: canceledAt,
+        canceled_via: 'retry_checkout',
+        cancellation_mode: managedSubscriptionId ? 'subscription_cancel' : 'gateway_cancel',
+        cancellation_gateway_id: gatewayId,
+        cancellation_subscription_id: managedSubscriptionId,
+      }
+
+      const { error: updateError } = await auth.supabase.rpc('api_mark_personal_subscription_cancel_pending', {
+        p_canceled_at: canceledAt,
+        p_metadata_merge: merge as unknown as Json,
+      })
 
       if (updateError) {
         console.error('Failed to persist old subscription cancellation during retry:', updateError)
@@ -236,25 +187,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       language: userData?.language || req.headers['accept-language']?.split(',')[0]?.split('-')[0] || 'de',
     })
 
-    const { error: insertError } = await billingClient.from('checkout_sessions').insert({
-      user_id: auth.user.id,
-      organization_id: null,
-      plan: 'annual',
-      quantity: 1,
-      amount_cents: amountInfo.amountCents,
-      currency: 'CHF',
-      status: 'pending',
-      reference_id: checkout.sessionId,
-      payrexx_gateway_id: checkout.gatewayId || null,
-      payrexx_gateway_link: checkout.checkoutUrl,
-      metadata: {
+    const { error: insertError } = await auth.supabase.rpc('api_create_personal_checkout_session', {
+      p_amount_cents: amountInfo.amountCents,
+      p_currency: 'CHF',
+      p_reference_id: checkout.sessionId,
+      p_payrexx_gateway_id: checkout.gatewayId || null,
+      p_payrexx_gateway_link: checkout.checkoutUrl,
+      p_billing_cycle: 'annual',
+      p_expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+      p_metadata: {
         source: 'web_retry_personal_checkout_api',
         plan: 'annual',
         user_id: auth.user.id,
         retry: true,
-        previous_subscription_id: subscription?.id || null,
+        previous_subscription_id: subId || null,
       },
-      expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
     })
 
     if (insertError) {

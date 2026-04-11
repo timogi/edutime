@@ -4,6 +4,7 @@ import { useRouter } from 'next/router'
 import { useTranslations } from 'next-intl'
 import { GetStaticPropsContext } from 'next/types'
 import { supabase } from '@/utils/supabase/client'
+import { clearSupabaseAuthStorage } from '@/utils/auth/clearSupabaseAuthStorage'
 
 interface DeleteAccountProps {
   user_id: string
@@ -12,7 +13,7 @@ interface DeleteAccountProps {
 type DeleteAccountApiResponse = {
   message?: string
   error?: string
-  code?: 'SOLE_ADMIN_BLOCKER' | 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED'
+  code?: 'SOLE_ADMIN_BLOCKER' | 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED' | 'ACCOUNT_DELETION_QUEUED'
   blockers?: Array<{ organizationId: number; organizationName: string }>
 }
 
@@ -22,48 +23,6 @@ type PersonalSubscriptionResponse = {
     cancel_at_period_end: boolean
   } | null
   error?: string
-}
-
-const clearSupabaseAuthStorage = () => {
-  if (typeof window === 'undefined') return
-
-  const removeMatchingKeys = (storage: Storage) => {
-    const keysToRemove: string[] = []
-    for (let i = 0; i < storage.length; i += 1) {
-      const key = storage.key(i)
-      if (!key) continue
-      if (key.startsWith('sb-') && key.includes('-auth-token')) {
-        keysToRemove.push(key)
-      }
-    }
-    keysToRemove.forEach((key) => storage.removeItem(key))
-  }
-
-  try {
-    removeMatchingKeys(window.localStorage)
-  } catch (error) {
-    console.error('Failed to clear localStorage auth keys:', error)
-  }
-
-  try {
-    removeMatchingKeys(window.sessionStorage)
-  } catch (error) {
-    console.error('Failed to clear sessionStorage auth keys:', error)
-  }
-
-  try {
-    const cookies = document.cookie ? document.cookie.split(';') : []
-    cookies.forEach((cookie) => {
-      const trimmed = cookie.trim()
-      const equalIndex = trimmed.indexOf('=')
-      const name = equalIndex > 0 ? trimmed.slice(0, equalIndex) : trimmed
-      if (name.startsWith('sb-')) {
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
-      }
-    })
-  } catch (error) {
-    console.error('Failed to clear auth cookies:', error)
-  }
 }
 
 export const DeleteAccount: React.FC<DeleteAccountProps> = ({ user_id }) => {
@@ -220,7 +179,9 @@ export const DeleteAccount: React.FC<DeleteAccountProps> = ({ user_id }) => {
       const defaultLocale = router.defaultLocale ?? 'de'
       const locale = router.locale ?? defaultLocale
       const homeUrl =
-        locale === defaultLocale ? '/?accountDeleted=1' : `/${locale}?accountDeleted=1`
+        locale === defaultLocale
+          ? '/?accountDeletionQueued=1'
+          : `/${locale}?accountDeletionQueued=1`
       window.location.assign(homeUrl)
     } catch (error: unknown) {
       console.error('Deletion error:', error)

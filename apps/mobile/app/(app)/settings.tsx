@@ -29,6 +29,7 @@ import { Database } from "@edutime/shared";
 import { Spacing, LayoutStyles } from "@/constants/Styles";
 import { EmploymentCategory } from "@/lib/types";
 import { ProfileCategoryData } from "@edutime/shared";
+import { showToast } from "@/components/ui/Toast";
 
 const deleteUserAccount = async (userId: string, password: string, email: string): Promise<void> => {
   if (!userId || !password || !email) {
@@ -260,6 +261,11 @@ export default function SettingsScreen() {
 
     try {
       await deleteUserAccount(user.user_id, password, userEmail);
+      showToast({
+        type: "success",
+        title: t("Settings.accountDeletionQueuedTitle"),
+        message: t("Settings.accountDeletionQueuedMessage"),
+      });
       await logout();
     } catch (error) {
       console.error('Error deleting account:', error);

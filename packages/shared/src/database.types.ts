@@ -20,21 +20,21 @@ export type Database = {
           id: string
           kind: string
           organization_id: number | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           kind: string
           organization_id?: number | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           kind?: string
           organization_id?: number | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -420,6 +420,24 @@ export type Database = {
         }
         Returns: string
       }
+      create_personal_checkout_session: {
+        Args: {
+          p_amount_cents: number
+          p_billing_cycle?: string
+          p_currency: string
+          p_expires_at?: string
+          p_metadata?: Json
+          p_payrexx_gateway_id: number
+          p_payrexx_gateway_link: string
+          p_reference_id: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      deactivate_organization_for_nonpayment: {
+        Args: { p_organization_id: number; p_reference_time?: string }
+        Returns: undefined
+      }
       deactivate_organization_revoke_access: {
         Args: { p_actor_user_id: string; p_organization_id: number }
         Returns: undefined
@@ -453,6 +471,14 @@ export type Database = {
           suspend_at: string
         }[]
       }
+      get_personal_subscription_summary: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
+      leave_organization_as_member: {
+        Args: { p_actor_user_id: string; p_organization_id: number }
+        Returns: undefined
+      }
       list_organization_admins: {
         Args: { p_actor_user_id: string; p_organization_id: number }
         Returns: {
@@ -460,6 +486,14 @@ export type Database = {
           email: string
           user_id: string
         }[]
+      }
+      mark_personal_subscription_cancel_pending: {
+        Args: {
+          p_canceled_at: string
+          p_metadata_merge: Json
+          p_user_id: string
+        }
+        Returns: boolean
       }
       migrate_one_legacy_organization: {
         Args: { p_organization_id: number }
@@ -478,10 +512,6 @@ export type Database = {
         }
         Returns: string
       }
-      purge_organizations_past_scheduled_deletion: {
-        Args: { p_reference_time?: string }
-        Returns: Json
-      }
       process_payrexx_payment: {
         Args: {
           p_payrexx_gateway_id?: number
@@ -491,9 +521,17 @@ export type Database = {
         }
         Returns: string
       }
+      purge_organizations_past_scheduled_deletion: {
+        Args: { p_reference_time?: string }
+        Returns: Json
+      }
       reactivate_org_subscription: {
         Args: { p_actor_user_id: string; p_organization_id: number }
         Returns: string
+      }
+      reject_org_invite_membership_fallback: {
+        Args: { p_actor_user_id: string; p_organization_id: number }
+        Returns: undefined
       }
       reject_org_member_invite: {
         Args: { p_actor_user_id: string; p_organization_id: number }
@@ -733,7 +771,7 @@ export type Database = {
           source: Database["license"]["Enums"]["entitlement_source"]
           status: Database["license"]["Enums"]["entitlement_status"]
           updated_at: string
-          user_id: string | null
+          user_id: string
           valid_from: string
           valid_until: string | null
         }
@@ -749,7 +787,7 @@ export type Database = {
           source: Database["license"]["Enums"]["entitlement_source"]
           status?: Database["license"]["Enums"]["entitlement_status"]
           updated_at?: string
-          user_id?: string | null
+          user_id: string
           valid_from?: string
           valid_until?: string | null
         }
@@ -765,7 +803,7 @@ export type Database = {
           source?: Database["license"]["Enums"]["entitlement_source"]
           status?: Database["license"]["Enums"]["entitlement_status"]
           updated_at?: string
-          user_id?: string | null
+          user_id?: string
           valid_from?: string
           valid_until?: string | null
         }
@@ -845,6 +883,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cancel_active_trial_for_user: { Args: never; Returns: string }
       start_demo: {
         Args: never
         Returns: {
@@ -869,6 +908,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      user_has_active_personal_license: {
+        Args: { p_user_id: string }
+        Returns: boolean
       }
     }
     Enums: {
@@ -895,18 +938,24 @@ export type Database = {
           created_at: string
           email: string | null
           id: number
+          processed_at: string | null
+          processing_error: string | null
           user_id: string | null
         }
         Insert: {
           created_at?: string
           email?: string | null
           id?: number
+          processed_at?: string | null
+          processing_error?: string | null
           user_id?: string | null
         }
         Update: {
           created_at?: string
           email?: string | null
           id?: number
+          processed_at?: string | null
+          processing_error?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -1499,6 +1548,158 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      account_deletion_enqueue: { Args: { p_email: string }; Returns: Json }
+      account_deletion_validate: { Args: never; Returns: Json }
+      api_accept_org_member_invite: {
+        Args: { p_organization_id: number }
+        Returns: string
+      }
+      api_add_organization_admin_by_email: {
+        Args: { p_admin_email: string; p_organization_id: number }
+        Returns: string
+      }
+      api_cancel_active_trial_for_user: { Args: never; Returns: string }
+      api_cancel_org_subscription_at_period_end: {
+        Args: { p_organization_id: number }
+        Returns: string
+      }
+      api_create_org_checkout: {
+        Args: {
+          p_amount_cents: number
+          p_currency: string
+          p_due_date?: string
+          p_expires_at?: string
+          p_metadata?: Json
+          p_organization_id: number
+          p_payrexx_gateway_hash?: string
+          p_payrexx_gateway_id?: number
+          p_payrexx_gateway_link?: string
+          p_quantity: number
+          p_reference_id: string
+        }
+        Returns: string
+      }
+      api_create_org_member_invite: {
+        Args: {
+          p_comment?: string
+          p_email: string
+          p_expires_at?: string
+          p_organization_id: number
+          p_role?: string
+        }
+        Returns: Json
+      }
+      api_create_organization_with_admin: {
+        Args: {
+          p_max_organizations_per_user?: number
+          p_name: string
+          p_seats?: number
+        }
+        Returns: number
+      }
+      api_create_personal_checkout_session: {
+        Args: {
+          p_amount_cents: number
+          p_billing_cycle?: string
+          p_currency: string
+          p_expires_at?: string
+          p_metadata?: Json
+          p_payrexx_gateway_id: number
+          p_payrexx_gateway_link: string
+          p_reference_id: string
+        }
+        Returns: string
+      }
+      api_deactivate_organization_revoke_access: {
+        Args: { p_organization_id: number }
+        Returns: undefined
+      }
+      api_get_checkout_completion_state: {
+        Args: { p_reference_id: string }
+        Returns: Json
+      }
+      api_get_org_billing_status: {
+        Args: { p_organization_id: number }
+        Returns: {
+          amount_cents: number
+          checkout_reference_id: string
+          currency: string
+          current_period_end: string
+          current_period_start: string
+          grace_days: number
+          invoice_due_date: string
+          invoice_id: string
+          invoice_paid_at: string
+          invoice_status: string
+          payrexx_gateway_link: string
+          responsible_email: string
+          seat_count: number
+          subscription_id: string
+          subscription_status: Database["billing"]["Enums"]["org_subscription_status"]
+          suspend_at: string
+        }[]
+      }
+      api_get_organization_admin_row: {
+        Args: { p_organization_id: number }
+        Returns: Json
+      }
+      api_get_organization_management_snapshot: {
+        Args: { p_organization_id: number }
+        Returns: Json
+      }
+      api_get_personal_subscription_summary: { Args: never; Returns: Json }
+      api_leave_organization_as_member: {
+        Args: { p_organization_id: number }
+        Returns: undefined
+      }
+      api_list_organization_admins: {
+        Args: { p_organization_id: number }
+        Returns: {
+          created_at: string
+          email: string
+          user_id: string
+        }[]
+      }
+      api_mark_personal_subscription_cancel_pending: {
+        Args: { p_canceled_at: string; p_metadata_merge?: Json }
+        Returns: boolean
+      }
+      api_reactivate_org_subscription: {
+        Args: { p_organization_id: number }
+        Returns: string
+      }
+      api_reject_org_invite_membership_fallback: {
+        Args: { p_organization_id: number }
+        Returns: undefined
+      }
+      api_reject_org_member_invite: {
+        Args: { p_organization_id: number }
+        Returns: string
+      }
+      api_release_org_member_seat: {
+        Args: { p_membership_id: number; p_organization_id: number }
+        Returns: string
+      }
+      api_remove_organization_admin: {
+        Args: { p_organization_id: number; p_remove_user_id: string }
+        Returns: string
+      }
+      api_require_uid: { Args: never; Returns: string }
+      api_update_org_seat_plan: {
+        Args: {
+          p_apply_immediately?: boolean
+          p_metadata?: Json
+          p_next_annual_amount_cents?: number
+          p_organization_id: number
+          p_target_seat_count: number
+        }
+        Returns: string
+      }
+      api_update_organization_name: {
+        Args: { p_name: string; p_organization_id: number }
+        Returns: string
+      }
+      api_user_has_active_personal_license: { Args: never; Returns: boolean }
       check_organization_seats:
         | { Args: { org_id: number }; Returns: boolean }
         | { Args: { organization_id: number }; Returns: boolean }

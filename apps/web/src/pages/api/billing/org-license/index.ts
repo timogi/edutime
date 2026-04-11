@@ -1,5 +1,4 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser } from '@/utils/supabase/api-auth'
 import { paymentProvider } from '@/utils/payments'
 import {
@@ -32,21 +31,6 @@ type OrgBillingStatusResponse = {
   error?: string
 }
 
-function createBillingClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!serviceRoleKey) {
-    return null
-  }
-
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, {
-    db: { schema: 'billing' },
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
-}
-
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<OrgBillingStatusResponse>,
@@ -57,10 +41,7 @@ export default async function handler(
       return res.status(401).json({ error: 'Unauthorized' })
     }
 
-    const billingClient = createBillingClient()
-    if (!billingClient) {
-      return res.status(500).json({ error: 'Missing billing configuration on server' })
-    }
+    const { supabase } = auth
 
     if (req.method === 'GET') {
       const organizationId = Number(req.query.organizationId)
@@ -68,8 +49,7 @@ export default async function handler(
         return res.status(400).json({ error: 'Missing or invalid organizationId' })
       }
 
-      const { data, error } = await billingClient.rpc('get_org_billing_status', {
-        p_actor_user_id: auth.user.id,
+      const { data, error } = await supabase.rpc('api_get_org_billing_status', {
         p_organization_id: organizationId,
       })
 
@@ -153,8 +133,7 @@ export default async function handler(
         })
       }
 
-      const { error: createError } = await billingClient.rpc('create_org_checkout', {
-        p_actor_user_id: auth.user.id,
+      const { error: createError } = await supabase.rpc('api_create_org_checkout', {
         p_organization_id: organizationId,
         p_quantity: quantity,
         p_amount_cents: amountCents,

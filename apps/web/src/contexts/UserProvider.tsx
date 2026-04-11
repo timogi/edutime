@@ -11,6 +11,8 @@ import { getConfigProfile, getProfileCategories } from '@/utils/supabase/config_
 import { ConfigMode, getConfigMode, ConfigProfileData, ProfileCategoryData } from '@edutime/shared'
 import { hasActiveEntitlement } from '@edutime/shared'
 import { UserData, Category, Membership, Organization } from '@/types/globals'
+import { hasPendingAccountDeletion } from '@/utils/auth/accountDeletionPending'
+import { clearSupabaseAuthStorage } from '@/utils/auth/clearSupabaseAuthStorage'
 
 type UserContextType = {
   isLoading: boolean
@@ -104,15 +106,31 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
   }
 
   // Simplified data fetching with proper error handling
-  const fetchUserData = useCallback(async (sessionUser: User) => {
+  const fetchUserData = useCallback(async (sessionUser: User): Promise<boolean> => {
     try {
       // Check if session still exists before fetching data
       const {
         data: { session },
       } = await supabase.auth.getSession()
       if (!session?.user) {
-        // Session no longer exists (e.g., user logged out), don't fetch data
-        return
+        return false
+      }
+
+      if (await hasPendingAccountDeletion(supabase, sessionUser.id)) {
+        try {
+          await supabase.auth.signOut()
+        } catch (signOutError) {
+          console.error('signOut (queued account deletion):', signOutError)
+        }
+        try {
+          await supabase.auth.signOut({ scope: 'local' })
+        } catch (signOutError) {
+          console.error('signOut local (queued account deletion):', signOutError)
+        }
+        clearSupabaseAuthStorage()
+        window.dispatchEvent(new CustomEvent('edutime:pending-account-deletion-signout'))
+        await router.replace({ pathname: '/login', query: { accountDeletionPending: '1' } })
+        return false
       }
 
       if (sessionUser.email) {
@@ -123,7 +141,7 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
       if (!userData) {
         // Don't throw error - user might have logged out or data might not exist yet
         console.warn('No user data available')
-        return
+        return false
       }
 
       setUser(userData)
@@ -200,11 +218,13 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
           setMemberships([])
         }
       }
+
+      return true
     } catch (error) {
       console.error('Error fetching user data:', error)
-      // Don't clear data on error, just log it
+      return false
     }
-  }, [])
+  }, [router])
 
   // Initialize session and set up auth listener
   useEffect(() => {
@@ -223,6 +243,7 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
 
         if (session?.user && mounted) {
           await fetchUserData(session.user)
+          // fetchUserData returns false if user was signed out (e.g. queued account deletion)
         }
 
         if (mounted) {
@@ -259,10 +280,38 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
           setIsLoading(true)
         }
 
-        // Skip fetching data for token refresh events to avoid unnecessary loading states
-        // Token refresh doesn't change user data, so we don't need to refetch
+        // Token refresh: only re-check queued account deletion (cheap); skip full user refetch.
         if (event === 'TOKEN_REFRESHED') {
-          // Don't set currentSession for token refresh to avoid triggering fetchUserData
+          window.setTimeout(() => {
+            void (async () => {
+              try {
+                const {
+                  data: { session: refreshed },
+                } = await supabase.auth.getSession()
+                if (!refreshed?.user || !mounted) return
+                if (await hasPendingAccountDeletion(supabase, refreshed.user.id)) {
+                  try {
+                    await supabase.auth.signOut()
+                  } catch (signOutError) {
+                    console.error('signOut after TOKEN_REFRESHED + pending deletion:', signOutError)
+                  }
+                  try {
+                    await supabase.auth.signOut({ scope: 'local' })
+                  } catch (signOutError) {
+                    console.error('signOut local after TOKEN_REFRESHED + pending deletion:', signOutError)
+                  }
+                  clearSupabaseAuthStorage()
+                  window.dispatchEvent(new CustomEvent('edutime:pending-account-deletion-signout'))
+                  if (mounted) {
+                    await router.replace({ pathname: '/login', query: { accountDeletionPending: '1' } })
+                    setIsLoading(false)
+                  }
+                }
+              } catch (e) {
+                console.error('TOKEN_REFRESHED pending-deletion check:', e)
+              }
+            })()
+          }, 0)
           return
         }
 
@@ -338,9 +387,18 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
 
     const handleSessionChange = async () => {
       try {
-        await fetchUserData(currentSession.user)
+        const loaded = await fetchUserData(currentSession.user)
 
-        if (mounted && currentSession.event === 'SIGNED_IN') {
+        if (!mounted) return
+
+        if (!loaded) {
+          if (currentSession.event === 'SIGNED_IN') {
+            setIsLoading(false)
+          }
+          return
+        }
+
+        if (currentSession.event === 'SIGNED_IN') {
           setIsLoading(false)
           // Redirect to app if on login page
           if (router.pathname === '/login' || router.pathname === '/register') {

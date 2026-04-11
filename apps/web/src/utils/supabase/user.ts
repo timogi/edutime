@@ -109,37 +109,6 @@ export const getUserEmail = async () => {
   return user?.email || ''
 }
 
-export async function deleteAccount(password: string, user_id: string) {
-  try {
-    const email = await getUserEmail()
-
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-
-    if (signInError) {
-      console.error('Sign in error', signInError)
-      throw new Error('Invalid password')
-    }
-
-    const { error: deleteError } = await supabase.from('account_deletion').insert({
-      user_id,
-      email,
-    })
-
-    if (deleteError) {
-      console.error('Delete error', deleteError)
-      throw new Error('Account may already be scheduled for deletion.')
-    }
-
-    return { message: 'Account deleted successfully' }
-  } catch (error) {
-    console.error('Error in deleteAccount', error)
-    throw error // Rethrow to handle it in the calling context
-  }
-}
-
 export const createUserCategory = async (
   userId: string,
   category: EmploymentCategory,

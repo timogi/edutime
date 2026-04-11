@@ -1,11 +1,37 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { createClient } from '@supabase/supabase-js'
-import { Database } from '@edutime/shared'
+import { Json } from '@edutime/shared'
 import { getAuthenticatedUser } from '@/utils/supabase/api-auth'
 
-type BillingSubscriptionRow = Database['billing']['Tables']['subscriptions']['Row']
-type BillingInvoiceRow = Database['billing']['Tables']['invoices']['Row']
-type LicenseEntitlementRow = Database['license']['Tables']['entitlements']['Row']
+type BillingSubscriptionRow = {
+  id: string
+  provider: string
+  provider_subscription_id: string | null
+  status: string
+  current_period_start: string | null
+  current_period_end: string | null
+  cancel_at_period_end: boolean | null
+  canceled_at: string | null
+  currency: string | null
+  amount_cents: number | null
+  created_at: string
+}
+
+type BillingInvoiceRow = {
+  id: string
+  amount_cents: number
+  currency: string
+  status: string
+  provider_invoice_id: string | null
+  paid_at: string | null
+  created_at: string
+}
+
+type LicenseEntitlementRow = {
+  id: string
+  status: string
+  valid_from: string
+  valid_until: string | null
+}
 
 type PersonalSubscriptionResponse = {
   subscription: Pick<
@@ -32,36 +58,11 @@ type PersonalSubscriptionResponse = {
   error?: string
 }
 
-const nowIso = () => new Date().toISOString()
-
-function createBillingClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!serviceRoleKey) {
-    return null
+function asRecord(v: unknown): Record<string, unknown> | null {
+  if (v != null && typeof v === 'object' && !Array.isArray(v)) {
+    return v as Record<string, unknown>
   }
-
-  return createClient<Database, 'billing'>(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, {
-    db: { schema: 'billing' },
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
-}
-
-function createLicenseClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!serviceRoleKey) {
-    return null
-  }
-
-  return createClient<Database, 'license'>(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, {
-    db: { schema: 'license' },
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
+  return null
 }
 
 export default async function handler(
@@ -78,107 +79,75 @@ export default async function handler(
       return res.status(401).json({ subscription: null, invoices: [], entitlement: null, error: 'Unauthorized' })
     }
 
-    const billingClient = createBillingClient()
-    const licenseClient = createLicenseClient()
-    if (!billingClient || !licenseClient) {
-      return res
-        .status(500)
-        .json({ subscription: null, invoices: [], entitlement: null, error: 'Missing billing configuration on server' })
-    }
+    const { data: summaryRaw, error } = await auth.supabase.rpc('api_get_personal_subscription_summary')
 
-    const { data: subscriptionRow, error: subscriptionError } = await billingClient
-      .from('subscriptions')
-      .select(
-        `
-          id,
-          provider,
-          provider_subscription_id,
-          status,
-          current_period_start,
-          current_period_end,
-          cancel_at_period_end,
-          canceled_at,
-          currency,
-          amount_cents,
-          created_at,
-          accounts!inner(user_id, organization_id)
-        `,
-      )
-      .eq('accounts.user_id', auth.user.id)
-      .is('accounts.organization_id', null)
-      .eq('provider', 'payrexx')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (subscriptionError) {
-      console.error('Failed to read personal subscription:', subscriptionError)
+    if (error) {
+      console.error('Failed to read personal subscription summary:', error)
       return res
         .status(500)
         .json({ subscription: null, invoices: [], entitlement: null, error: 'Could not read subscription' })
     }
 
-    const subscription = subscriptionRow
+    const summary = asRecord(summaryRaw as Json)
+    if (!summary) {
+      return res.status(200).json({ subscription: null, invoices: [], entitlement: null })
+    }
+
+    const subObj = asRecord(summary.subscription)
+    const subscription = subObj
       ? {
-          id: subscriptionRow.id,
-          provider: subscriptionRow.provider,
-          provider_subscription_id: subscriptionRow.provider_subscription_id,
-          status: subscriptionRow.status,
-          current_period_start: subscriptionRow.current_period_start,
-          current_period_end: subscriptionRow.current_period_end,
-          cancel_at_period_end: subscriptionRow.cancel_at_period_end,
-          canceled_at: subscriptionRow.canceled_at,
-          currency: subscriptionRow.currency,
-          amount_cents: subscriptionRow.amount_cents,
-          created_at: subscriptionRow.created_at,
+          id: String(subObj.id ?? ''),
+          provider: String(subObj.provider ?? ''),
+          provider_subscription_id:
+            subObj.provider_subscription_id == null ? null : String(subObj.provider_subscription_id),
+          status: String(subObj.status ?? ''),
+          current_period_start:
+            subObj.current_period_start == null ? null : String(subObj.current_period_start),
+          current_period_end:
+            subObj.current_period_end == null ? null : String(subObj.current_period_end),
+          cancel_at_period_end: Boolean(subObj.cancel_at_period_end),
+          canceled_at: subObj.canceled_at == null ? null : String(subObj.canceled_at),
+          currency: subObj.currency == null ? null : String(subObj.currency),
+          amount_cents: subObj.amount_cents == null ? null : Number(subObj.amount_cents),
+          created_at: String(subObj.created_at ?? ''),
         }
       : null
 
-    let invoices: PersonalSubscriptionResponse['invoices'] = []
-    if (subscription?.id) {
-      const { data: invoiceRows, error: invoicesError } = await billingClient
-        .from('invoices')
-        .select('id, amount_cents, currency, status, provider_invoice_id, paid_at, created_at')
-        .eq('subscription_id', subscription.id)
-        .order('created_at', { ascending: false })
-        .limit(20)
+    const invoicesRaw = summary.invoices
+    const invoices: PersonalSubscriptionResponse['invoices'] = Array.isArray(invoicesRaw)
+      ? invoicesRaw.map((row) => {
+          const inv = asRecord(row) || {}
+          return {
+            id: String(inv.id ?? ''),
+            amount_cents: Number(inv.amount_cents ?? 0),
+            currency: String(inv.currency ?? ''),
+            status: String(inv.status ?? ''),
+            provider_invoice_id: inv.provider_invoice_id == null ? null : String(inv.provider_invoice_id),
+            paid_at: inv.paid_at == null ? null : String(inv.paid_at),
+            created_at: String(inv.created_at ?? ''),
+          }
+        })
+      : []
 
-      if (invoicesError) {
-        console.error('Failed to read personal subscription invoices:', invoicesError)
-        return res
-          .status(500)
-          .json({ subscription: null, invoices: [], entitlement: null, error: 'Could not read invoice history' })
-      }
-
-      invoices = invoiceRows || []
-    }
-
-    const { data: entitlementRow, error: entitlementError } = await licenseClient
-      .from('entitlements')
-      .select('id, status, valid_from, valid_until')
-      .eq('user_id', auth.user.id)
-      .eq('kind', 'personal')
-      .eq('status', 'active')
-      .lte('valid_from', nowIso())
-      .or(`valid_until.is.null,valid_until.gte.${nowIso()}`)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (entitlementError) {
-      console.error('Failed to read personal entitlement:', entitlementError)
-      return res
-        .status(500)
-        .json({ subscription: null, invoices: [], entitlement: null, error: 'Could not read entitlement' })
-    }
+    const entObj = asRecord(summary.entitlement)
+    const entitlement = entObj
+      ? {
+          id: String(entObj.id ?? ''),
+          status: String(entObj.status ?? ''),
+          valid_from: String(entObj.valid_from ?? ''),
+          valid_until: entObj.valid_until == null ? null : String(entObj.valid_until),
+        }
+      : null
 
     return res.status(200).json({
       subscription,
       invoices,
-      entitlement: entitlementRow || null,
+      entitlement,
     })
   } catch (error) {
     console.error('Failed to fetch personal subscription management data:', error)
-    return res.status(500).json({ subscription: null, invoices: [], entitlement: null, error: 'Internal server error' })
+    return res
+      .status(500)
+      .json({ subscription: null, invoices: [], entitlement: null, error: 'Internal server error' })
   }
 }

@@ -102,7 +102,7 @@ export default function RegistrationForm() {
         ? buildEmailRedirectTo(origin, intent, qty)
         : `${origin}/auth/callback`
 
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -114,6 +114,21 @@ export default function RegistrationForm() {
       })
 
       if (error) throw error
+
+      // GoTrue often returns no error when the email is already registered (enumeration protection).
+      // A real email/password signup has a user row with at least one identity (provider `email`).
+      const identities = data.user?.identities
+      const looksLikeNewEmailUser =
+        data.user != null && Array.isArray(identities) && identities.length > 0
+
+      if (!looksLikeNewEmailUser) {
+        try {
+          await supabase.auth.signOut()
+        } catch {
+          /* ignore */
+        }
+        throw new Error('User already registered')
+      }
 
       setEmailSent(true)
     } catch (error: any) {

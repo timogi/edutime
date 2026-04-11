@@ -16,6 +16,8 @@ import { useRouter } from 'next/router'
 import { useTranslations } from 'next-intl'
 import { useEffect } from 'react'
 
+const ACCOUNT_DELETION_QUEUED_TOAST_KEY = 'edutime_account_deletion_queued_toast_shown'
+/** @deprecated Old redirect param; same toast as queued deletion */
 const ACCOUNT_DELETED_TOAST_KEY = 'edutime_account_deleted_toast_shown'
 
 export default function Home() {
@@ -23,31 +25,45 @@ export default function Home() {
   const t = useTranslations('Index')
 
   useEffect(() => {
-    if (!router.isReady || router.query.accountDeleted !== '1') return
+    if (!router.isReady) return
 
-    const stripAccountDeletedQuery = () => {
+    const queued = router.query.accountDeletionQueued === '1'
+    const legacyDeleted = router.query.accountDeleted === '1'
+    if (!queued && !legacyDeleted) return
+
+    const storageKey = queued ? ACCOUNT_DELETION_QUEUED_TOAST_KEY : ACCOUNT_DELETED_TOAST_KEY
+
+    const stripDeletionQueryParams = () => {
       if (typeof window === 'undefined') return
       const url = new URL(window.location.href)
-      if (!url.searchParams.has('accountDeleted')) return
-      url.searchParams.delete('accountDeleted')
+      let changed = false
+      if (url.searchParams.has('accountDeletionQueued')) {
+        url.searchParams.delete('accountDeletionQueued')
+        changed = true
+      }
+      if (url.searchParams.has('accountDeleted')) {
+        url.searchParams.delete('accountDeleted')
+        changed = true
+      }
+      if (!changed) return
       const next = url.pathname + (url.search || '')
       window.history.replaceState(null, '', next || url.pathname)
     }
 
-    if (sessionStorage.getItem(ACCOUNT_DELETED_TOAST_KEY) === '1') {
-      stripAccountDeletedQuery()
+    if (sessionStorage.getItem(storageKey) === '1') {
+      stripDeletionQueryParams()
       return
     }
-    sessionStorage.setItem(ACCOUNT_DELETED_TOAST_KEY, '1')
+    sessionStorage.setItem(storageKey, '1')
 
     showNotification({
-      title: t('account_deleted'),
-      message: t('account_deleted_message'),
-      color: 'green',
+      title: t('account_deletion_queued_title'),
+      message: t('account_deletion_queued_message'),
+      color: 'blue',
     })
 
-    stripAccountDeletedQuery()
-  }, [router.isReady, router.query.accountDeleted, t])
+    stripDeletionQueryParams()
+  }, [router.isReady, router.query.accountDeletionQueued, router.query.accountDeleted, t])
 
   return (
     <AppShell header={{ height: 60 }} padding={0}>

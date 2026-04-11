@@ -53,13 +53,15 @@ supabase functions deploy payrexx-webhook
 
 ## 4) Secrets setzen
 
-### Webapp (Deployment Environment)
+### Webapp (Deployment Environment, z. B. Vercel)
 
 - `PAYREXX_INSTANCE`
 - `PAYREXX_API_SECRET`
 - `PAYREXX_API_VERSION` (empfohlen: `1.14`)
 - `NEXT_PUBLIC_APP_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` (wie bisher)
+
+Die Next.js API nutzt **keinen** Service-Role-Key mehr; Billing/License laeuft ueber `public.api_*` RPCs mit User-JWT.
 
 ### Supabase Edge Functions
 
@@ -67,7 +69,8 @@ supabase functions deploy payrexx-webhook
 - `PAYREXX_API_SECRET`
 - `PAYREXX_API_VERSION` (empfohlen: `1.14`)
 - `PAYREXX_WEBHOOK_SECRET`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (nur fuer Functions, z. B. Webhook, Billing-Jobs, `account-deletion-worker`)
+- Optional: `ACCOUNT_DELETION_JOB_SECRET` fuer den geplanten Aufruf von `account-deletion-worker`
 
 Beispiel:
 

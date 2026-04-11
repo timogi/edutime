@@ -1,31 +1,25 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { createServerClient } from '@supabase/ssr'
-import { createClient } from '@supabase/supabase-js'
 import { Json } from '@edutime/shared'
 import { createPayrexxClientFromEnv } from '@/utils/payments/payrexxClient'
+import { getAuthenticatedUser } from '@/utils/supabase/api-auth'
 
 type ResponseData = {
   message?: string
   error?: string
-  code?: 'SOLE_ADMIN_BLOCKER' | 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED'
+  code?:
+    | 'SOLE_ADMIN_BLOCKER'
+    | 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED'
+    | 'ACCOUNT_DELETION_QUEUED'
   blockers?: Array<{ organizationId: number; organizationName: string }>
 }
 
 type JsonObject = Record<string, Json>
 
-function createBillingClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!serviceRoleKey) {
-    return null
+function asRecord(v: unknown): Record<string, unknown> | null {
+  if (v != null && typeof v === 'object' && !Array.isArray(v)) {
+    return v as Record<string, unknown>
   }
-
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, {
-    db: { schema: 'billing' },
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
+  return null
 }
 
 function extractGatewayId(providerSubscriptionId: string, metadata: Json | null): number | null {
@@ -88,407 +82,197 @@ function extractSubscriptionId(metadata: Json | null): number | null {
   return null
 }
 
-/**
- * API Route to delete the authenticated user's account
- *
- * Security:
- * - Only the authenticated user can delete their own account
- * - Supports both Bearer token (for mobile apps) and cookies (for web)
- * - Uses Service Role Key (server-side only) to delete the user
- *
- * Usage:
- * - Web: Uses cookies automatically (POST to /api/users/delete)
- * - Mobile: Send Authorization header with Bearer token
- *   POST /api/users/delete
- *   Headers: { Authorization: "Bearer <access_token>" }
- */
+function mapValidationToResponse(val: Record<string, unknown>, _checkOnly: boolean): ResponseData {
+  void _checkOnly
+  const ok = val.ok === true
+  if (ok) {
+    return { message: _checkOnly ? undefined : 'ok' }
+  }
+
+  const code = val.code === 'SOLE_ADMIN_BLOCKER' ? 'SOLE_ADMIN_BLOCKER' : val.code === 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED' ? 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED' : undefined
+
+  const blockersRaw = val.blockers
+  const blockers: Array<{ organizationId: number; organizationName: string }> = []
+  if (Array.isArray(blockersRaw)) {
+    for (const b of blockersRaw) {
+      const row = asRecord(b) || {}
+      blockers.push({
+        organizationId: Number(row.organizationId ?? row.organization_id ?? 0),
+        organizationName: String(row.organizationName ?? row.organization_name ?? ''),
+      })
+    }
+  }
+
+  if (code === 'SOLE_ADMIN_BLOCKER') {
+    return {
+      code: 'SOLE_ADMIN_BLOCKER',
+      error:
+        'Account deletion blocked: you are the only admin in active organizations. Assign another admin or deactivate those organizations first.',
+      blockers,
+    }
+  }
+
+  if (code === 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED') {
+    return {
+      code: 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED',
+      error:
+        'Your personal subscription will be canceled automatically if you continue with account deletion.',
+    }
+  }
+
+  return { error: 'Account deletion validation failed' }
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
-  // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
   try {
-    let authenticatedUserId: string | null = null
-
-    // Check for Bearer token in Authorization header (for mobile apps)
-    const authHeader = req.headers.authorization
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7)
-
-      // Create a Supabase client for token-based auth
-      const supabaseClient = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          global: {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        },
-      )
-
-      const {
-        data: { user: tokenUser },
-        error: userError,
-      } = await supabaseClient.auth.getUser()
-
-      if (userError || !tokenUser) {
-        return res.status(401).json({ error: 'Invalid or expired token' })
-      }
-
-      authenticatedUserId = tokenUser.id
-    } else {
-      // Fallback to cookie-based authentication (for web)
-      // Parse cookies from request - combine both req.cookies and Cookie header
-      const cookiesMap = new Map<string, string>()
-
-      // First, add cookies from req.cookies (parsed by Next.js)
-      if (req.cookies) {
-        Object.entries(req.cookies).forEach(([name, value]) => {
-          if (value) {
-            cookiesMap.set(name, value)
-          }
-        })
-      }
-
-      // Also parse Cookie header directly and merge (header takes precedence for duplicates)
-      if (req.headers.cookie) {
-        req.headers.cookie.split(';').forEach((cookie) => {
-          const trimmed = cookie.trim()
-          const equalIndex = trimmed.indexOf('=')
-          if (equalIndex > 0) {
-            const name = trimmed.substring(0, equalIndex).trim()
-            const value = trimmed.substring(equalIndex + 1).trim()
-            if (name && value) {
-              cookiesMap.set(name, value)
-            }
-          }
-        })
-      }
-
-      const cookies = Array.from(cookiesMap.entries()).map(([name, value]) => ({
-        name,
-        value,
-      }))
-
-      console.log(
-        'Received cookies:',
-        cookies.length > 0 ? cookies.map((c) => c.name) : 'No cookies found',
-      )
-      console.log('Cookie header:', req.headers.cookie || 'No cookie header')
-      console.log('req.cookies:', req.cookies ? Object.keys(req.cookies) : 'No req.cookies')
-
-      const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            getAll() {
-              return cookies
-            },
-            setAll() {
-              // Not needed for reading authentication
-            },
-          },
-        },
-      )
-
-      const {
-        data: { user: cookieUser },
-        error: userError,
-      } = await supabase.auth.getUser()
-
-      if (userError) {
-        console.error('Error getting user from cookies:', userError)
-        return res.status(401).json({ error: 'Unauthorized' })
-      }
-
-      if (!cookieUser) {
-        console.error('No user found in cookies')
-        return res.status(401).json({ error: 'Unauthorized' })
-      }
-
-      authenticatedUserId = cookieUser.id
-    }
-
-    if (!authenticatedUserId) {
+    const auth = await getAuthenticatedUser(req)
+    if (!auth) {
       return res.status(401).json({ error: 'Unauthorized' })
     }
 
-    // Optional: Check if user_id is provided in body and verify it matches
-    // This adds an extra layer of security
+    const authenticatedUserId = auth.user.id
     const { user_id, checkOnly } = req.body || {}
     if (user_id && user_id !== authenticatedUserId) {
       return res.status(403).json({ error: 'You can only delete your own account' })
     }
 
-    // Use Service Role Key to delete the user directly
-    // This key should NEVER be exposed to the client - only used server-side
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    if (!serviceRoleKey) {
-      console.error('SUPABASE_SERVICE_ROLE_KEY is not set')
-      return res.status(500).json({ error: 'Server configuration error' })
+    const { supabase } = auth
+
+    const { data: valRaw, error: valError } = await supabase.rpc('account_deletion_validate')
+    if (valError) {
+      console.error('account_deletion_validate failed:', valError)
+      return res.status(500).json({ error: 'Failed to validate account deletion' })
     }
 
-    const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    })
-    const billingClient = createBillingClient()
-    if (!billingClient) {
-      return res.status(500).json({ error: 'Missing billing configuration on server' })
-    }
+    const val = asRecord(valRaw as Json) || {}
 
-    // Block deletion if user is sole admin of any active organization.
-    const { data: adminOrganizations, error: adminOrganizationsError } = await supabaseAdmin
-      .from('organization_administrators')
-      .select('organization_id, organizations!inner(id, name, is_active)')
-      .eq('user_id', authenticatedUserId)
-      .eq('organizations.is_active', true)
-
-    if (adminOrganizationsError) {
-      console.error('Error loading admin organizations for delete guard:', adminOrganizationsError)
-      return res.status(500).json({ error: 'Failed to validate organization admin constraints' })
-    }
-
-    const blockers: Array<{ organizationId: number; organizationName: string }> = []
-    for (const row of adminOrganizations || []) {
-      const organizationId = Number(row.organization_id)
-      if (!Number.isInteger(organizationId) || organizationId <= 0) {
-        continue
+    if (checkOnly === true) {
+      const body = mapValidationToResponse(val, true)
+      if (val.ok === true) {
+        return res.status(200).json(body)
       }
-
-      const { count: adminCount, error: adminCountError } = await supabaseAdmin
-        .from('organization_administrators')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', organizationId)
-
-      if (adminCountError) {
-        console.error('Error counting organization admins for delete guard:', adminCountError)
-        return res.status(500).json({ error: 'Failed to validate organization admin constraints' })
+      if (val.code === 'SOLE_ADMIN_BLOCKER') {
+        return res.status(200).json(body)
       }
-
-      if ((adminCount || 0) <= 1) {
-        const orgName =
-          row.organizations && typeof row.organizations === 'object' && 'name' in row.organizations
-            ? String((row.organizations as { name?: string }).name || `#${organizationId}`)
-            : `#${organizationId}`
-        blockers.push({
-          organizationId,
-          organizationName: orgName,
-        })
+      if (val.code === 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED') {
+        return res.status(200).json(body)
       }
+      return res.status(400).json(body)
     }
 
-    if (blockers.length > 0) {
-      if (checkOnly === true) {
-        return res.status(200).json({
-          code: 'SOLE_ADMIN_BLOCKER',
-          error:
-            'Account deletion blocked: you are the only admin in active organizations. Assign another admin or deactivate those organizations first.',
-          blockers,
-        })
+    if (val.ok !== true) {
+      const body = mapValidationToResponse(val, false)
+      if (val.code === 'SOLE_ADMIN_BLOCKER') {
+        return res.status(409).json(body)
       }
-      return res.status(409).json({
-        code: 'SOLE_ADMIN_BLOCKER',
-        error:
-          'Account deletion blocked: you are the only admin in active organizations. Assign another admin or deactivate those organizations first.',
-        blockers,
-      })
-    }
+      if (val.code === 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED') {
+        // Attempt Payrexx cancel + persist, then re-validate
+        const { data: summaryRaw } = await supabase.rpc('api_get_personal_subscription_summary')
+        const summary = asRecord(summaryRaw as Json)
+        const sub = summary ? asRecord(summary.subscription) : null
 
-    // Ensure personal auto-renew is disabled before account deletion to avoid future billing.
-    const { data: activePersonalSubscription, error: personalSubscriptionError } = await billingClient
-      .from('subscriptions')
-      .select(
-        `
-          id,
-          provider_subscription_id,
-          cancel_at_period_end,
-          metadata,
-          accounts!inner(user_id, organization_id)
-        `,
-      )
-      .eq('accounts.user_id', authenticatedUserId)
-      .is('accounts.organization_id', null)
-      .eq('provider', 'payrexx')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+        if (sub && String(sub.status || '') === 'active' && sub.cancel_at_period_end !== true) {
+          const metadata = (sub.metadata ?? null) as Json | null
+          const providerSubId = sub.provider_subscription_id == null ? '' : String(sub.provider_subscription_id)
+          let gatewayId = extractGatewayId(providerSubId, metadata)
+          if (!gatewayId && sub.resolved_checkout_payrexx_gateway_id != null) {
+            const g = Number(sub.resolved_checkout_payrexx_gateway_id)
+            if (Number.isFinite(g) && g > 0) gatewayId = g
+          }
 
-    if (personalSubscriptionError) {
-      console.error('Error loading personal subscription for delete guard:', personalSubscriptionError)
-      return res.status(500).json({ error: 'Failed to validate personal subscription status' })
-    }
+          if (!gatewayId) {
+            return res.status(409).json({
+              code: 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED',
+              error:
+                'Your personal subscription must be canceled before deletion, but no Payrexx gateway could be resolved. Please cancel it from license management first.',
+            })
+          }
 
-    if (activePersonalSubscription && !activePersonalSubscription.cancel_at_period_end) {
-      if (checkOnly === true) {
-        return res.status(200).json({
-          code: 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED',
-          error:
-            'Your personal subscription will be canceled automatically if you continue with account deletion.',
-        })
-      }
-      let gatewayId = extractGatewayId(
-        String(activePersonalSubscription.provider_subscription_id || ''),
-        activePersonalSubscription.metadata,
-      )
+          const payrexxClient = createPayrexxClientFromEnv()
+          if (!payrexxClient) {
+            return res.status(409).json({
+              code: 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED',
+              error:
+                'Your personal subscription must be canceled before deletion. Please cancel it from license management first.',
+            })
+          }
 
-      if (!gatewayId) {
-        const { data: sessionRow, error: checkoutSessionError } = await billingClient
-          .from('checkout_sessions')
-          .select('payrexx_gateway_id')
-          .eq('subscription_id', activePersonalSubscription.id)
-          .not('payrexx_gateway_id', 'is', null)
-          .order('updated_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
+          const subscriptionId = extractSubscriptionId(metadata)
+          try {
+            if (subscriptionId) {
+              await payrexxClient.cancelSubscription(subscriptionId)
+            } else {
+              await payrexxClient.deleteGateway(gatewayId)
+            }
+          } catch (payrexxError) {
+            console.error('Failed to cancel personal Payrexx subscription during account deletion:', payrexxError)
+            return res.status(409).json({
+              code: 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED',
+              error:
+                'Your personal subscription must be canceled before deletion. Please cancel it from license management first.',
+            })
+          }
 
-        if (checkoutSessionError) {
-          console.error('Failed to resolve Payrexx gateway id for deletion cancellation:', checkoutSessionError)
-          return res.status(409).json({
-            code: 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED',
-            error:
-              'Your personal subscription must be canceled before deletion, but no Payrexx gateway could be resolved. Please cancel it from license management first.',
+          const canceledAt = new Date().toISOString()
+          const previousMetadata =
+            metadata && typeof metadata === 'object' && !Array.isArray(metadata) ? (metadata as JsonObject) : {}
+
+          const { error: persistErr } = await supabase.rpc('api_mark_personal_subscription_cancel_pending', {
+            p_canceled_at: canceledAt,
+            p_metadata_merge: {
+              ...previousMetadata,
+              canceled_at_period_end_at: canceledAt,
+              canceled_via: 'account_deletion',
+              cancellation_gateway_id: gatewayId,
+              cancellation_subscription_id: subscriptionId,
+            } as unknown as Json,
           })
+
+          if (persistErr) {
+            console.error('Failed to persist personal cancellation during account deletion:', persistErr)
+            return res.status(409).json({
+              code: 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED',
+              error:
+                'Your personal subscription must be canceled before deletion. Please cancel it from license management first.',
+            })
+          }
         }
-        gatewayId = sessionRow?.payrexx_gateway_id ?? null
-      }
 
-      if (!gatewayId) {
-        return res.status(409).json({
-          code: 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED',
-          error:
-            'Your personal subscription must be canceled before deletion. Please cancel it from license management first.',
-        })
-      }
-
-      const payrexxClient = createPayrexxClientFromEnv()
-      if (!payrexxClient) {
-        return res.status(409).json({
-          code: 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED',
-          error:
-            'Your personal subscription must be canceled before deletion. Please cancel it from license management first.',
-        })
-      }
-
-      const subscriptionId = extractSubscriptionId(activePersonalSubscription.metadata)
-      try {
-        if (subscriptionId) {
-          await payrexxClient.cancelSubscription(subscriptionId)
-        } else {
-          await payrexxClient.deleteGateway(gatewayId)
+        const { data: val2Raw } = await supabase.rpc('account_deletion_validate')
+        const val2 = asRecord(val2Raw as Json) || {}
+        if (val2.ok !== true) {
+          const body2 = mapValidationToResponse(val2, false)
+          if (val2.code === 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED') {
+            return res.status(409).json(body2)
+          }
+          return res.status(409).json(body2)
         }
-      } catch (payrexxError) {
-        console.error('Failed to cancel personal Payrexx subscription during account deletion:', payrexxError)
-        return res.status(409).json({
-          code: 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED',
-          error:
-            'Your personal subscription must be canceled before deletion. Please cancel it from license management first.',
-        })
-      }
-
-      const canceledAt = new Date().toISOString()
-      const previousMetadata =
-        activePersonalSubscription.metadata &&
-        typeof activePersonalSubscription.metadata === 'object' &&
-        !Array.isArray(activePersonalSubscription.metadata)
-          ? (activePersonalSubscription.metadata as JsonObject)
-          : {}
-
-      const { error: persistCancelError } = await billingClient
-        .from('subscriptions')
-        .update({
-          cancel_at_period_end: true,
-          canceled_at: canceledAt,
-          metadata: {
-            ...previousMetadata,
-            canceled_at_period_end_at: canceledAt,
-            canceled_via: 'account_deletion',
-            cancellation_gateway_id: gatewayId,
-            cancellation_subscription_id: subscriptionId,
-          },
-        })
-        .eq('id', activePersonalSubscription.id)
-
-      if (persistCancelError) {
-        console.error('Failed to persist personal cancellation during account deletion:', persistCancelError)
-        return res.status(409).json({
-          code: 'PERSONAL_SUBSCRIPTION_CANCEL_REQUIRED',
-          error:
-            'Your personal subscription must be canceled before deletion. Please cancel it from license management first.',
-        })
+      } else {
+        return res.status(409).json(body)
       }
     }
 
-    // Get user email before deletion
-    const { data: userData, error: userError } =
-      await supabaseAdmin.auth.admin.getUserById(authenticatedUserId)
+    const email = auth.user.email || ''
+    const { data: enqRaw, error: enqError } = await supabase.rpc('account_deletion_enqueue', {
+      p_email: email,
+    })
 
-    if (userError) {
-      console.error('Error getting user:', userError)
-      return res.status(500).json({ error: 'Failed to get user information' })
+    if (enqError) {
+      console.error('account_deletion_enqueue failed:', enqError)
+      return res.status(500).json({ error: 'Failed to queue account deletion' })
     }
 
-    const userEmail = userData?.user?.email
-
-    // If user has an email, reset all active memberships to 'invited' status
-    if (userEmail) {
-      const normalizedEmail = userEmail.toLowerCase()
-
-      // Find all active memberships for this user
-      const { data: activeMemberships, error: membershipsError } = await supabaseAdmin
-        .from('organization_members')
-        .select('organization_id')
-        .ilike('user_email', normalizedEmail)
-        .eq('status', 'active')
-
-      if (membershipsError) {
-        console.error('Error fetching memberships:', membershipsError)
-        // Continue with deletion even if we can't update memberships
-      } else if (activeMemberships && activeMemberships.length > 0) {
-        // Update all active memberships to 'invited' status
-        const { error: updateError } = await supabaseAdmin
-          .from('organization_members')
-          .update({ status: 'invited' })
-          .ilike('user_email', normalizedEmail)
-          .eq('status', 'active')
-
-        if (updateError) {
-          console.error('Error updating memberships:', updateError)
-          // Continue with deletion even if we can't update memberships
-        }
-      }
+    const enq = asRecord(enqRaw as Json) || {}
+    if (enq.ok !== true) {
+      const body = mapValidationToResponse(enq, false)
+      return res.status(409).json(body)
     }
 
-    // Delete entitlements before user deletion (FK constraint on user_id)
-    const { error: entitlementsError } = await supabaseAdmin
-      .schema('license')
-      .from('entitlements')
-      .delete()
-      .eq('user_id', authenticatedUserId)
-
-    if (entitlementsError) {
-      console.error('Error deleting entitlements:', entitlementsError)
-      return res.status(500).json({ error: 'Failed to delete entitlements' })
-    }
-
-    // TODO: Clean up billing data (accounts, subscriptions, invoices) before deletion
-
-    // Delete the user using admin API
-    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(authenticatedUserId)
-
-    if (deleteError) {
-      console.error('Error deleting user:', deleteError)
-      return res.status(500).json({ error: 'Failed to delete account' })
-    }
-
-    return res.status(200).json({ message: 'Account deleted successfully' })
+    return res.status(200).json({ code: 'ACCOUNT_DELETION_QUEUED' as const })
   } catch (error) {
     console.error('Error in delete account API:', error)
     return res.status(500).json({ error: 'Internal server error' })

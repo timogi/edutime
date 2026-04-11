@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { Alert } from "react-native";
 import { User } from "@supabase/supabase-js";
 import { getUser } from "@/lib/database/user";
+import i18n from "@/lib/i18n/i18n";
 import { Database, ConfigMode, getConfigMode, ConfigProfileData, ProfileCategoryData } from "@edutime/shared";
 import { hasActiveEntitlement } from "@edutime/shared";
 import { supabase } from "@/lib/supabase";
@@ -157,6 +159,40 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
 
   const updateData = async (sessionUser: User) => {
     try {
+      const { data: pendingRow, error: pendingError } = await supabase
+        .from("account_deletion")
+        .select("id")
+        .eq("user_id", sessionUser.id)
+        .is("processed_at", null)
+        .maybeSingle();
+
+      if (!pendingError && pendingRow) {
+        try {
+          await supabase.auth.signOut();
+        } catch (signOutError) {
+          console.error("signOut (queued account deletion):", signOutError);
+        }
+        try {
+          await supabase.auth.signOut({ scope: "local" });
+        } catch (signOutError) {
+          console.error("signOut local (queued account deletion):", signOutError);
+        }
+        setUser(null);
+        setCategories([]);
+        setUserCategories([]);
+        setCantonData(null);
+        setConfigMode("default");
+        setConfigProfile(null);
+        setProfileCategories([]);
+        setHasActiveSubscription(false);
+        setUserEmail(null);
+        Alert.alert(
+          i18n.t("Settings.accountDeletionPendingTitle"),
+          i18n.t("Settings.accountDeletionPendingMessage"),
+        );
+        return;
+      }
+
       if (sessionUser.email) {
         setUserEmail(sessionUser.email);
       }

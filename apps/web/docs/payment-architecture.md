@@ -198,7 +198,10 @@ src/pages/checkout/
 | `PAYREXX_INSTANCE`          | Production | Payrexx instance name               |
 | `PAYREXX_API_SECRET`        | Production | API secret from Payrexx dashboard   |
 | `PAYREXX_WEBHOOK_SECRET`    | Production | Webhook signing key (Edge Function) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes        | Service role key                    |
 | `NEXT_PUBLIC_APP_URL`       | Yes        | App URL for redirects               |
+
+**Supabase keys (Next.js):** API routes use the **anon** key plus the caller’s session JWT only. Do **not** set `SUPABASE_SERVICE_ROLE_KEY` on Vercel for the web app.
+
+**Supabase service role:** Still required as a **Supabase secret** for Edge Functions (Payrexx webhook, billing jobs, and the `account-deletion-worker` that processes `public.account_deletion`). Optionally protect the worker HTTP endpoint with `ACCOUNT_DELETION_JOB_SECRET` and schedule it (e.g. Supabase cron).
 
 Without `PAYREXX_INSTANCE`, the system uses MockPaymentProvider automatically.
