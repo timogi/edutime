@@ -1,5 +1,6 @@
 export * from './types'
 export * from './legal'
 export * from './licensing'
+export * from './orgMemberInviteSupabase'
 export { EDUTIME_TRANSACTIONAL_FROM } from './billingEmail'
 export type { Database, Json, Tables, TablesInsert, TablesUpdate, Enums } from './database.types'

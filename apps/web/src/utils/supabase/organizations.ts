@@ -1,3 +1,4 @@
+import { acceptOrgMemberInviteViaSupabase, rejectOrgMemberInviteViaSupabase } from '@edutime/shared'
 import { Membership, Organization } from '@/types/globals'
 import { supabase } from './client'
 
@@ -253,37 +254,11 @@ export const updateMembershipById = async (
 }
 
 export const acceptOrganizationInvite = async (organizationId: number) => {
-  const requestInit = await getAuthenticatedRequestInit({
-    method: 'POST',
-    body: JSON.stringify({
-      action: 'accept',
-      organizationId,
-    }),
-  })
-  const response = await fetch('/api/billing/org-license/members', requestInit)
-  const payload = (await response.json()) as { entitlementId?: string; error?: string }
-
-  if (!response.ok) {
-    throw new Error(payload.error || 'Failed to accept organization invite')
-  }
-
-  return payload
+  return acceptOrgMemberInviteViaSupabase(supabase, organizationId)
 }
 
 export const rejectOrganizationInvite = async (organizationId: number) => {
-  const requestInit = await getAuthenticatedRequestInit({
-    method: 'POST',
-    body: JSON.stringify({
-      action: 'reject',
-      organizationId,
-    }),
-  })
-  const response = await fetch('/api/billing/org-license/members', requestInit)
-  const payload = (await response.json()) as { error?: string }
-
-  if (!response.ok) {
-    throw new Error(payload.error || 'Failed to reject organization invite')
-  }
+  await rejectOrgMemberInviteViaSupabase(supabase, organizationId)
 }
 
 export const releaseOrganizationMemberSeat = async (organizationId: number, membershipId: number) => {
