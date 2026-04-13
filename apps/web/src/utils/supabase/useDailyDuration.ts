@@ -48,11 +48,11 @@ const useDailyDuration = (
       } else {
         // Aggregate durations by date
         const aggregation = (data || []).reduce(
-          (acc: { [date: string]: number }, record: { date: string; duration: number }) => {
-            acc[record.date] = (acc[record.date] || 0) + record.duration
+          (acc: { [date: string]: number }, record: { date: string; duration: number | null }) => {
+            acc[record.date] = (acc[record.date] || 0) + (record.duration ?? 0)
             return acc
           },
-          {},
+          {} as { [date: string]: number },
         )
         setDailyDurations(aggregation)
       }

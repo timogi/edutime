@@ -4,7 +4,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { Button, ButtonText } from '@gluestack-ui/themed';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { Colors } from '@/constants/Colors';
+import { Colors, themeForScheme } from '@/constants/Colors';
 import { TextStyles, Spacing, BorderRadius, LayoutStyles } from '@/constants/Styles';
 import { useTranslation } from 'react-i18next';
 
@@ -62,7 +62,7 @@ const DefaultErrorFallback: React.FC<{ error: Error; resetError: () => void }> =
   resetError 
 }) => {
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'light'];
+  const theme = themeForScheme(colorScheme);
   const { t } = useTranslation();
 
   return (

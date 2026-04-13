@@ -1,8 +1,7 @@
 import React from 'react';
 import { StyleProp, ViewStyle, PressableAndroidRippleConfig } from 'react-native';
 import { Button, ButtonText, ButtonIcon, Spinner } from '@gluestack-ui/themed';
-import { IconSymbol } from './IconSymbol';
-import { SymbolViewProps } from 'expo-symbols';
+import { IconSymbol, type IconSymbolName } from './IconSymbol';
 
 interface ButtonWithLoadingProps {
   onPress: () => void;
@@ -10,7 +9,7 @@ interface ButtonWithLoadingProps {
   disabled?: boolean;
   variant?: 'solid' | 'outline' | 'link';
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-  iconName?: SymbolViewProps['name'];
+  iconName?: IconSymbolName;
   iconSize?: number;
   iconColor?: string;
   children: React.ReactNode;

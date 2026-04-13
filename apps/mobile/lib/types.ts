@@ -110,7 +110,7 @@ export type Organization = {
 export type Membership = {
   id: number
   name: string
-  status: 'invited' | 'active' | 'rejected'
+  status: 'invited' | 'active' | 'rejected' | 'canceled'
 }
 
 

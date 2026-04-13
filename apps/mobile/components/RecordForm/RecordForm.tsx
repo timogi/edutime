@@ -15,7 +15,7 @@ import { showSuccessToast, showErrorToast } from "@/components/ui/Toast";
 import { HapticFeedback } from "@/lib/haptics";
 
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { Colors } from "@/constants/Colors";
+import { Colors, themeForScheme } from "@/constants/Colors";
 import { TextStyles, Spacing, BorderRadius, ShadowStyles, LayoutStyles } from "@/constants/Styles";
 
 import { VStack } from "@gluestack-ui/themed";
@@ -55,22 +55,11 @@ import { DurationInput } from "./DurationInput";
 import { DescriptionInput } from "./DescriptionInput";
 import { CategoryInput } from "./CategoryInput";
 import { FooterButtons } from "./FooterButtons";
+import type { RecordFormData } from "./record-form-types";
 
 //-------------------------------
 // Utility Functions
 //-------------------------------
-interface RecordFormData {
-  date: Date;
-  startTime: Date | null;
-  endTime: Date | null;
-  description?: string;
-  category?: number;
-  duration: Date; // A Date representing HH:mm (stored in hours/minutes)
-  category_id?: number | null;
-  is_user_category?: boolean;
-  user_category_id?: number | null;
-}
-
 function timeToMinutes(date: Date): number {
   return date.getHours() * 60 + date.getMinutes();
 }
@@ -131,7 +120,7 @@ export default function RecordForm() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? "light"];
+  const theme = themeForScheme(colorScheme);
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeTimePicker, setActiveTimePicker] = useState<
     "start" | "end" | null

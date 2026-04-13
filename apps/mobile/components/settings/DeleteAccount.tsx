@@ -3,7 +3,7 @@ import { StyleSheet, Keyboard, KeyboardAvoidingView, Platform, Dimensions } from
 import { useTranslation } from 'react-i18next';
 import { useUser } from '@/contexts/UserContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { Colors } from '@/constants/Colors';
+import { Colors, themeForScheme } from '@/constants/Colors';
 import {
   Button,
   ButtonText,
@@ -43,7 +43,7 @@ export const DeleteAccount = ({ onDeleteAccount }: DeleteAccountProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const theme = Colors[colorScheme ?? 'light'];
+  const theme = themeForScheme(colorScheme);
   const screenWidth = Dimensions.get('window').width;
 
   const cardStyle = {

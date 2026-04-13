@@ -41,7 +41,7 @@ export const useCategoryRecordsQuery = ({
         records = await getRecordsByCategorySet(startDate, endDate, user.user_id, categoryIds, isUserCategory);
       } else if (categoryId !== null) {
         // Single category (regular or user category)
-        records = await getRecordsByCategory(startDate, endDate, user.user_id, categoryId, isUserCategory);
+        records = await getRecordsByCategory(startDate, endDate, user.user_id, categoryId ?? null, isUserCategory);
       } else {
         // Use generic function for special category types
         records = await getRecordsForCategoryType(startDate, endDate, user.user_id, categoryTitle, categories);

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { Colors } from '@/constants/Colors';
+import { Colors, themeForScheme } from '@/constants/Colors';
 import { Text } from '@gluestack-ui/themed';
 import { CategoryStatisticsProps, RemainingCategoryStatisticsProps } from '@/lib/database/statistics';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,7 +17,7 @@ interface CategoryStatsTableProps {
 export const CategoryStatsTable: React.FC<CategoryStatsTableProps> = ({ data, isWorkingHoursDisabled = false }) => {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'light'];
+  const theme = themeForScheme(colorScheme);
 
   const adjustColorBrightness = (color: string | null | undefined) => {
     if (!color) return '#808080';
@@ -51,7 +51,7 @@ export const CategoryStatsTable: React.FC<CategoryStatsTableProps> = ({ data, is
               <Ionicons 
                 name="folder" 
                 size={20}
-                color={adjustColorBrightness(row.color) || Colors[colorScheme ?? 'light'].text}
+                color={adjustColorBrightness(row.color) || theme.text}
               />
               <Text style={[styles.categoryText, textStyle]}>{row.title}</Text>
             </View>
@@ -82,7 +82,7 @@ export const CategoryStatsTable: React.FC<CategoryStatsTableProps> = ({ data, is
                 <Ionicons 
                   name="folder" 
                   size={16}
-                  color={adjustColorBrightness(subcategory.color) || Colors[colorScheme ?? 'light'].text}
+                  color={adjustColorBrightness(subcategory.color) || theme.text}
                 />
                 <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.subcategoryText, textStyle, styles.subcategoryTitle]}>
                   {subcategory.title}

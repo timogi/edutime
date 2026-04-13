@@ -7,7 +7,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { useUser } from "@/contexts/UserContext";
 import { useTranslation } from "react-i18next";
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { Colors } from "@/constants/Colors";
+import { Colors, themeForScheme } from "@/constants/Colors";
 import { TextStyles, Spacing, BorderRadius, LayoutStyles } from "@/constants/Styles";
 import { useLegalCheck, useInvalidateLegalCheck } from "@/hooks/useLegalCheck";
 import { acceptUserDocument, DOCUMENT_LABELS, type MissingDocument } from "@edutime/shared";
@@ -25,7 +25,7 @@ const DOCUMENT_URLS: Record<string, string> = {
 export default function LegalAcceptanceScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? "light"];
+  const theme = themeForScheme(colorScheme);
   const { user, isLoading: userLoading } = useUser();
   const { data: missingDocs, isLoading: legalLoading } = useLegalCheck(!!user);
   const invalidateLegal = useInvalidateLegalCheck();

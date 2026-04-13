@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
+import { getSupabasePublishableKey } from '@/utils/supabase/publishableKey'
 
 type ResponseData = {
   entitlement?: {
@@ -51,7 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       // Create a Supabase client for token-based auth
       const supabaseClient = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        getSupabasePublishableKey(),
         {
           global: {
             headers: {
@@ -115,7 +116,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
       supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        getSupabasePublishableKey(),
         {
           cookies: {
             getAll() {

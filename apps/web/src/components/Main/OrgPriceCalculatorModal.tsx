@@ -72,7 +72,7 @@ export function OrgPriceCalculatorModal({ opened, onClose }: OrgPriceCalculatorM
       }
       onClose()
     } else {
-      const contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'contact@edutime.ch'
+      const contactEmail = process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'info@edutime.ch'
       const subject = encodeURIComponent(t('emailSubject', { count: licenseCount }))
       const body = encodeURIComponent(t('emailBody', { count: licenseCount }))
       window.location.href = `mailto:${contactEmail}?subject=${subject}&body=${body}`

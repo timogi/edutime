@@ -62,7 +62,7 @@ export const getOrganizations = async (userId: string): Promise<Organization[]> 
 export interface OrganizationMember {
   id: number
   email: string
-  status: 'invited' | 'active' | 'rejected'
+  status: 'invited' | 'active' | 'rejected' | 'canceled'
   created_at: Date
 }
 
@@ -89,7 +89,7 @@ export const getOrganizationMembers = async (
   const members = (data || []).map((member) => ({
     id: member.id,
     email: member.user_email,
-    status: member.status,
+    status: member.status as OrganizationMember['status'],
     created_at: new Date(member.created_at),
   }))
 

@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } fro
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { Colors } from '@/constants/Colors';
+import { Colors, themeForScheme } from '@/constants/Colors';
 import { Text } from '@gluestack-ui/themed';
 import { Database } from '@edutime/shared';
 import { convertMinutesToHoursAndMinutes } from '@/lib/helpers';
@@ -29,7 +29,7 @@ type TimeRecord = RecordRow & {
 export default function CategoryDetails() {
   const { t, i18n } = useTranslation();
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'light'];
+  const theme = themeForScheme(colorScheme);
   const router = useRouter();
   const { user } = useUser();
   const { startDate, endDate, setStartDate, setEndDate, setDateRange } = useDateRange();

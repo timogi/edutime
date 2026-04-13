@@ -6,10 +6,13 @@ import { supabase } from '@/lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface StopWatchContextType {
-  activeSession: StopWatchSession | null;
-  setActiveSession: (session: StopWatchSession | null) => void;
-  loading: boolean;
-  error: Error | null;
+  activeSession: StopWatchSession | null
+  setActiveSession: (session: StopWatchSession | null) => void
+  loading: boolean
+  error: Error | null
+  createStopwatchSession: ReturnType<typeof useCreateStopwatchSession>['mutateAsync']
+  updateStopwatchSession: ReturnType<typeof useUpdateStopwatchSession>['mutateAsync']
+  deleteStopwatchSession: ReturnType<typeof useDeleteStopwatchSession>['mutateAsync']
 }
 
 const StopWatchContext = createContext<StopWatchContextType | undefined>(undefined);
@@ -82,15 +85,15 @@ export function StopWatchProvider({ children }: { children: ReactNode }) {
     };
   }, [user?.user_id, queryClient]);
 
-  const stopWatchState = {
-    activeSession,
+  const stopWatchState: StopWatchContextType = {
+    activeSession: activeSession ?? null,
     setActiveSession,
     loading,
-    error,
+    error: error ?? null,
     createStopwatchSession: createStopwatchSessionMutation.mutateAsync,
     updateStopwatchSession: updateStopwatchSessionMutation.mutateAsync,
     deleteStopwatchSession: deleteStopwatchSessionMutation.mutateAsync,
-  };
+  }
 
   return (
     <StopWatchContext.Provider value={stopWatchState}>

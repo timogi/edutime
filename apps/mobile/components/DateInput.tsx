@@ -4,7 +4,7 @@ import { Controller } from "react-hook-form";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useTranslation } from "react-i18next";
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { Colors } from "@/constants/Colors";
+import { Colors, themeForScheme } from "@/constants/Colors";
 import { Text, FormControl, FormControlLabel, FormControlLabelText, Pressable, HStack } from "@gluestack-ui/themed";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react-native";
 
@@ -32,7 +32,7 @@ export default function DateInput({
   styles,
 }: DateInputProps) {
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'light'];
+  const theme = themeForScheme(colorScheme);
   const { t, i18n } = useTranslation();
 
   return (

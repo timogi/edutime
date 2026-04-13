@@ -8,7 +8,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Button, ButtonText, View, Text } from '@gluestack-ui/themed';
-import { Colors } from '@/constants/Colors';
+import { Colors, themeForScheme } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { TextStyles, Spacing, BorderRadius, ShadowStyles, LayoutStyles } from '@/constants/Styles';
 
@@ -35,7 +35,7 @@ export default function UpdateRequiredScreen() {
         <IconSymbol 
           name="exclamationmark.triangle.fill" 
           size={80} 
-          color={Colors[colorScheme ?? 'light'].red[6]} 
+          color={themeForScheme(colorScheme).red[6]} 
         />
         
         <ThemedText style={styles.title}>
@@ -51,7 +51,7 @@ export default function UpdateRequiredScreen() {
           variant="solid"
           onPress={handleUpdateApp}
           style={[styles.updateButton]}
-          android_ripple={{ color: Colors[colorScheme ?? 'light'].primary[8] }}>
+          android_ripple={{ color: themeForScheme(colorScheme).primary[8] }}>
           <IconSymbol name="arrow.down.circle.fill" size={20} color="white" />
           <ButtonText style={{ color: 'white' }}>
             {t('Index.update-required.updateNow')}
@@ -59,7 +59,7 @@ export default function UpdateRequiredScreen() {
         </Button> */}
       </ThemedView>
       <View style={styles.versionContainer}>
-        <Text style={[styles.versionText, { color: Colors[colorScheme ?? 'light'].gray[6] }]}>
+        <Text style={[styles.versionText, { color: themeForScheme(colorScheme).gray[6] }]}>
           v{version}
         </Text>
       </View>

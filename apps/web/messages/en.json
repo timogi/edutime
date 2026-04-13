@@ -90,6 +90,7 @@
     "newFeatureDescription": "Check back later!",
     "saveAndNewTimer": "Create & restart",
     "saveAndContinue": "Save & continue",
+    "createMenuAriaLabel": "More create options",
     "save": "Save",
     "month": "Month",
     "saturdayFull": "Saturday",

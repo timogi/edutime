@@ -9,7 +9,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { ActivityIndicator } from 'react-native';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
-import { Colors } from '@/constants/Colors';
+import { Colors, themeForScheme } from '@/constants/Colors';
 import { Button, ButtonText } from '@gluestack-ui/themed';
 import { getCategoryStatisticsData, getRemainingCategoryStatisticsData, getCustomCategoryStatisticsData, getCustomRemainingStatisticsData } from '@/lib/database/statistics';
 import { CategoryStatistics, RemainingCategoryStatisticsProps } from '@/lib/database/statistics';
@@ -78,7 +78,7 @@ export default function Statistics() {
   }, [cantonData, startDate, endDate, user, t, configMode, configProfile, profileCategories]);
 
 
-  const theme = Colors[colorScheme ?? 'light'];
+  const theme = themeForScheme(colorScheme);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
