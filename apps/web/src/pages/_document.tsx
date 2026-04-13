@@ -13,12 +13,14 @@ export default function Document() {
         <ColorSchemeScript />
         <link rel='icon' href='/favicon.ico' sizes='1024x1024' type='image/png' />
         <link rel='apple-touch-icon' href='/icon.png' sizes='1024x1024' />
-        <script
-          defer
-          data-domain='edutime.ch'
-          src='/js/script.js'
-          onError={handleScriptError}
-        ></script>
+        {process.env.NODE_ENV === 'production' ? (
+          <script
+            defer
+            data-domain='edutime.ch'
+            src='/js/script.js'
+            onError={handleScriptError}
+          />
+        ) : null}
       </Head>
       <body>
         <Main />

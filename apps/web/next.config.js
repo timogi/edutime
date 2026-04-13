@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Next 16 + Pages Router + Turbopack: ISR manifest HMR can run before `window.next.router`
+  // exists, which throws in the dev static indicator. Disable until upstream guards exist.
+  devIndicators: false,
   reactStrictMode: true,
   // output: 'export',
   // distDir: '_static',
