@@ -2,7 +2,10 @@
   "Error": {
     "title": "Rien ici...",
     "description": "La page que tu essayes d'ouvrir n'existe pas. Tu as peut-être mal saisi l'adresse, ou la page a été déplacée vers une autre URL. Si tu penses que c'est une erreur, contacte le support.",
-    "backHome": "Ramenez-moi à la page d'accueil"
+    "backHome": "Ramenez-moi à la page d'accueil",
+    "notFound": "Il n'y a rien à voir ici",
+    "notFoundDescription": "La page que vous souhaitez ouvrir n'existe pas. Vous avez peut-être entré l'adresse incorrectement, ou la page a été déplacée vers une autre URL. Si vous pensez que c'est une erreur, veuillez contacter le support.",
+    "backToHome": "Retour à la page d'accueil"
   },
   "Index": {
     "login": "Connexion",
@@ -854,18 +857,25 @@
 
   "UserGuide": {
     "user-guide-title": "Guide de l'utilisateur",
+    "intro": "EduTime – suivi professionnel du temps de travail pour les enseignants",
+    "intro-text": "EduTime est une application web moderne conçue spécialement pour les enseignants. Enregistrez votre temps de travail avec précision selon les catégories de votre cahier des charges et obtenez une vue claire de vos heures.",
     "registration": "Inscription et activation",
     "registration-text": "Bienvenue sur EduTime, votre plateforme pour un suivi efficace du temps. Inscrivez-vous pour utiliser la solution spécialement conçue pour les établissements d'enseignement qui permet une gestion et une surveillance efficaces des heures de travail. Entrez votre adresse e-mail et un mot de passe. Après l'inscription, vous devez confirmer votre adresse e-mail avant de pouvoir vous connecter pour la première fois. Le prénom et le nom sont facultatifs. Veuillez sélectionner le canton où vous travaillez. Si votre canton n'est pas encore disponible, utilisez un canton alternatif pour l'instant et mettez à jour les détails une fois que votre canton sera disponible.",
     "seat-text": "Un 'compte' dans EduTime vous donne droit à l'utiliser et est attribué par votre organisation ou école. Contactez votre institution pour obtenir l'accès.",
     "migration": "Migration des données",
     "migration-text": "Si vous avez précédemment sauvegardé des données dans notre ancienne application, elles peuvent être facilement transférées dans le nouvel environnement. Pour ce faire, ouvrez l'ancienne application et naviguez vers 'Tableau de bord' via le bouton jaune en bas à gauche, puis sélectionnez 'Statistiques et données' et 'Exporter les données brutes'. Vous pouvez enregistrer les données directement sur votre smartphone si vous souhaitez effectuer le processus sur votre téléphone, ou vous pouvez vous envoyer le fichier par e-mail pour continuer le processus sur un ordinateur. Dans la nouvelle application web, allez dans 'Paramètres' -> 'Importer des données' -> 'Démarrer l'importation'. Sélectionnez le fichier .csv que vous avez exporté. Vous pouvez voir quelles entrées seront créées et avez la possibilité de désélectionner des entrées spécifiques que vous ne souhaitez pas importer en utilisant des cases à cocher.",
+    "time-recording-intro": "L'enregistrement du temps est au cœur d'EduTime. Ici vous saisissez votre temps de travail selon les différentes catégories de votre cahier des charges.",
     "time-recording": "Enregistrement du temps",
     "time-recording-text": "Dans la vue d'enregistrement du temps, vous pouvez sélectionner le jour pour lequel vous souhaitez consulter ou modifier des entrées en haut. Utilisez les flèches pour avancer ou reculer d'une semaine. Ci-dessous se trouve un tableau montrant les jours de la semaine pour le jour sélectionné. Cliquez sur un autre jour pour changer la date et consulter l'enregistrement du temps pour ce jour. Dans ce tableau, vous voyez également le temps total enregistré pour chaque jour de la semaine.",
     "time-recording-text2": "Le tableau inférieur répertorie les entrées individuelles. Cliquez sur une entrée pour la modifier ou la supprimer. Utilisez le bouton en bas à gauche pour démarrer le minuteur. Cliquez à nouveau sur ce bouton pour gérer le minuteur. Ici, vous pouvez saisir des informations supplémentaires sur l'entrée et créer, enregistrer temporairement, annuler ou créer et démarrer immédiatement une nouvelle entrée (flèche à droite du bouton 'Créer').",
     "time-recording-create": "Utilisez le bouton 'Créer une entrée' à droite pour créer une nouvelle entrée. Sélectionnez une catégorie et entrez l'heure de début, l'heure de fin et la durée de l'élément temporel. Dans le commentaire, vous pouvez faire des notes sur l'élément correspondant. La fonction 'Répéter' peut être utilisée pour créer un élément plusieurs fois. Dans l'intervalle, spécifiez quels jours et jusqu'à quelle heure les entrées doivent être créées. Utilisez 'Sélectionner les jours' pour sélectionner ou désélectionner des jours supplémentaires. Utilisez le bouton 'Créer des entrées' pour créer les entrées.",
     "time-recording-further-categories": "Les tâches supplémentaires que vous saisissez dans les paramètres avec leur propre taux d'occupation apparaissent automatiquement dans la sélection des catégories et peuvent être utilisées pour les entrées.",
-    "school-year": "Année scolaire",
-    "school-year-text": "Utilisez les flèches et les champs de saisie de l'année pour sélectionner l'année scolaire souhaitée. Le tableau montre chaque jour de l'année scolaire et le temps enregistré. Cliquez sur un jour pour le modifier dans la fonction d'enregistrement du temps. Sur les écrans plus petits, les mois sont abrégés à leur première lettre, et sur les très petits écrans, les semestres sont sélectionnés séparément."
+    "calendar": "Année scolaire",
+    "calendar-text": "La vue année scolaire donne un aperçu de toute l'année. Sélectionnez l'année souhaitée et voyez d'un coup d'œil quels jours vous avez déjà saisis. Cliquez sur un jour pour passer directement à l'enregistrement du temps et modifier les entrées.",
+    "statistics": "Statistiques",
+    "statistics-text": "La vue statistiques affiche une répartition détaillée de votre temps de travail par catégorie. Choisissez une période et voyez combien de temps vous avez consacré aux différentes parties du cahier des charges. Les statistiques s'adaptent automatiquement à votre emploi—si vous définissez des fonctions supplémentaires comme la direction d'école, elles sont prises en compte dans les calculs.",
+    "reporting": "Rapports",
+    "reporting-text": "Exportez vos statistiques en PDF ou Excel pour des entretiens avec la direction ou pour votre documentation personnelle. Les rapports peuvent être filtrés par période et ventilés par catégorie."
   },
   "NewEduTime": {
     "title": "EduTime réinventé : Votre application web pour un suivi du temps efficace",
@@ -949,12 +959,6 @@
     "missingCategoriesForStatistics": "Les statistiques nécessitent des catégories. Créez ou complétez d'abord vos catégories dans les paramètres.",
     "loading": "Chargement..."
   },
-  "Error": {
-    "notFound": "Il n'y a rien à voir ici",
-    "notFoundDescription": "La page que vous souhaitez ouvrir n'existe pas. Vous avez peut-être entré l'adresse incorrectement, ou la page a été déplacée vers une autre URL. Si vous pensez que c'est une erreur, veuillez contacter le support.",
-    "backToHome": "Retour à la page d'accueil"
-  },
-
   "MobileApp": {
     "title": "EduTime - Application mobile",
     "heading": "EduTime Application mobile",
