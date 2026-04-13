@@ -152,6 +152,7 @@ const TableSelection = ({
       if (payload.emailSkippedSelf) {
         showNotification({
           title: t('invite-notification-self-title'),
+          message: t('invite-notification-self-title'),
           color: 'teal',
         })
       } else if (payload.emailSent === false) {
@@ -477,7 +478,7 @@ const TableSelection = ({
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
     link.setAttribute('href', url)
-    link.setAttribute('download', `members_${selectedOrg}_${new Date().toISOString()}.csv`)
+    link.setAttribute('download', `members_${selectedOrgId ?? 'export'}_${new Date().toISOString()}.csv`)
     link.style.visibility = 'hidden'
     document.body.appendChild(link)
     link.click()

@@ -17,10 +17,8 @@ const { withNativeWind } = require("nativewind/metro");
 
 const config = getDefaultConfig(projectRoot);
 
-// Watch the shared package source so Metro can resolve @edutime/shared
-config.watchFolders = [
-  path.resolve(monorepoRoot, 'packages/shared'),
-];
+// Keep Expo defaults (monorepo / SDK) and watch shared package source
+config.watchFolders = [...(config.watchFolders ?? []), path.resolve(monorepoRoot, 'packages/shared')];
 
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),

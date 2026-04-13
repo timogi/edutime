@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Animated, Dimensions } from 'react-native';
 import { Text, VStack, HStack, Box } from '@gluestack-ui/themed';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { Colors } from '@/constants/Colors';
+import { Colors, themeForScheme } from '@/constants/Colors';
 import { TextStyles, Spacing, BorderRadius } from '@/constants/Styles';
 
 interface ToastProps {
@@ -87,7 +87,7 @@ export const showWarningToast = (title: string, message?: string) => {
 export const ToastContainer: React.FC = () => {
   const [toastList, setToastList] = useState<ToastState[]>([]);
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'light'];
+  const theme = themeForScheme(colorScheme);
 
   useEffect(() => {
     const updateToasts = () => {

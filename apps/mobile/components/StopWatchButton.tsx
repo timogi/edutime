@@ -1,6 +1,6 @@
 import { StyleSheet } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Colors } from "@/constants/Colors";
+import { Colors, themeForScheme } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { IconSymbol } from "./ui/IconSymbol";
 import { Button, ButtonText, ButtonIcon } from "@gluestack-ui/themed";
@@ -20,7 +20,7 @@ import { useCreateStopwatchSession } from "@/hooks/useRecordsQuery";
 export const StopWatchButton = () => {
   const router = useRouter();
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? "light"];
+  const theme = themeForScheme(colorScheme);
   const [elapsedTime, setElapsedTime] = useState("00:00:00");
   const [isPressed, setIsPressed] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -33,7 +33,7 @@ export const StopWatchButton = () => {
   const createStopwatchSessionMutation = useCreateStopwatchSession();
 
   useEffect(() => {
-    let interval: number;
+    let interval: ReturnType<typeof setInterval> | undefined;
     if (activeSession) {
       interval = setInterval(() => {
         const start = new Date(activeSession.start_time);
@@ -52,7 +52,7 @@ export const StopWatchButton = () => {
       setElapsedTime("00:00:00");
     }
     return () => {
-      if (interval) {
+      if (interval !== undefined) {
         clearInterval(interval);
       }
     };
@@ -76,7 +76,7 @@ export const StopWatchButton = () => {
         const { data: existingSessions, error: fetchError } = await supabase
           .from('stopwatch_sessions')
           .select('*')
-          .eq('user_id', user?.user_id)
+          .eq('user_id', user?.user_id ?? '')
           .order('start_time', { ascending: false })
           .limit(1);
         

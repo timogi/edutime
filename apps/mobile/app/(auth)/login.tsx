@@ -16,7 +16,7 @@ import { EyeIcon, EyeOffIcon } from "@gluestack-ui/themed";
 import { useUser } from "@/contexts/UserContext";
 import { useTranslation } from "react-i18next";
 import { LinearGradient } from "expo-linear-gradient";
-import { Colors } from "@/constants/Colors";
+import { Colors, themeForScheme } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { Text } from "@gluestack-ui/themed";
 import Animated, {
@@ -46,7 +46,7 @@ export default function Login() {
   const { t } = useTranslation();
   const { login, user } = useUser();
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? "light"];
+  const theme = themeForScheme(colorScheme);
   const {
     control,
     handleSubmit,

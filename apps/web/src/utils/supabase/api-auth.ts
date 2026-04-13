@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createServerClient } from '@supabase/ssr'
 import type { SupabaseClient, User } from '@supabase/supabase-js'
 import { Database } from '@edutime/shared'
+import { getSupabasePublishableKey } from '@/utils/supabase/publishableKey'
 
 /**
  * Gets an authenticated Supabase client and user from a Next.js API request.
@@ -18,13 +19,13 @@ export async function getAuthenticatedUser(
   req: NextApiRequest,
 ): Promise<{ user: User; supabase: SupabaseClient } | null> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  const publishableKey = getSupabasePublishableKey()
 
   // 1. Try Authorization header first
   const authHeader = req.headers.authorization
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.substring(7)
-    const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+    const supabase = createClient<Database>(supabaseUrl, publishableKey, {
       global: {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -72,7 +73,7 @@ export async function getAuthenticatedUser(
     value,
   }))
 
-  const supabase = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+  const supabase = createServerClient<Database>(supabaseUrl, publishableKey, {
     cookies: {
       getAll() {
         return cookies

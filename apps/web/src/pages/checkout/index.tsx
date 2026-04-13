@@ -397,7 +397,7 @@ export default function CheckoutPage() {
       }
 
       hasCheckoutBeenStartedRef.current = true
-      setCheckoutUrl(data.checkoutUrl)
+      setCheckoutUrl(data.checkoutUrl ?? null)
 
       // Auto-redirect to checkout URL after a short delay
       setTimeout(() => {

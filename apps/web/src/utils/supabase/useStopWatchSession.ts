@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './client'
 import { StopWatchSession } from '@/types/globals'
+import { mapStopwatchRowToSession } from './stopWatch'
 
 interface UseStopWatchSessionHook {
   activeSession: StopWatchSession | null
@@ -25,7 +26,7 @@ const useStopWatchSession = (): UseStopWatchSessionHook => {
         if (error) {
           throw new Error(error.message)
         }
-        const activeSession = data[0] || null
+        const activeSession = data[0] ? mapStopwatchRowToSession(data[0]) : null
         setActiveSession(activeSession)
       }
     } catch (err) {

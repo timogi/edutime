@@ -6,7 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useUser } from "@/contexts/UserContext";
 import { useTranslation } from "react-i18next";
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { Colors } from "@/constants/Colors";
+import { Colors, themeForScheme } from "@/constants/Colors";
 
 interface CategorySelectorProps {
   selectedCategory?: CategoryResult | null | undefined;
@@ -20,7 +20,7 @@ export const CategorySelector = ({
   const { categories, configMode } = useUser();
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? "light"];
+  const theme = themeForScheme(colorScheme);
   const isDark = colorScheme === "dark";
 
   // Sort categories by order field from categories table, with user categories at the end

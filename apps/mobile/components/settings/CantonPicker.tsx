@@ -15,7 +15,7 @@ import {
 import { ChevronDownIcon } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { Colors } from '@/constants/Colors';
+import { Colors, themeForScheme } from '@/constants/Colors';
 
 interface CantonPickerProps {
   selectedCanton: string;
@@ -29,7 +29,7 @@ const cantons = [
 export const CantonPicker: React.FC<CantonPickerProps> = ({ selectedCanton, onCantonChange }) => {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'light'];
+  const theme = themeForScheme(colorScheme);
 
   const textStyle = {
     color: colorScheme === 'dark' ? 'white' : undefined

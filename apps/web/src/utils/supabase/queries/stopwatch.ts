@@ -1,11 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { StopWatchSession } from '@/types/globals'
 import { supabase } from '../client'
 import {
   createStopwatchSession,
   deleteStopwatchSession,
   updateStopwatchSession,
   fetchStopWatchSession,
+  mapStopwatchRowToSession,
 } from '../stopWatch'
 
 // Query keys
@@ -33,7 +33,7 @@ export const useStopWatchSession = () => {
         throw new Error(error.message)
       }
 
-      return (data?.[0] as StopWatchSession) || null
+      return data?.[0] ? mapStopwatchRowToSession(data[0]) : null
     },
   })
 }

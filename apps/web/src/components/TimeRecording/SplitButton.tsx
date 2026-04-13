@@ -1,6 +1,5 @@
-import { Button, Menu, Group, ActionIcon, rem } from '@mantine/core'
-import { IconChevronDown, IconRepeat, IconDeviceFloppy } from '@tabler/icons-react'
-import { GetStaticPropsContext } from 'next'
+import { Button, Group, Menu } from '@mantine/core'
+import { IconChevronDown, IconDeviceFloppy, IconRepeat } from '@tabler/icons-react'
 import { useTranslations } from 'next-intl'
 import classes from './SplitButton.module.css'
 
@@ -11,29 +10,35 @@ interface SplitButtonProps {
 }
 
 export function SplitButton({ onCreate, onSaveAndNewTimer, onSaveAndContinue }: SplitButtonProps) {
-  const menuIconColor = 'var(--mantine-color-violet-6)'
   const t = useTranslations('Index')
+  const menuIconColor = 'var(--mantine-color-violet-6)'
 
   return (
-    <Group wrap='nowrap' gap={0}>
-      <Button onClick={onCreate} className={classes.button}>
+    <Group wrap="nowrap" gap={0}>
+      <Button type="button" variant="filled" onClick={onCreate} className={classes.button}>
         {t('create')}
       </Button>
-      <Menu transitionProps={{ transition: 'pop' }} position='bottom-end'>
+      <Menu transitionProps={{ transition: 'pop' }} position="bottom-end" withinPortal>
         <Menu.Target>
-          <ActionIcon variant='filled' color='violet' size={36} className={classes.menuControl}>
-            <IconChevronDown size='1rem' stroke={1.5} />
-          </ActionIcon>
+          <Button
+            type="button"
+            variant="filled"
+            className={classes.menuControl}
+            aria-label={t('createMenuAriaLabel')}
+            px="xs"
+          >
+            <IconChevronDown size={16} stroke={1.5} />
+          </Button>
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Item
-            leftSection={<IconRepeat size='1rem' stroke={1.5} color={menuIconColor} />}
+            leftSection={<IconRepeat size={16} stroke={1.5} color={menuIconColor} />}
             onClick={onSaveAndNewTimer}
           >
             {t('saveAndNewTimer')}
           </Menu.Item>
           <Menu.Item
-            leftSection={<IconDeviceFloppy size='1rem' stroke={1.5} color={menuIconColor} />}
+            leftSection={<IconDeviceFloppy size={16} stroke={1.5} color={menuIconColor} />}
             onClick={onSaveAndContinue}
           >
             {t('saveAndContinue')}
@@ -42,12 +47,4 @@ export function SplitButton({ onCreate, onSaveAndNewTimer, onSaveAndContinue }: 
       </Menu>
     </Group>
   )
-}
-
-export async function getStaticProps({ locale }: GetStaticPropsContext) {
-  return {
-    props: {
-      messages: (await import(`../../../messages/${locale}.json`)).default,
-    },
-  }
 }

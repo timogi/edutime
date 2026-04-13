@@ -43,7 +43,7 @@ const TestAppPage = () => {
             {t('Index.license_required')}
           </Alert>
 
-          <Grid justify='center' gutter='xl' mb='xl'>
+          <Grid justify='center' gap='xl' mb='xl'>
             <Grid.Col span={{ base: 12, md: 6 }}>
               <Card withBorder padding='0' radius='md' shadow='sm' pb='xl'>
                 <Box ta='center'>

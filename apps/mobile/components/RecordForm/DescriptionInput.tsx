@@ -12,9 +12,10 @@ import {
 
 import { Control } from 'react-hook-form';
 import { ColorTheme } from "@/lib/types";
+import type { RecordFormData } from "./record-form-types";
 
 interface DescriptionInputProps {
-  control: Control<Record<string, Date | null | string | number | boolean | undefined>>;
+  control: Control<RecordFormData>;
   isDescriptionFocused: boolean;
   onFocus: () => void;
   onBlur: () => void;
@@ -63,7 +64,7 @@ export function DescriptionInput({
           >
             <InputField
               placeholder={t("Index.description")}
-              value={value}
+              value={value ?? ""}
               onChangeText={onChange}
               onFocus={onFocus}
               onBlur={onBlur}

@@ -4,7 +4,7 @@ import { Card, VStack, HStack, Text, Box } from '@gluestack-ui/themed';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '@/contexts/UserContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { Colors } from '@/constants/Colors';
+import { Colors, themeForScheme } from '@/constants/Colors';
 import { supabase } from '@/lib/supabase';
 import {
   getUserEntitlements,
@@ -38,7 +38,7 @@ export default function LicenseOverview() {
   const { t } = useTranslation();
   const { user } = useUser();
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'light'];
+  const theme = themeForScheme(colorScheme);
   const isDark = colorScheme === 'dark';
   const [entitlements, setEntitlements] = useState<Entitlement[]>([]);
   const [isLoading, setIsLoading] = useState(false);

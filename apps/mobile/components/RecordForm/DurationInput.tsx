@@ -13,9 +13,10 @@ import {
   FormControlLabelText,
 } from "@gluestack-ui/themed";
 import { ColorTheme } from "@/lib/types";
+import type { RecordFormData } from "./record-form-types";
 
 interface DurationInputProps {
-  control: Control<Record<string, Date | null | string | number | boolean | undefined>>;
+  control: Control<RecordFormData>;
   isExpanded: boolean;
   onToggleDurationPicker: () => void;
   onDurationChange: (event: DateTimePickerEvent, selectedTime: Date | undefined) => void;
@@ -99,7 +100,7 @@ export function DurationInput({
             rules={{ required: t("Index.durationRequired") }}
             render={({ field: { value } }) => (
               <DateTimePicker
-                value={value}
+                value={value instanceof Date ? value : new Date()}
                 mode="time"
                 display={Platform.OS === "ios" ? "spinner" : "default"}
                 onChange={onDurationChange}

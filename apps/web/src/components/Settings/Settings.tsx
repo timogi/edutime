@@ -30,7 +30,7 @@ import {
 } from '@/utils/supabase/user'
 import { AppComponentProps } from '@/types/globals'
 import { EmploymentCategory, CantonData } from '@/types/globals'
-import { ProfileCategoryData } from '@edutime/shared'
+import { ProfileCategoryData, type UserData } from '@edutime/shared'
 import {
   IconCheck,
   IconCircleFilled,
@@ -54,6 +54,8 @@ import {
 import { useUser } from '@/contexts/UserProvider'
 import classes from './Settings.module.css'
 
+type EducationLevel = UserData['education_level']
+
 const WORK_HOURS_DATA = [
   { age: '21-39', vacationDays: 22, netHours: 1890 },
   { age: '40-49', vacationDays: 25, netHours: 1865 },
@@ -65,7 +67,9 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
   const [canton, setCanton] = useState(userData.canton_code)
   const [workload, setWorkload] = useState(userData.workload || 0)
   const [customWorkHours, setCustomWorkHours] = useState(userData.custom_work_hours || 0)
-  const [educationLevel, setEducationLevel] = useState(userData.education_level || 'kindergarten')
+  const [educationLevel, setEducationLevel] = useState<EducationLevel>(
+    userData.education_level ?? 'kindergarten',
+  )
   const [classSize, setClassSize] = useState(userData.class_size || 0)
   const [teacherRelief, setTeacherRelief] = useState<number | null>(userData.teacher_relief ?? null)
   const [cantonData, setCantonData] = useState<CantonData | null>(null)
@@ -505,7 +509,9 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
                           />
                           <Select
                             value={educationLevel}
-                            onChange={(value) => setEducationLevel(value as string)}
+                            onChange={(value) => {
+                              if (value) setEducationLevel(value as EducationLevel)
+                            }}
                             placeholder={t('education_level_placeholder')}
                             label={t('education_level')}
                             size='md'

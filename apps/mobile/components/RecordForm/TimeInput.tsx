@@ -8,9 +8,10 @@ import { TextStyles, Spacing, BorderRadius } from "@/constants/Styles";
 import { useTranslation } from "react-i18next";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { ColorTheme } from "@/lib/types";
+import type { RecordFormData } from "./record-form-types";
 
 interface TimeInputProps {
-  control: Control<Record<string, Date | null | string | number | boolean | undefined>>;
+  control: Control<RecordFormData>;
   activeTimePicker: "start" | "end" | null;
   onToggleTimePicker: (type: "start" | "end") => void;
   onStartTimeChange: (event: DateTimePickerEvent, selectedTime?: Date) => void;

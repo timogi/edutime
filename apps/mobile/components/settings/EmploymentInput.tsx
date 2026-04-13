@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { CantonPicker } from './CantonPicker';
 import { showErrorToast } from '@/components/ui/Toast';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { Colors } from '@/constants/Colors';
+import { Colors, themeForScheme } from '@/constants/Colors';
 import { CantonData } from '@/lib/types';
 import { WorkloadInput } from './WorkloadInput';
 import { PercentageInput } from './PercentageInput';
@@ -57,7 +57,7 @@ export const EmploymentInput: React.FC<EmploymentInputProps> = ({
 }) => {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'light'];
+  const theme = themeForScheme(colorScheme);
   const isDark = colorScheme === 'dark';
 
   const [workload, setWorkload] = useState<number>(userData?.workload ?? 0);

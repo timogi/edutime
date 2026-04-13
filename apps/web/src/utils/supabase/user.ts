@@ -1,5 +1,9 @@
 import { Category, CategoryBase, EmploymentCategory, UserData } from '@/types/globals'
+import type { Database } from '@edutime/shared'
 import { supabase } from './client'
+
+type UsersRowUpdate = Database['public']['Tables']['users']['Update']
+type UserCategoriesUpdate = Database['public']['Tables']['user_categories']['Update']
 import { set } from 'date-fns'
 
 export const setNewPassword = async (password: string) => {
@@ -36,7 +40,8 @@ export async function changePassword(oldPassword: string, newPassword: string) {
 
 export const updateUserData = async (userData: Partial<UserData>, user_id: string) => {
   try {
-    const { error } = await supabase.from('users').update(userData).eq('user_id', user_id)
+    const { user_categories: _uc, email: _em, is_organization: _org, ...dbFields } = userData
+    const { error } = await supabase.from('users').update(dbFields as UsersRowUpdate).eq('user_id', user_id)
     if (error) {
       console.error('error', error)
       throw error
@@ -82,14 +87,12 @@ export const getUserData = async (): Promise<UserData | null> => {
     return null
   }
 
-  if (userData) {
-    userData.email = userObject.email
-  }
-
   const userCategories = await getUserCategories(userObject.id)
 
   const userWithCategories: UserData = {
-    ...userData,
+    ...(userData as unknown as UserData),
+    email: userObject.email ?? '',
+    is_organization: false,
     user_categories: userCategories,
   }
 
@@ -115,7 +118,7 @@ export const createUserCategory = async (
 ): Promise<EmploymentCategory | null> => {
   const { data, error } = await supabase
     .from('user_categories')
-    .insert([{ ...category, user_id: userId }])
+    .insert([{ ...category, user_id: userId, color: category.color ?? '' }])
     .single()
 
   if (error) {
@@ -130,11 +133,11 @@ export const updateUserCategory = async (
   categoryId: number,
   updatedCategory: Partial<EmploymentCategory>,
 ): Promise<EmploymentCategory | null> => {
-  const { data, error } = await supabase
-    .from('user_categories')
-    .update(updatedCategory)
-    .eq('id', categoryId)
-    .single()
+  const payload: UserCategoriesUpdate = {
+    ...updatedCategory,
+    color: updatedCategory.color === null ? undefined : updatedCategory.color,
+  }
+  const { data, error } = await supabase.from('user_categories').update(payload).eq('id', categoryId).single()
 
   if (error) {
     console.error('error', error)

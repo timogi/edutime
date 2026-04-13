@@ -32,7 +32,7 @@ export const insertRecords = async (records: TimeRecord[]) => {
 
 export const updateTimeRecord = async (record: TimeRecord) => {
   try {
-    const { data, error } = await supabase.from('records').update(record).eq('id', record.id)
+    const { data, error } = await supabase.from('records').update(record).eq('id', record.id!)
     if (error) {
       console.error('error', error)
       throw error
@@ -58,7 +58,7 @@ export const deleteTimeRecord = async (id: number) => {
   }
 }
 
-export const getDailyDurations = async (start: Date, end: Date, user_id: String) => {
+export const getDailyDurations = async (start: Date, end: Date, user_id: string) => {
   const startISO = getIsoDate(start)
   const endISO = getIsoDate(end)
   try {
@@ -76,14 +76,14 @@ export const getDailyDurations = async (start: Date, end: Date, user_id: String)
 
     // Aggregate durations by date
     const aggregation = (data || []).reduce(
-      (acc: { [date: string]: number }, record: { date: string; duration: number }) => {
-        acc[record.date] = (acc[record.date] || 0) + record.duration
+      (acc: { [date: string]: number }, record: { date: string; duration: number | null }) => {
+        acc[record.date] = (acc[record.date] || 0) + (record.duration ?? 0)
         return acc
       },
-      {},
+      {} as { [date: string]: number },
     )
 
-    return aggregation as DailyDuration
+    return aggregation
   } catch (err) {
     console.error('error', err)
     return {}

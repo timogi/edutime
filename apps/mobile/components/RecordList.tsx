@@ -6,7 +6,7 @@ import { Card } from "@gluestack-ui/themed";
 import { ThemedText } from '@/components/ThemedText';
 import { VStack } from "@gluestack-ui/themed";
 import { HStack } from "@gluestack-ui/themed";
-import { Colors } from '@/constants/Colors';
+import { Colors, themeForScheme } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Ionicons } from '@expo/vector-icons';
 import { findCategory } from '@/lib/database/categories';
@@ -97,7 +97,7 @@ export const RecordList = ({ date }: RecordListProps) => {
                 <Ionicons 
                   name="folder" 
                   size={16} 
-                  color={category?.color || Colors[colorScheme ?? 'light'].text} 
+                  color={category?.color || themeForScheme(colorScheme).text} 
                 />
                 <ThemedText 
                   style={styles.categoryTitle}

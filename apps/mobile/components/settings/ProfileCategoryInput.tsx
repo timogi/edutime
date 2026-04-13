@@ -13,7 +13,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { Colors } from '@/constants/Colors';
+import { Colors, themeForScheme } from '@/constants/Colors';
 import { ProfileCategoryData } from '@edutime/shared';
 import { ProfileCategoryModal } from './ProfileCategoryModal';
 
@@ -32,7 +32,7 @@ export const ProfileCategoryInput: React.FC<ProfileCategoryInputProps> = ({
 }) => {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'light'];
+  const theme = themeForScheme(colorScheme);
   const isDark = colorScheme === 'dark';
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<ProfileCategoryData | null>(null);

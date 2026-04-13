@@ -11,7 +11,7 @@ import { Button, ButtonText } from '@gluestack-ui/themed';
 import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { WeekdayPicker } from '@/components/WeekdayPicker';
-import { Colors } from '@/constants/Colors';
+import { themeForScheme } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { StopWatchButton } from '@/components/StopWatchButton';
 import { RecordList } from '@/components/RecordList';
@@ -75,7 +75,7 @@ export default function TimesheetScreen() {
             locale={i18n.language}
             style={{ alignSelf: 'center' }}
             onChange={handleDateChange}
-            accentColor={Colors[colorScheme ?? 'light'].primary[6]}
+            accentColor={themeForScheme(colorScheme).primary[6]}
           />
         ) : (
           <>
@@ -93,7 +93,7 @@ export default function TimesheetScreen() {
                 mode="date"
                 locale={i18n.language}
                 onChange={handleDateChange}
-                accentColor={Colors[colorScheme ?? 'light'].primary[6]}
+                accentColor={themeForScheme(colorScheme).primary[6]}
               />
             )}
           </>
@@ -117,7 +117,7 @@ export default function TimesheetScreen() {
           alignItems="center"
           justifyContent="center"
           gap={8}
-          android_ripple={{ color: Colors[colorScheme ?? 'light'].primary[8] }}
+          android_ripple={{ color: themeForScheme(colorScheme).primary[8] }}
         >
           <IconSymbol name="plus" size={20} color="white" />
           <ButtonText color="$white">{t('Index.createEntry')}</ButtonText>

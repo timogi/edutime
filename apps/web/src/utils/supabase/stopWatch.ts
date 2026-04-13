@@ -1,5 +1,18 @@
 import { StopWatchSession } from '@/types/globals'
+import type { Database } from '@edutime/shared'
 import { supabase } from './client'
+
+type StopwatchRow = Database['public']['Tables']['stopwatch_sessions']['Row']
+type StopwatchUpdate = Database['public']['Tables']['stopwatch_sessions']['Update']
+
+export const mapStopwatchRowToSession = (row: StopwatchRow): StopWatchSession => ({
+  id: row.id,
+  category_id: row.category_id,
+  is_user_category: row.is_user_category,
+  user_category_id: row.user_category_id,
+  start_time: new Date(row.start_time),
+  description: row.description ?? '',
+})
 
 export const createStopwatchSession = async () => {
   const user = await supabase.auth.getUser()
@@ -15,15 +28,14 @@ export const createStopwatchSession = async () => {
     .maybeSingle()
 
   if (existingSession) {
-    // Session already exists, return it
-    return existingSession
+    return mapStopwatchRowToSession(existingSession)
   }
 
   const { data, error } = await supabase
     .from('stopwatch_sessions')
     .insert([
       {
-        start_time: new Date(),
+        start_time: new Date().toISOString(),
         category_id: null,
         description: '',
       },
@@ -36,7 +48,11 @@ export const createStopwatchSession = async () => {
     throw error
   }
 
-  return data
+  if (!data) {
+    throw new Error('No stopwatch session returned after insert')
+  }
+
+  return mapStopwatchRowToSession(data)
 }
 
 export const deleteStopwatchSession = async () => {
@@ -82,9 +98,8 @@ export const fetchStopWatchSession = async (
           if (error) {
             console.error('error', error)
           }
-          if (data) {
-            const activeSession = data[0]
-            callback(activeSession)
+          if (data?.[0]) {
+            callback(mapStopwatchRowToSession(data[0]))
           } else {
             callback(null)
           }
@@ -98,9 +113,20 @@ export const updateStopwatchSession = async (stopWatchSession: StopWatchSession)
     throw new Error('Stopwatch session ID is required')
   }
 
+  const updatePayload: StopwatchUpdate = {
+    category_id: stopWatchSession.category_id,
+    is_user_category: stopWatchSession.is_user_category,
+    user_category_id: stopWatchSession.user_category_id,
+    start_time:
+      stopWatchSession.start_time instanceof Date
+        ? stopWatchSession.start_time.toISOString()
+        : String(stopWatchSession.start_time),
+    description: stopWatchSession.description,
+  }
+
   const { error } = await supabase
     .from('stopwatch_sessions')
-    .update(stopWatchSession)
+    .update(updatePayload)
     .eq('id', stopWatchSession.id)
 
   if (error) {

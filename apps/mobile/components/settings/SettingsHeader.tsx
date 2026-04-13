@@ -6,12 +6,12 @@ import {
   Text
 } from "@gluestack-ui/themed";
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { Colors } from "@/constants/Colors";
+import { Colors, themeForScheme } from "@/constants/Colors";
 
 export default function SettingsHeader() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'light'];
+  const theme = themeForScheme(colorScheme);
   const version = Constants.expoConfig?.version || "1.0.0";
 
   const textStyle = {

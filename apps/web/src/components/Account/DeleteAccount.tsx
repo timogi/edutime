@@ -226,7 +226,9 @@ export const DeleteAccount: React.FC<DeleteAccountProps> = ({ user_id }) => {
         <Button
           variant='filled'
           color='red'
-          onClick={handleDelete}
+          onClick={() => {
+            void handleDelete()
+          }}
           loading={isDeleting || isCheckingEligibility}
           disabled={blockedOrganizations.length > 0 || isCheckingEligibility}
         >

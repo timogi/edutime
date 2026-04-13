@@ -1,7 +1,7 @@
 import { StyleSheet, View, TouchableOpacity, Modal, Platform } from 'react-native';
 import { Button, ButtonText } from '@gluestack-ui/themed';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import { Colors } from '@/constants/Colors';
+import { Colors, themeForScheme } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useState } from 'react';
 import { Spinner } from '@gluestack-ui/themed';
@@ -61,7 +61,7 @@ export const CreateTimerRecordButton = ({
         }}
         style={styles.mainButton}
         android_ripple={{
-          color: Colors[colorScheme ?? "light"].primary[8],
+          color: themeForScheme(colorScheme).primary[8],
         }}
         pressRetentionOffset={{ top: 50, left: 50, right: 50, bottom: 50 }}
       >
@@ -73,7 +73,7 @@ export const CreateTimerRecordButton = ({
         variant="solid"
         style={styles.secondaryButton}
         android_ripple={{
-          color: Colors[colorScheme ?? "light"].primary[1],
+          color: themeForScheme(colorScheme).primary[1],
         }}
         onPress={toggleMenu}
         pressRetentionOffset={{ top: 50, left: 50, right: 50, bottom: 50 }}
@@ -106,7 +106,7 @@ export const CreateTimerRecordButton = ({
             >
               <View style={styles.menuItemContent}>
                 {loading === "createAndRestart" ? (
-                  <Spinner size="small" color={Colors[colorScheme ?? "light"].primary[8]} />
+                  <Spinner size="small" color={themeForScheme(colorScheme).primary[8]} />
                 ) : (
                   <IconSymbol
                     name="repeat"
@@ -136,7 +136,7 @@ export const CreateTimerRecordButton = ({
             >
               <View style={styles.menuItemContent}>
                 {loading === "saveAndContinue" ? (
-                  <Spinner size="small" color={Colors[colorScheme ?? "light"].primary[8]} />
+                  <Spinner size="small" color={themeForScheme(colorScheme).primary[8]} />
                 ) : (
                   <IconSymbol
                     name="square.and.arrow.down"

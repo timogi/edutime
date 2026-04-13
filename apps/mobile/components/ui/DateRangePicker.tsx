@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, View, TouchableOpacity, Platform, StyleProp, ViewStyle } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { Colors } from '@/constants/Colors';
+import { Colors, themeForScheme } from '@/constants/Colors';
 import { 
   Box, 
   HStack, 
@@ -39,7 +39,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
 }) => {
   const { t, i18n } = useTranslation();
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'light'];
+  const theme = themeForScheme(colorScheme);
   
   // Android: DateTimePicker opens a native modal dialog immediately on mount.
   // Gate behind state — never render unconditionally.

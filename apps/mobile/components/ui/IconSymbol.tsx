@@ -30,15 +30,15 @@ const MAPPING = {
   'shield': 'lock',
   'chart.bar.xaxis': 'bar-chart',
   'folder': 'folder',
-  'doc.text': 'picture-as-pdf'
-} as Partial<
-  Record<
-    import('expo-symbols').SymbolViewProps['name'],
-    React.ComponentProps<typeof MaterialIcons>['name']
-  >
->;
+  'doc.text': 'picture-as-pdf',
+  'play.fill': 'play-arrow',
+  'exclamationmark.triangle.fill': 'warning',
+  'arrow.down.circle.fill': 'download',
+} as const
 
-export type IconSymbolName = keyof typeof MAPPING;
+type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name']
+
+export type IconSymbolName = keyof typeof MAPPING
 
 /**
  * An icon component that uses native SFSymbols on iOS, and MaterialIcons on Android and web. This ensures a consistent look across platforms, and optimal resource usage.
@@ -57,5 +57,7 @@ export function IconSymbol({
   style?: StyleProp<ViewStyle>;
   weight?: SymbolWeight;
 }) {
-  return <MaterialIcons color={color} size={size} name={MAPPING[name]} />;
+  return (
+    <MaterialIcons color={color} size={size} name={MAPPING[name] as MaterialIconName} />
+  )
 }

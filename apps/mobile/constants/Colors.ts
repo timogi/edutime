@@ -3,6 +3,8 @@
  * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
  */
 
+import type { ColorSchemeName } from 'react-native'
+
 const tintColorLight = '#9775fa';
 const tintColorDark = '#9775fa';
 
@@ -95,4 +97,9 @@ export const Colors = {
       9: '#212529'
     }
   },
-};
+}
+
+/** Resolves palette for any `ColorSchemeName` (e.g. `unspecified` maps to light). */
+export function themeForScheme(scheme: ColorSchemeName | null | undefined): typeof Colors.light {
+  return scheme === 'dark' ? Colors.dark : Colors.light
+}

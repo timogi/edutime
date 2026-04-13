@@ -127,7 +127,7 @@ export const getOrganizationMembers = async (
   const members = (data || []).map((member) => ({
     id: member.id,
     email: member.user_email,
-    status: member.status,
+    status: member.status as OrganizationMember['status'],
     created_at: new Date(member.created_at),
     comment: member.comment,
   }))

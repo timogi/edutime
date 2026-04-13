@@ -7,9 +7,10 @@ import { TouchableOpacity } from "react-native";
 import { TextStyles, Spacing, BorderRadius } from "@/constants/Styles";
 import { useTranslation } from "react-i18next";
 import { ColorTheme } from "@/lib/types";
+import type { RecordFormData } from "./record-form-types";
 
 interface DateInputProps {
-  control: Control<Record<string, Date | null | string | number | boolean | undefined>>;
+  control: Control<RecordFormData>;
   showDatePicker: boolean;
   onToggleDatePicker: () => void;
   onDateChange: (event: DateTimePickerEvent, selectedDate: Date | undefined) => void;
@@ -63,7 +64,7 @@ export function DateInput({
             control={control}
             render={({ field: { value } }) => (
               <DateTimePicker
-                value={value}
+                value={value instanceof Date ? value : new Date()}
                 mode="date"
                 display={Platform.OS === "ios" ? "spinner" : "default"}
                 onChange={onDateChange}

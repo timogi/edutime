@@ -15,7 +15,7 @@ import { hasEverHadTrial } from "@edutime/shared";
 import { showErrorToast, showSuccessToast } from "@/components/ui/Toast";
 import { HapticFeedback } from "@/lib/haptics";
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { Colors } from "@/constants/Colors";
+import { Colors, themeForScheme } from "@/constants/Colors";
 import { TextStyles, Spacing, BorderRadius, ShadowStyles, LayoutStyles } from "@/constants/Styles";
 
 
@@ -23,7 +23,7 @@ import { TextStyles, Spacing, BorderRadius, ShadowStyles, LayoutStyles } from "@
 export default function NotSubscribedScreen() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'light'];
+  const theme = themeForScheme(colorScheme);
   const {
     logout,
     user,
