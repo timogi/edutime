@@ -496,6 +496,8 @@
     "org-management-billing-annual-amount": "Coût annuel actuel",
     "org-management-billing-renewal-on": "Renouvellement le",
     "org-management-billing-subscription-ends": "L'abonnement se termine le",
+    "org-management-auto-renew-disabled-alert-title": "Renouvellement automatique désactivé",
+    "org-management-auto-renew-disabled-alert-description": "L'abonnement organisation prendra fin le {date} et ne sera pas renouvelé. Vous pouvez réactiver le renouvellement automatique avec le bouton ci-dessous.",
     "org-management-billing-next-payment-none-after-cancel": "Après résiliation, aucun autre paiement n'est prévu.",
     "org-management-invoice-payable-until": "À payer avant le",
     "org-management-open-invoices-title": "Factures ouvertes",
@@ -537,6 +539,9 @@
     "org-management-cancel-success-title": "Annulation planifiee",
     "org-management-cancel-success-message": "L'organisation reste active jusqu'a la fin de periode.",
     "org-management-cancel-error": "Impossible de planifier l'annulation.",
+    "org-management-cancel-confirm-modal-title": "Desactiver le renouvellement automatique ?",
+    "org-management-cancel-confirm-modal-description": "L'abonnement se terminera le {date} et ne sera pas renouvele automatiquement. L'organisation reste pleinement utilisable jusque-la.",
+    "org-management-cancel-confirm-submit": "Oui, desactiver",
     "org-management-outstanding-payment-note": "Cette facture est encore ouverte. Tu peux relancer le paiement ici.",
     "org-management-open-existing-payment-link": "Ouvrir le lien de paiement existant",
     "org-management-create-new-payment-link": "Creer un nouveau lien de paiement",
@@ -1226,7 +1231,7 @@
   "Checkout": {
     "successTitle": "Paiement réussi",
     "successDescription": "Votre licence a été achetée avec succès. Vous pouvez maintenant utiliser EduTime.",
-    "successNote": "L'activation de votre licence peut prendre quelques instants. Si elle n'est pas activée immédiatement, veuillez rafraîchir la page.",
+    "successNote": "Redirection…",
     "failedTitle": "Échec du paiement",
     "failedDescription": "Malheureusement, un problème est survenu lors du traitement de votre paiement. Veuillez réessayer ou utiliser un autre mode de paiement.",
     "cancelTitle": "Paiement annulé",
@@ -1241,7 +1246,7 @@
     "continueToPayment": "Continuer vers le paiement",
     "activationPendingTitle": "Paiement recu",
     "activationPendingDescription": "Nous verifions votre paiement et activons automatiquement votre licence.",
-    "activationPendingNote": "Cela peut prendre quelques secondes.",
+    "activationPendingNote": "L'activation se fait en arrière-plan. Dès que la licence est prête, nous vous redirigerons automatiquement — ou utilisez le bouton ci-dessous à tout moment.",
     "activationFailedNote": "Le paiement n'a pas pu etre finalise. Veuillez reessayer l'achat.",
     "refreshStatus": "Actualiser le statut"
   }

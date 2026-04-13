@@ -565,28 +565,22 @@ export function NoLicenseView() {
 
           {/* Pricing Cards - hide for administrators who manage members */}
           {!isAdministrator && (
-            <>
-              <PricingCards
-                embedded
-                hideDemoCard={hasUsedDemo !== false}
-                onDemoClick={handleStartDemo}
-                onStandardClick={handlePurchase}
-                demoButtonLabel={t_noLicense('start-demo')}
-                standardButtonLabel={t_noLicense('purchase-now')}
-              />
-            </>
+            <PricingCards
+              embedded
+              hideDemoCard={hasUsedDemo !== false}
+              onDemoClick={handleStartDemo}
+              onStandardClick={handlePurchase}
+              demoButtonLabel={t_noLicense('start-demo')}
+              standardButtonLabel={t_noLicense('purchase-now')}
+            />
           )}
 
-          {isAdministrator ? (
-            <Divider
-              w='100%'
-              label={t_noLicense('personal-license-section-label')}
-              labelPosition='center'
-              my='lg'
-            />
-          ) : null}
-
-          <Divider w='100%' my='md' />
+          <Divider
+            w='100%'
+            my='lg'
+            label={!isAdministrator ? t_noLicense('personal-license-section-label') : undefined}
+            labelPosition='center'
+          />
 
           {/* User Info and Actions */}
           <Card padding='xl' radius='md' withBorder w='100%'>

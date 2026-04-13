@@ -188,6 +188,7 @@ export default function OrganizationManagementPage() {
   const [newAdminEmail, setNewAdminEmail] = useState('')
   const [isAddingAdmin, setIsAddingAdmin] = useState(false)
   const [isCanceling, setIsCanceling] = useState(false)
+  const [isCancelRenewalConfirmOpen, setIsCancelRenewalConfirmOpen] = useState(false)
   const [isReactivating, setIsReactivating] = useState(false)
   const [isDeactivatingOrg, setIsDeactivatingOrg] = useState(false)
   const [isDeactivateConfirmOpen, setIsDeactivateConfirmOpen] = useState(false)
@@ -426,6 +427,10 @@ export default function OrganizationManagementPage() {
     void loadManagementData(selectedOrganizationId)
   }, [selectedOrganizationId, loadManagementData])
 
+  useEffect(() => {
+    setIsCancelRenewalConfirmOpen(false)
+  }, [selectedOrganizationId])
+
   const postAction = useCallback(
     async (body: Record<string, unknown>) => {
       const requestInit = await getAuthenticatedRequestInit({
@@ -577,7 +582,7 @@ export default function OrganizationManagementPage() {
     }
   }
 
-  const handleCancel = async () => {
+  const handleConfirmCancelRenewal = async () => {
     if (!selectedOrganizationId) return
     setIsCanceling(true)
     try {
@@ -590,6 +595,7 @@ export default function OrganizationManagementPage() {
         message: t('org-management-cancel-success-message'),
         color: 'green',
       })
+      setIsCancelRenewalConfirmOpen(false)
       await loadManagementData(selectedOrganizationId)
     } catch (error) {
       await handleOrgManagementError(error, 'org-management-cancel-error', Number(selectedOrganizationId))
@@ -969,6 +975,15 @@ export default function OrganizationManagementPage() {
               </Stack>
             ) : (
               <Stack gap='xs'>
+                {isOrgCanceled && !isOrgSuspended ? (
+                  <Alert color='yellow' variant='light' icon={<IconAlertTriangle size={18} />} title={t('org-management-auto-renew-disabled-alert-title')}>
+                    <Text size='sm'>
+                      {t('org-management-auto-renew-disabled-alert-description', {
+                        date: formatDate(payload.billing.currentPeriodEnd, locale, t('license-unlimited')),
+                      })}
+                    </Text>
+                  </Alert>
+                ) : null}
                 <SimpleGrid cols={{ base: 1, sm: 2 }} spacing='sm'>
                   <Paper withBorder radius='md' p='sm'>
                     <Text size='xs' c='dimmed'>
@@ -1008,7 +1023,7 @@ export default function OrganizationManagementPage() {
                       {t('org-management-reactivate-button')}
                     </Button>
                   ) : !isOrgCanceled ? (
-                    <Button color='red' variant='light' onClick={handleCancel} loading={isCanceling}>
+                    <Button color='red' variant='light' onClick={() => setIsCancelRenewalConfirmOpen(true)}>
                       {t('org-management-cancel-button')}
                     </Button>
                   ) : null}
@@ -1379,6 +1394,53 @@ export default function OrganizationManagementPage() {
               loading={isDeactivatingOrg}
             >
               {t('org-management-delete-button')}
+            </Button>
+          </Group>
+        </Stack>
+      </Dialog>
+      <Dialog
+        opened={isCancelRenewalConfirmOpen}
+        onClose={() => setIsCancelRenewalConfirmOpen(false)}
+        withCloseButton
+        size='lg'
+        position={{ top: '10vh', left: '50%' }}
+        styles={{
+          root: {
+            transform: 'translateX(-50%)',
+            maxWidth: 'min(calc(100vw - 2rem), var(--dialog-size))',
+          },
+        }}
+        shadow='md'
+        withBorder
+        zIndex={320}
+        transitionProps={{ transition: 'fade', duration: 200 }}
+      >
+        <Stack gap='md'>
+          <Text fw={600} size='lg'>
+            {t('org-management-cancel-confirm-modal-title')}
+          </Text>
+          <Alert color='yellow' variant='light' icon={<IconAlertTriangle size={18} />}>
+            <Text size='sm'>
+              {t('org-management-cancel-confirm-modal-description', {
+                date: formatDate(
+                  payload?.billing?.currentPeriodEnd ?? null,
+                  locale,
+                  t('license-unlimited'),
+                ),
+              })}
+            </Text>
+          </Alert>
+          <Group justify='flex-end'>
+            <Button variant='subtle' onClick={() => setIsCancelRenewalConfirmOpen(false)} disabled={isCanceling}>
+              {t('cancel')}
+            </Button>
+            <Button
+              color='red'
+              variant='light'
+              onClick={() => void handleConfirmCancelRenewal()}
+              loading={isCanceling}
+            >
+              {t('org-management-cancel-confirm-submit')}
             </Button>
           </Group>
         </Stack>

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { GetStaticPropsContext } from 'next/types'
 import { Container, Paper, Stack, Text, Title, Button, ThemeIcon, Loader } from '@mantine/core'
 import { useTranslations } from 'next-intl'
-import { IconCircleCheck } from '@tabler/icons-react'
+import { IconCircleCheck, IconCircleX } from '@tabler/icons-react'
 import { supabase } from '@/utils/supabase/client'
 
 type CheckoutStatus =
@@ -14,22 +14,34 @@ type CheckoutStatus =
   | 'expired'
   | 'unknown'
 
+const POLL_INTERVAL_MS = 2000
+const MAX_POLL_ATTEMPTS = 45
+const REDIRECT_DELAY_MS = 1600
+
 export default function CheckoutSuccessPage() {
   const router = useRouter()
   const t = useTranslations('Checkout')
   const [status, setStatus] = useState<CheckoutStatus>('pending')
   const [hasActiveEntitlement, setHasActiveEntitlement] = useState(false)
-  const [isChecking, setIsChecking] = useState(true)
+  const [isPolling, setIsPolling] = useState(true)
 
   const referenceId = useMemo(
     () => (typeof router.query.ref === 'string' ? router.query.ref : null),
     [router.query.ref],
   )
 
-  const checkStatus = useCallback(async () => {
+  const postCheckoutPath = useMemo(() => {
+    const plan = typeof router.query.plan === 'string' ? router.query.plan : ''
+    return plan === 'org' ? '/app/members' : '/app'
+  }, [router.query.plan])
+
+  const fetchStatus = useCallback(async (): Promise<{
+    stopPolling: boolean
+    status: CheckoutStatus
+    hasActiveEntitlement: boolean
+  }> => {
     if (!referenceId) {
-      setIsChecking(false)
-      return
+      return { stopPolling: true, status: 'unknown', hasActiveEntitlement: false }
     }
 
     try {
@@ -47,8 +59,7 @@ export default function CheckoutSuccessPage() {
         { credentials: 'include', headers },
       )
       if (!response.ok) {
-        setStatus('unknown')
-        return
+        return { stopPolling: false, status: 'unknown', hasActiveEntitlement: false }
       }
 
       const data = (await response.json()) as {
@@ -56,54 +67,115 @@ export default function CheckoutSuccessPage() {
         hasActiveEntitlement?: boolean
       }
 
-      setStatus(data.status || 'unknown')
-      setHasActiveEntitlement(Boolean(data.hasActiveEntitlement))
+      const nextStatus = data.status || 'unknown'
+      const entitled = Boolean(data.hasActiveEntitlement)
+      const terminalFailure =
+        nextStatus === 'failed' || nextStatus === 'cancelled' || nextStatus === 'expired'
+
+      return {
+        stopPolling: entitled || terminalFailure,
+        status: nextStatus,
+        hasActiveEntitlement: entitled,
+      }
     } catch (error) {
       console.error('Failed to check checkout status:', error)
-      setStatus('unknown')
-    } finally {
-      setIsChecking(false)
+      return { stopPolling: false, status: 'unknown', hasActiveEntitlement: false }
     }
   }, [referenceId])
 
   useEffect(() => {
     if (!router.isReady || !referenceId) {
+      if (router.isReady && !referenceId) {
+        setIsPolling(false)
+      }
       return
     }
 
+    let cancelled = false
     let attempts = 0
-    const maxAttempts = 20
+    let intervalId: number | undefined
+    let inFlight = false
 
-    const poll = async () => {
+    const tick = async () => {
+      if (cancelled || inFlight) return
+      inFlight = true
       attempts += 1
-      await checkStatus()
 
-      if (attempts >= maxAttempts) {
+      const result = await fetchStatus()
+      if (cancelled) {
+        inFlight = false
+        return
+      }
+
+      setStatus(result.status)
+      setHasActiveEntitlement(result.hasActiveEntitlement)
+
+      const done =
+        result.stopPolling || attempts >= MAX_POLL_ATTEMPTS || cancelled
+
+      if (done) {
+        if (intervalId !== undefined) {
+          window.clearInterval(intervalId)
+          intervalId = undefined
+        }
+        setIsPolling(false)
+      }
+
+      inFlight = false
+    }
+
+    setIsPolling(true)
+    void tick()
+    intervalId = window.setInterval(() => void tick(), POLL_INTERVAL_MS)
+
+    return () => {
+      cancelled = true
+      if (intervalId !== undefined) {
         window.clearInterval(intervalId)
       }
     }
+  }, [router.isReady, referenceId, fetchStatus])
 
-    const intervalId = window.setInterval(poll, 3000)
-    void poll()
-
+  useEffect(() => {
+    if (!hasActiveEntitlement) return
+    const id = window.setTimeout(() => {
+      void router.replace(postCheckoutPath)
+    }, REDIRECT_DELAY_MS)
     return () => {
-      window.clearInterval(intervalId)
+      window.clearTimeout(id)
     }
-  }, [router.isReady, referenceId, checkStatus])
+  }, [hasActiveEntitlement, router, postCheckoutPath])
 
   const isActivated = hasActiveEntitlement
   const isFailure = status === 'failed' || status === 'cancelled' || status === 'expired'
 
-  const title = isActivated ? t('successTitle') : t('activationPendingTitle')
-  const description = isActivated ? t('successDescription') : t('activationPendingDescription')
-  const note = isFailure ? t('activationFailedNote') : t('activationPendingNote')
+  const title = isFailure
+    ? t('failedTitle')
+    : isActivated
+      ? t('successTitle')
+      : t('activationPendingTitle')
+  const description = isFailure
+    ? t('failedDescription')
+    : isActivated
+      ? t('successDescription')
+      : t('activationPendingDescription')
+  const note = isFailure
+    ? t('activationFailedNote')
+    : isActivated
+      ? t('successNote')
+      : t('activationPendingNote')
 
   return (
     <Container size={480} my={40}>
       <Paper withBorder p={30} radius='md'>
         <Stack gap='lg' align='center'>
-          <ThemeIcon size={64} radius='xl' color='green' variant='light'>
-            <IconCircleCheck size={40} />
+          <ThemeIcon
+            size={64}
+            radius='xl'
+            color={isFailure ? 'red' : 'green'}
+            variant='light'
+          >
+            {isFailure ? <IconCircleX size={40} /> : <IconCircleCheck size={40} />}
           </ThemeIcon>
 
           <Title order={2} ta='center'>
@@ -118,10 +190,15 @@ export default function CheckoutSuccessPage() {
             {note}
           </Text>
 
-          {isChecking && <Loader size='sm' />}
+          {isPolling && !isActivated && !isFailure && <Loader size='sm' />}
 
-          <Button onClick={() => router.push('/app')} variant='filled' fullWidth mt='md'>
-            {t('goToApp')}
+          <Button
+            onClick={() => void router.push(postCheckoutPath)}
+            variant='filled'
+            fullWidth
+            mt='md'
+          >
+            {postCheckoutPath === '/app/members' ? t('goToMembers') : t('goToApp')}
           </Button>
         </Stack>
       </Paper>

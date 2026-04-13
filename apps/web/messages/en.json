@@ -496,6 +496,8 @@
     "org-management-billing-annual-amount": "Current annual cost",
     "org-management-billing-renewal-on": "Renews on",
     "org-management-billing-subscription-ends": "Subscription ends on",
+    "org-management-auto-renew-disabled-alert-title": "Automatic renewal is off",
+    "org-management-auto-renew-disabled-alert-description": "Your organization subscription will end on {date} and will not renew. You can turn automatic renewal back on using the button below.",
     "org-management-billing-next-payment-none-after-cancel": "No further payment is scheduled after cancellation.",
     "org-management-invoice-payable-until": "Pay by",
     "org-management-open-invoices-title": "Open invoices",
@@ -537,6 +539,9 @@
     "org-management-cancel-success-title": "Cancellation scheduled",
     "org-management-cancel-success-message": "The organization remains active until period end.",
     "org-management-cancel-error": "Failed to schedule cancellation.",
+    "org-management-cancel-confirm-modal-title": "Turn off automatic renewal?",
+    "org-management-cancel-confirm-modal-description": "Your subscription will end on {date} and will not renew automatically. The organization stays fully usable until then.",
+    "org-management-cancel-confirm-submit": "Yes, turn off renewal",
     "org-management-outstanding-payment-note": "This invoice is still outstanding. You can restart payment here.",
     "org-management-open-existing-payment-link": "Open existing payment link",
     "org-management-create-new-payment-link": "Create new payment link",
@@ -1212,7 +1217,7 @@
   "Checkout": {
     "successTitle": "Payment Successful",
     "successDescription": "Your license has been purchased successfully. You can now use EduTime.",
-    "successNote": "It may take a few moments for your license to be activated. If it is not activated immediately, please refresh the page.",
+    "successNote": "Redirecting…",
     "failedTitle": "Payment Failed",
     "failedDescription": "Unfortunately, there was an issue processing your payment. Please try again or use a different payment method.",
     "cancelTitle": "Payment Cancelled",
@@ -1227,7 +1232,7 @@
     "continueToPayment": "Continue to payment",
     "activationPendingTitle": "Payment received",
     "activationPendingDescription": "We are verifying your payment and activating your license automatically.",
-    "activationPendingNote": "This can take a few seconds.",
+    "activationPendingNote": "Your license is being activated in the background. Once it is ready, we will redirect you automatically — or use the button below at any time.",
     "activationFailedNote": "Payment could not be completed. Please try the purchase again.",
     "refreshStatus": "Refresh status"
   }
