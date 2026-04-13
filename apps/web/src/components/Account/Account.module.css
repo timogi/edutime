@@ -1,5 +1,4 @@
 .wrapper {
-  min-height: calc(100dvh - 60px);
   margin: 0 auto;
   max-width: 1200px;
   width: 100%;

@@ -19,6 +19,7 @@ import { showNotification } from '@mantine/notifications'
 import { OrgPriceCalculatorModal } from './OrgPriceCalculatorModal'
 import { INDIVIDUAL_ANNUAL_PRICE_CHF } from '@/utils/payments/pricing'
 import { useUser } from '@/contexts/UserProvider'
+import { hasEverHadTrial } from '@edutime/shared'
 import classes from './Pricing.module.css'
 
 export function Pricing() {
@@ -49,6 +50,7 @@ export function PricingCards({
   const t = useTranslations('Pricing')
   const tDemo = useTranslations('DemoSection')
   const tIndex = useTranslations('Index')
+  const tNoLicense = useTranslations('NoLicense')
   const router = useRouter()
   const { user, hasActiveSubscription } = useUser()
   const [orgModalOpened, setOrgModalOpened] = useState(false)
@@ -72,6 +74,18 @@ export function PricingCards({
           return
         }
 
+        if (user?.user_id) {
+          const alreadyHadTrial = await hasEverHadTrial(supabase, user.user_id)
+          if (alreadyHadTrial) {
+            showNotification({
+              title: tNoLicense('demo-already-used'),
+              message: tNoLicense('demo-already-used-message'),
+              color: 'orange',
+            })
+            return
+          }
+        }
+
         const response = await fetch('/api/users/start-demo', {
           method: 'POST',
           headers: {
@@ -82,24 +96,41 @@ export function PricingCards({
           body: JSON.stringify({ user_id: session.user.id }),
         })
 
-        const data = await response.json()
+        const data = (await response.json()) as {
+          error?: string
+          entitlement?: { valid_from: string }
+        }
 
         if (!response.ok) {
           throw new Error(data.error || 'Failed to start demo')
         }
 
+        if (data.entitlement) {
+          const validFrom = new Date(data.entitlement.valid_from)
+          const secondsSinceCreation = (Date.now() - validFrom.getTime()) / 1000
+          if (secondsSinceCreation > 5) {
+            showNotification({
+              title: tNoLicense('demo-already-used'),
+              message: tNoLicense('demo-already-used-message'),
+              color: 'orange',
+            })
+            return
+          }
+        }
+
         showNotification({
           title: tIndex('success') || 'Erfolg',
-          message: tIndex('demo-started-message') || 'Demo wurde gestartet',
+          message: tNoLicense('demo-started-message'),
           color: 'green',
         })
 
         // Redirect to app
         router.push('/app')
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Failed to start demo'
         showNotification({
           title: tIndex('error') || 'Fehler',
-          message: error.message || 'Failed to start demo',
+          message,
           color: 'red',
         })
       }
@@ -121,6 +152,8 @@ export function PricingCards({
   const handleStandardClick = onStandardClick ?? handleStandardClickDefault
   const handleOrganizationClick = onOrganizationClick ?? (() => setOrgModalOpened(true))
 
+  const mdPricingCols = showOnlyOrganizationOption ? 1 : hideDemoCard ? 2 : 3
+
   const content = (
     <Stack gap='xl' align='center'>
       {!embedded ? (
@@ -135,9 +168,11 @@ export function PricingCards({
       ) : null}
 
       <SimpleGrid
-        cols={{ base: 1, md: showOnlyOrganizationOption ? 1 : 3 }}
+        cols={{ base: 1, md: mdPricingCols }}
         spacing='lg'
         w='100%'
+        maw={embedded && hideDemoCard && !showOnlyOrganizationOption ? 900 : undefined}
+        mx={embedded && hideDemoCard && !showOnlyOrganizationOption ? 'auto' : undefined}
         className={classes.grid}
       >
         {!showOnlyOrganizationOption ? (
