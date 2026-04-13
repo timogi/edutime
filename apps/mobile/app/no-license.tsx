@@ -1,24 +1,34 @@
-import { StyleSheet, View, ActivityIndicator, Platform, ScrollView, Linking, Image } from "react-native";
+import {
+  StyleSheet,
+  View,
+  ActivityIndicator,
+  Pressable,
+  Image,
+  Dimensions,
+  ScrollView,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useState, useEffect } from "react";
-import { Button, ButtonText, Text, VStack, Alert, AlertText } from "@gluestack-ui/themed";
+import { Button, ButtonText, Text, VStack } from "@gluestack-ui/themed";
 import { Redirect } from "expo-router";
-// import { InfoIcon } from "@/components/ui/Icon";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { ThemedText } from "@/components/ThemedText";
 import { useUser } from "@/contexts/UserContext";
 import { useTranslation } from "react-i18next";
-import { getMemberships, updateMembership } from "@/lib/database/organization";
+import { getMemberships } from "@/lib/database/organization";
 import { Membership } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
-import { hasEverHadTrial } from "@edutime/shared";
+import {
+  hasEverHadTrial,
+  acceptOrgMemberInviteViaSupabase,
+  rejectOrgMemberInviteViaSupabase,
+} from "@edutime/shared";
 import { showErrorToast, showSuccessToast } from "@/components/ui/Toast";
 import { HapticFeedback } from "@/lib/haptics";
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { Colors, themeForScheme } from "@/constants/Colors";
-import { TextStyles, Spacing, BorderRadius, ShadowStyles, LayoutStyles } from "@/constants/Styles";
-
-
+import { themeForScheme } from "@/constants/Colors";
+import { TextStyles, Spacing, BorderRadius, LayoutStyles } from "@/constants/Styles";
+const windowHeight = Dimensions.get("window").height;
 
 export default function NotSubscribedScreen() {
   const { t } = useTranslation();
@@ -37,10 +47,8 @@ export default function NotSubscribedScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isStartingDemo, setIsStartingDemo] = useState(false);
   const [hasUsedDemo, setHasUsedDemo] = useState<boolean | null>(null);
-
-  // ────────────────────────────────────────────────────────────
-  // Data helpers
-  // ────────────────────────────────────────────────────────────
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [processingOrgId, setProcessingOrgId] = useState<number | null>(null);
 
   const loadMemberships = async () => {
     if (!userEmail) return;
@@ -69,8 +77,19 @@ export default function NotSubscribedScreen() {
   }, [user?.user_id]);
 
   const handleReloadSubscription = async () => {
-    await reloadSubscription();
-    await loadMemberships();
+    HapticFeedback.light();
+    setIsRefreshing(true);
+    try {
+      await reloadSubscription();
+      await loadMemberships();
+      HapticFeedback.selection();
+    } catch (error) {
+      console.error("Error refreshing license state:", error);
+      HapticFeedback.error();
+      showErrorToast(t("Index.toastError"), t("Index.pleaseTryAgain"));
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const handleStartDemo = async () => {
@@ -98,42 +117,57 @@ export default function NotSubscribedScreen() {
     }
   };
 
-  const handleManageAccount = async () => {
-    HapticFeedback.light();
-    try {
-      await Linking.openURL("https://edutime.ch/app");
-    } catch (error) {
-      console.error("Error opening web app:", error);
-      HapticFeedback.error();
-      showErrorToast(t("Index.toastError"), t("Index.pleaseTryAgain"));
-    }
-  };
-
   const handleLogout = async () => {
     await logout();
   };
 
   const handleAcceptMembership = async (organizationId: number) => {
-    if (!userEmail) return;
-    await updateMembership(organizationId, userEmail, "active");
-    await loadMemberships();
-    await reloadSubscription();
+    if (!userEmail || processingOrgId != null) return;
+    setProcessingOrgId(organizationId);
+    HapticFeedback.light();
+    try {
+      await acceptOrgMemberInviteViaSupabase(supabase, organizationId);
+      await loadMemberships();
+      await reloadSubscription();
+      HapticFeedback.success();
+      showSuccessToast(t("Index.toastSuccess"), t("Index.invitation-accepted"));
+    } catch (error) {
+      console.error("Error accepting invitation:", error);
+      HapticFeedback.error();
+      showErrorToast(
+        t("Index.toastError"),
+        error instanceof Error ? error.message : t("Index.invitation-accept-failed"),
+      );
+    } finally {
+      setProcessingOrgId(null);
+    }
   };
 
   const handleDeclineMembership = async (organizationId: number) => {
-    if (!userEmail) return;
-    await updateMembership(organizationId, userEmail, "rejected");
-    await loadMemberships();
+    if (!userEmail || processingOrgId != null) return;
+    setProcessingOrgId(organizationId);
+    HapticFeedback.light();
+    try {
+      await rejectOrgMemberInviteViaSupabase(supabase, organizationId);
+      await loadMemberships();
+      HapticFeedback.success();
+      showSuccessToast(t("Index.toastSuccess"), t("Index.invitation-rejected"));
+    } catch (error) {
+      console.error("Error declining invitation:", error);
+      HapticFeedback.error();
+      showErrorToast(
+        t("Index.toastError"),
+        error instanceof Error ? error.message : t("Index.invitation-reject-failed"),
+      );
+    } finally {
+      setProcessingOrgId(null);
+    }
   };
-
-  // ────────────────────────────────────────────────────────────
-  // Guard clauses
-  // ────────────────────────────────────────────────────────────
 
   if (userLoading || isLoading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+      <View style={[styles.centered, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary[6]} />
       </View>
     );
   }
@@ -141,279 +175,320 @@ export default function NotSubscribedScreen() {
   if (!user) return <Redirect href="/(auth)/login" />;
   if (hasActiveSubscription) return <Redirect href="/(app)" />;
 
-  const pendingMemberships = memberships.filter(m => m.status === "invited");
-
-  // ────────────────────────────────────────────────────────────
-  // Render
-  // ────────────────────────────────────────────────────────────
+  const pendingMemberships = memberships.filter((m) => m.status === "invited");
+  const inviteScrollMaxHeight = Math.round(windowHeight * 0.36);
+  const surfaceMuted = colorScheme === "dark" ? theme.gray[8] : theme.gray[0];
+  const borderSubtle = colorScheme === "dark" ? theme.gray[6] : theme.gray[3];
+  const textPrimary = colorScheme === "dark" ? theme.gray[2] : theme.gray[8];
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "right", "left", "bottom"]}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        bounces={false}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={[styles.card, colorScheme === 'dark' && { backgroundColor: theme.gray[9] }]}>
-          <Button
-            size="sm"
-            variant="outline"
-            onPress={handleReloadSubscription}
-            style={[styles.openWebAppBtn, { borderColor: theme.primary[6] }]}
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={["top", "right", "left", "bottom"]}>
+      <View style={styles.root}>
+        <View style={styles.topBar}>
+          <Pressable
+            onPress={() => void handleReloadSubscription()}
+            disabled={isRefreshing}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel={t("Index.refresh")}
+            style={({ pressed }) => [
+              styles.refreshPressable,
+              {
+                borderColor: theme.primary[6],
+                backgroundColor: pressed || isRefreshing ? theme.primary[0] : "transparent",
+                opacity: isRefreshing ? 0.85 : pressed ? 0.75 : 1,
+              },
+            ]}
           >
-            <IconSymbol name="arrow.clockwise" size={18} color={theme.primary[6]} />
-          </Button>
+            {isRefreshing ? (
+              <ActivityIndicator size="small" color={theme.primary[6]} />
+            ) : (
+              <IconSymbol name="arrow.clockwise" size={20} color={theme.primary[6]} />
+            )}
+          </Pressable>
+        </View>
 
-          {/* Brand & icon */}
-          <VStack space="lg" style={styles.content}>
+        <View style={styles.mainColumn}>
+          <VStack space="md" style={styles.heroBlock}>
             <ThemedText style={styles.brand}>edutime.ch</ThemedText>
-
             <Image source={require("../assets/images/logo.png")} style={styles.logoImage} />
-
-            {/* License alert */}
-            <Alert action="info" variant="solid" style={styles.alert}>
-              {/* <AlertIcon as={InfoIcon} /> */}
-              <AlertText style={styles.alertText}>{t("Index.no-license")}</AlertText>
-              <AlertText style={styles.subtitle}>{t("Index.license-required")}</AlertText>
-            </Alert>
-
-            
+            <View
+              style={[
+                styles.noticeCard,
+                {
+                  backgroundColor: surfaceMuted,
+                  borderLeftColor: theme.primary[6],
+                  borderColor: borderSubtle,
+                },
+              ]}
+            >
+              <Text style={[styles.noticeTitle, { color: textPrimary }]}>{t("Index.no-license")}</Text>
+              <Text style={[styles.noticeSubtitle, { color: theme.gray[6] }]}>{t("Index.license-required")}</Text>
+            </View>
           </VStack>
 
-          {/* Pending memberships */}
-          {pendingMemberships.length > 0 && (
-            <VStack space="md" style={styles.membershipsContainer}>
-              <Text style={[styles.sectionTitle, { color: colorScheme === 'dark' ? theme.gray[2] : theme.gray[8] }]}>
-                {t("Index.pending-memberships")}
-              </Text>
-
-              {pendingMemberships.map((m) => (
-                <View key={m.id} style={[styles.membershipRow, { borderBottomColor: colorScheme === 'dark' ? theme.gray[2] : theme.gray[8] }]}>
-                  <Text style={[styles.organizationName, { color: colorScheme === 'dark' ? theme.gray[2] : theme.gray[8] }]}>
-                    {m.name}
-                  </Text>
-                  <View style={styles.buttonGroup}>
-                    <Button
-                      size="sm"
-                      variant="solid"
-                      onPress={() => handleAcceptMembership(m.id)}
-                      style={styles.acceptButton}
-                    >
-                      <ButtonText style={styles.acceptText}>{t("Index.accept")}</ButtonText>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      action="negative"
-                      onPress={() => handleDeclineMembership(m.id)}
-                      style={styles.declineButton}
-                    >
-                      <ButtonText style={styles.declineText}>{t("Index.decline")}</ButtonText>
-                    </Button>
-                  </View>
-                </View>
-              ))}
-            </VStack>
+          {pendingMemberships.length > 0 ? (
+            <View style={[styles.invitesSection, styles.invitesSectionFlex]}>
+              <Text style={[styles.sectionTitle, { color: textPrimary }]}>{t("Index.pending-memberships")}</Text>
+              <ScrollView
+                style={[styles.invitesScroll, { maxHeight: inviteScrollMaxHeight }]}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                bounces={false}
+              >
+                <VStack space="md">
+                  {pendingMemberships.map((m) => {
+                    const busy = processingOrgId === m.id;
+                    return (
+                      <View
+                        key={m.id}
+                        style={[
+                          styles.inviteCard,
+                          {
+                            backgroundColor: surfaceMuted,
+                            borderColor: borderSubtle,
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.organizationName, { color: textPrimary }]} numberOfLines={2}>
+                          {m.name}
+                        </Text>
+                        {busy ? (
+                          <View style={styles.inviteLoadingRow}>
+                            <ActivityIndicator size="small" color={theme.primary[6]} />
+                            <Text style={[styles.inviteLoadingLabel, { color: theme.gray[6] }]}>
+                              {t("Index.loading")}
+                            </Text>
+                          </View>
+                        ) : (
+                          <View style={styles.inviteActions}>
+                            <Button
+                              size="md"
+                              variant="solid"
+                              onPress={() => void handleAcceptMembership(m.id)}
+                              style={[styles.inviteBtnPrimary, { backgroundColor: theme.primary[6] }]}
+                              isDisabled={processingOrgId !== null}
+                            >
+                              <ButtonText style={styles.inviteBtnPrimaryText}>{t("Index.accept")}</ButtonText>
+                            </Button>
+                            <Button
+                              size="md"
+                              variant="outline"
+                              action="negative"
+                              onPress={() => void handleDeclineMembership(m.id)}
+                              style={[styles.inviteBtnOutline, { borderColor: theme.red[6] }]}
+                              isDisabled={processingOrgId !== null}
+                            >
+                              <ButtonText style={[styles.inviteBtnOutlineText, { color: theme.red[6] }]}>
+                                {t("Index.decline")}
+                              </ButtonText>
+                            </Button>
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })}
+                </VStack>
+              </ScrollView>
+            </View>
+          ) : (
+            <View style={styles.invitesSpacer} />
           )}
 
-          {/* User email & global actions */}
-          <VStack space="sm" style={styles.actionsWrapper}>
-            <VStack space="md" style={styles.actions}>
-              {hasUsedDemo === false && (
-                <VStack space="xs">
-                  <Button
-                    size="lg"
-                    variant="solid"
-                    onPress={handleStartDemo}
-                    style={styles.demoBtn}
-                    isDisabled={isStartingDemo}
-                  >
-                    <IconSymbol name="play.fill" size={20} color="white" />
-                    <ButtonText style={styles.demoText}>
-                      {isStartingDemo ? t("Index.starting") : t("Index.start-demo")}
-                    </ButtonText>
-                  </Button>
-                  <Text
-                    style={[
-                      styles.demoInfo,
-                      { color: colorScheme === "dark" ? theme.gray[4] : theme.gray[6] },
-                    ]}
-                  >
-                    {t("Index.demo-info")}
-                  </Text>
-                </VStack>
-              )}
-              <Button
-                size="lg"
-                variant="outline"
-                onPress={handleManageAccount}
-                style={[styles.manageAccountBtn, { borderColor: theme.primary[6] }]}
-              >
-                <IconSymbol name="arrow.up.right.square" size={20} color={theme.primary[6]} />
-                <ButtonText style={[styles.manageAccountText, { color: theme.primary[6] }]}>
-                  {t("Index.manage-account")}
-                </ButtonText>
-              </Button>
-              <Text style={[styles.userEmail, { color: colorScheme === 'dark' ? theme.gray[2] : theme.gray[8] }]}>
-                {userEmail}
-              </Text>
-              <Button size="lg" variant="solid" onPress={handleLogout} style={styles.logoutBtn}>
-                <IconSymbol name="power" size={20} color="white" />
-                <ButtonText style={styles.logoutText}>{t("Index.logout")}</ButtonText>
-              </Button>
-            </VStack>
+          <VStack space="md" style={styles.footerBlock}>
+            {hasUsedDemo === false && (
+              <VStack space="xs">
+                <Button
+                  size="lg"
+                  variant="solid"
+                  onPress={handleStartDemo}
+                  style={[styles.demoBtn, { backgroundColor: theme.primary[6] }]}
+                  isDisabled={isStartingDemo}
+                >
+                  <IconSymbol name="play.fill" size={20} color="white" />
+                  <ButtonText style={styles.demoText}>
+                    {isStartingDemo ? t("Index.starting") : t("Index.start-demo")}
+                  </ButtonText>
+                </Button>
+                <Text style={[styles.demoInfo, { color: theme.gray[6] }]}>{t("Index.demo-info")}</Text>
+              </VStack>
+            )}
+            <Text style={[styles.userEmail, { color: theme.gray[6] }]}>{userEmail}</Text>
+            <Button size="lg" variant="solid" onPress={handleLogout} style={[styles.logoutBtn, { backgroundColor: theme.gray[7] }]}>
+              <IconSymbol name="power" size={20} color="white" />
+              <ButtonText style={styles.logoutText}>{t("Index.logout")}</ButtonText>
+            </Button>
           </VStack>
         </View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
 
-// ────────────────────────────────────────────────────────────
-// Styles
-// ────────────────────────────────────────────────────────────
-
-const cardShadow = Platform.select({
-  ios: {
-    shadowColor: undefined,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-  },
-  android: {
-    elevation: 4,
-  },
-});
-
 const styles = StyleSheet.create({
   safeArea: {
-    ...LayoutStyles.container,
+    flex: 1,
   },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: Spacing.lg,
-  },
-  centered: {
-    ...LayoutStyles.centered,
-  },
-  card: {
-    width: "92%",
-    position: "relative",
-    borderRadius: BorderRadius.xxl,
-    paddingVertical: Spacing.xxl,
+  root: {
+    flex: 1,
     paddingHorizontal: Spacing.lg,
-    ...cardShadow,
   },
-  openWebAppBtn: {
-    position: "absolute",
-    top: Spacing.md,
-    right: Spacing.md,
-    zIndex: 1,
-    width: 40,
-    height: 40,
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.xs,
+    minHeight: 48,
+  },
+  refreshPressable: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
   },
-  content: {
+  mainColumn: {
+    flex: 1,
+    justifyContent: "space-between",
+    minHeight: 0,
+  },
+  heroBlock: {
     alignItems: "center",
+    flexShrink: 0,
   },
   brand: {
     ...TextStyles.title,
-    fontSize: 26,
+    fontSize: 22,
+    letterSpacing: 0.3,
   },
   logoImage: {
-    width: 120,
-    height: 120,
-    marginTop: 4,
-    marginBottom: 24,
+    width: 88,
+    height: 88,
+    marginTop: Spacing.xs,
+    marginBottom: Spacing.sm,
   },
-  alert: {
+  noticeCard: {
     width: "100%",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    flexDirection: "column",
-    alignItems: "flex-start",
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderLeftWidth: 4,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
   },
-  subtitle: {
-    textAlign: "center",
-    marginTop: 8,
+  noticeTitle: {
+    ...TextStyles.subtitle,
+    fontSize: 17,
+  },
+  noticeSubtitle: {
+    ...TextStyles.small,
+    marginTop: Spacing.xs,
+    lineHeight: 20,
+  },
+  invitesSection: {
+    flexShrink: 1,
+    minHeight: 0,
+    marginTop: Spacing.md,
+    width: "100%",
+  },
+  invitesSectionFlex: {
+    flex: 1,
+  },
+  invitesScroll: {
+    marginTop: Spacing.sm,
+  },
+  invitesSpacer: {
+    flex: 1,
+    minHeight: Spacing.md,
   },
   sectionTitle: {
     ...TextStyles.subtitle,
-    textAlign: "center",
+    fontSize: 16,
+    textAlign: "left",
   },
-  membershipsContainer: {
-    marginTop: 32,
-  },
-  membershipRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 10,
-    borderBottomWidth: 1,
+  inviteCard: {
+    borderRadius: BorderRadius.xl,
+    borderWidth: 1,
+    padding: Spacing.lg,
+    gap: Spacing.md,
   },
   organizationName: {
-    flexShrink: 1,
+    ...TextStyles.body,
+    fontWeight: "600",
+    fontSize: 17,
   },
-  buttonGroup: {
+  inviteLoadingRow: {
     flexDirection: "row",
-    gap: 8,
-  },
-  acceptButton: {
-    paddingHorizontal: 18,
-  },
-  acceptText: {},
-  declineButton: {
-    paddingHorizontal: 18,
-  },
-  declineText: {},
-  actionsWrapper: {
-    marginTop: 24,
     alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    marginTop: Spacing.xs,
+  },
+  inviteLoadingLabel: {
+    ...TextStyles.small,
+  },
+  inviteActions: {
+    flexDirection: "row",
+    gap: Spacing.md,
+    marginTop: Spacing.xs,
+  },
+  inviteBtnPrimary: {
+    flex: 1,
+    minHeight: 44,
+    justifyContent: "center",
+  },
+  inviteBtnPrimaryText: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+  inviteBtnOutline: {
+    flex: 1,
+    minHeight: 44,
+    justifyContent: "center",
+    borderWidth: 1.5,
+  },
+  inviteBtnOutlineText: {
+    fontWeight: "600",
+  },
+  footerBlock: {
+    width: "100%",
+    paddingBottom: Spacing.md,
+    flexShrink: 0,
   },
   userEmail: {
     ...TextStyles.small,
     fontSize: 13,
-  },
-  actions: {
-    width: "100%",
-    marginTop: 8,
+    textAlign: "center",
   },
   demoBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    paddingHorizontal: 24,
+    gap: Spacing.sm,
     width: "100%",
   },
-  demoText: {},
+  demoText: {
+    color: "#fff",
+    fontWeight: "600",
+  },
   demoInfo: {
     ...TextStyles.small,
     textAlign: "center",
   },
-  manageAccountBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingHorizontal: 24,
-    width: "100%",
-  },
-  manageAccountText: {},
   logoutBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    paddingHorizontal: 24,
+    gap: Spacing.sm,
     width: "100%",
   },
-  logoutText: {},
-  alertText: {
-    ...TextStyles.body,
-    fontWeight: "500",
+  logoutText: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+  centered: {
+    ...LayoutStyles.centered,
   },
 });
