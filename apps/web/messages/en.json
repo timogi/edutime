@@ -2,7 +2,10 @@
   "Error": {
     "title": "Nothing here...",
     "description": "Page you are trying to open does not exist. You may have mistyped the address, or the page has been moved to another URL. If you think this is an error contact support.",
-    "backHome": "Take me back to home page"
+    "backHome": "Take me back to home page",
+    "notFound": "There is nothing to see here",
+    "notFoundDescription": "The page you want to open does not exist. You may have entered the address incorrectly, or the page has been moved to a different URL. If you think this is an error, please contact the support.",
+    "backToHome": "Back to Homepage"
   },
   "Index": {
     "login": "Login",
@@ -840,18 +843,25 @@
 
   "UserGuide": {
     "user-guide-title": "User Guide",
+    "intro": "EduTime – professional time tracking for teachers",
+    "intro-text": "EduTime is a modern web application designed specifically for teachers. Record your working time precisely according to your job description categories and get a clear overview of your hours.",
     "registration": "Registration and Activation",
     "registration-text": "Welcome to EduTime, your platform for efficient time tracking. Register to use the specially designed solution for educational institutions that enables effective management and monitoring of working hours. Enter your email address and a password. After registration, you must confirm your email address before you can log in for the first time. First and last name are optional. Please select the canton where you work. If your canton is not yet available, use an alternative canton for now and update the details once your canton becomes available.",
     "seat-text": "A 'seat' in EduTime entitles you to use it and is assigned by your organization or school. Contact your institution to gain access.",
     "migration": "Data Migration",
     "migration-text": "If you previously saved data in our old app, it can be easily transferred to the new environment. To do this, open the old app and navigate to 'Dashboard' via the yellow button at the bottom left, then select 'Statistics and Data' and 'Export Raw Data'. You can save the data directly on your smartphone if you want to perform the process on your phone, or you can email the file to yourself to continue the process on a computer. In the new web app, go to 'Settings' -> 'Import Data' -> 'Start Import'. Select the .csv file you exported. You can see which entries will be created and have the option to deselect specific entries you do not want to import using checkboxes.",
+    "time-recording-intro": "Time recording is the core of EduTime. Here you record your working time across the different categories of your job description.",
     "time-recording": "Time Recording",
     "time-recording-text": "In the time recording view, you can select the day for which you want to view or edit entries at the top. Use the arrows to jump a week forward or backward. Below is a table showing the days of the week for the selected day. Click on another day to change the date and view the time recording for that day. In this table, you also see the total recorded time for each day of the week.",
     "time-recording-text2": "The lower table lists the individual entries. Click on an entry to edit or delete it. Use the bottom left button to start the timer. Click this button again to manage the timer. Here you can capture additional information about the entry and create, save temporarily, discard, or create and immediately start a new entry (arrow to the right of the 'Create' button).",
     "time-recording-create": "Use the right 'Create Entry' button to create a new entry. Select a category and enter the start time, end time, and duration of the time element. In the comment, you can make notes about the corresponding element. The 'Repeat' function can be used to create an element multiple times. In the interval, specify on which days and until what time entries should be created. Use 'Select Days' to select or deselect additional days. Use the 'Create Entries' button to create the entries.",
     "time-recording-further-categories": "Additional tasks that you track in settings with their own workload appear automatically in the category selection and can be used for entries.",
-    "school-year": "School Year",
-    "school-year-text": "Use the arrows and year inputs to select the desired school year. The table shows each day of the school year and the recorded time. Click on a day to edit it in the time recording function. On smaller screens, the months are abbreviated to their first letters, and on very small screens, the semesters are selected separately."
+    "calendar": "School year",
+    "calendar-text": "The school year view gives you an overview of the entire school year. Select the school year you want and see at a glance which days you have already recorded. Click a day to jump straight to time recording and edit entries.",
+    "statistics": "Statistics",
+    "statistics-text": "The statistics view shows a detailed breakdown of your working time by category. Select a period and see how much time you spent in each area of your job description. Statistics automatically reflect your employment—if you define additional roles such as school leadership, they are included in the calculations.",
+    "reporting": "Reporting",
+    "reporting-text": "Export your statistics as a PDF or Excel file for conversations with school management or for your own documentation. Reports can be filtered by different periods and broken down by category."
   },
   "NewEduTime": {
     "title": "EduTime Reinvented: Your Web Application for Efficient Time Tracking",
@@ -935,12 +945,6 @@
     "missingCategoriesForStatistics": "Statistics require categories. Please create or complete your categories in settings first.",
     "loading": "Loading..."
   },
-  "Error": {
-    "notFound": "There is nothing to see here",
-    "notFoundDescription": "The page you want to open does not exist. You may have entered the address incorrectly, or the page has been moved to a different URL. If you think this is an error, please contact the support.",
-    "backToHome": "Back to Homepage"
-  },
-
   "MobileApp": {
     "title": "EduTime - Mobile App",
     "heading": "EduTime Mobile App",
