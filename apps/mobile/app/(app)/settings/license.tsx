@@ -35,6 +35,8 @@ const styles = StyleSheet.create({
   },
   inner: {
     paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
     width: "100%",
+    maxWidth: "100%",
   },
 });

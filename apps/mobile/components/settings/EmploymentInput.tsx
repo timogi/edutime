@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { StyleSheet, View, TouchableOpacity } from 'react-native';
 import {
   Card,
@@ -6,7 +6,6 @@ import {
   Button,
   ButtonText,
   VStack,
-  HStack,
 } from '@gluestack-ui/themed';
 import { useTranslation } from 'react-i18next';
 import { CantonPicker } from './CantonPicker';
@@ -25,9 +24,9 @@ import { ProfileCategoryModal } from './ProfileCategoryModal';
 import { Database, ConfigMode, ConfigProfileData, ProfileCategoryData } from '@edutime/shared';
 
 interface EmploymentInputProps {
-  onSave: (workload: number, canton: string, customWorkHours?: number, userPercentages?: {[key: number]: number}, classSize?: number | null, educationLevel?: Database["public"]["Enums"]["education_level"] | null, teacherRelief?: number | null) => void;
-  onCantonChange: (canton: string) => void;
-  onSaveCustom?: (annualWorkHours: number, workload: number) => void;
+  onSave: (workload: number, canton: string, customWorkHours?: number, userPercentages?: {[key: number]: number}, classSize?: number | null, educationLevel?: Database["public"]["Enums"]["education_level"] | null, teacherRelief?: number | null) => Promise<void>;
+  onCantonChange: (canton: string) => Promise<void>;
+  onSaveCustom?: (annualWorkHours: number, workload: number) => Promise<void>;
   onActivateCustomMode?: () => void;
   onDeactivateCustomMode?: () => void;
   cantonData: CantonData;
@@ -69,6 +68,7 @@ export const EmploymentInput: React.FC<EmploymentInputProps> = ({
   const [teacherRelief, setTeacherRelief] = useState<number | null>(userData?.teacher_relief ?? null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [customAnnualHours, setCustomAnnualHours] = useState<number>(configProfile?.annual_work_hours ?? 1930);
+  const [cantonChanging, setCantonChanging] = useState(false);
   const [profileCatModalVisible, setProfileCatModalVisible] = useState(false);
   const [selectedProfileCategory, setSelectedProfileCategory] = useState<ProfileCategoryData | null>(null);
 
@@ -148,12 +148,16 @@ export const EmploymentInput: React.FC<EmploymentInputProps> = ({
     setWorkload(value);
   };
 
-  const handleCantonChange = (newCanton: string) => {
+  const handleCantonChange = async (newCanton: string) => {
     setCanton(newCanton);
-    if (cantonData?.is_configurable) {
-      initializeUserPercentages(cantonData);
+    setCantonChanging(true);
+    try {
+      await onCantonChange(newCanton);
+    } catch (error) {
+      console.error('Error changing canton:', error);
+    } finally {
+      setCantonChanging(false);
     }
-    onCantonChange(newCanton);
   };
 
   const handleCustomWorkHoursChange = (value: number) => {
@@ -196,38 +200,68 @@ export const EmploymentInput: React.FC<EmploymentInputProps> = ({
     }
   };
 
-  const handleSave = () => {
+  const flushEmploymentSave = useCallback(async () => {
+    if (cantonChanging) return;
+
     if (isCustom) {
-      onSaveCustom?.(customAnnualHours, workload);
-      setHasUnsavedChanges(false);
+      if (onSaveCustom) {
+        await onSaveCustom(customAnnualHours, workload);
+      }
       return;
     }
 
     if (cantonData?.is_configurable) {
-      const total = calculateTotalPercentage();
+      const total = Object.values(userPercentages).reduce((sum: number, value: number | '') => {
+        if (typeof value === 'number') return sum + value;
+        return sum;
+      }, 0);
       if (Math.abs(total - 100) > 0.01) {
-        showErrorToast(t('Index.error'), t('Settings.percentages_must_sum_to_100'));
         return;
       }
     }
-    const numericUserPercentages: {[key: number]: number} = {};
+
+    const numericUserPercentages: { [key: number]: number } = {};
     Object.entries(userPercentages).forEach(([key, value]) => {
       if (typeof value === 'number') {
         numericUserPercentages[Number(key)] = value;
       }
     });
-    
-    onSave(
-      workload, 
-      canton, 
-      cantonData?.use_custom_work_hours ? customWorkHours : undefined, 
+
+    await onSave(
+      workload,
+      canton,
+      cantonData?.use_custom_work_hours ? customWorkHours : undefined,
       cantonData?.is_configurable ? numericUserPercentages : undefined,
       canton === 'TG_S' ? classSize : undefined,
       canton === 'TG_S' ? educationLevel : undefined,
       canton === 'TG_S' ? teacherRelief : undefined
     );
-    setHasUnsavedChanges(false);
-  };
+  }, [
+    cantonChanging,
+    isCustom,
+    onSaveCustom,
+    customAnnualHours,
+    workload,
+    cantonData,
+    userPercentages,
+    canton,
+    customWorkHours,
+    classSize,
+    educationLevel,
+    teacherRelief,
+    onSave,
+  ]);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const timeoutId = setTimeout(() => {
+      flushEmploymentSave().catch((error: unknown) => {
+        console.error('Error auto-saving employment:', error);
+        showErrorToast(t('Index.error'), t('Settings.saveFailed'));
+      });
+    }, 650);
+    return () => clearTimeout(timeoutId);
+  }, [hasUnsavedChanges, flushEmploymentSave, t]);
 
   const handleProfileCategoryPress = (category: ProfileCategoryData) => {
     setSelectedProfileCategory(category);
@@ -275,14 +309,7 @@ export const EmploymentInput: React.FC<EmploymentInputProps> = ({
   return (
     <Card style={cardStyle} variant="outline">
       <VStack space="md" style={styles.container}>
-        <HStack space="sm" style={styles.headerContainer}>
-          <Text size="xl" style={textStyle}>{t('Settings.employment')}</Text>
-          {hasUnsavedChanges && (
-            <Text size="sm" style={styles.unsavedIndicator}>
-              {t('Settings.unsaved-changes')}
-            </Text>
-          )}
-        </HStack>
+        <Text size="xl" style={textStyle}>{t('Settings.employment')}</Text>
 
         <View style={styles.segmentedControl}>
           <TouchableOpacity
@@ -340,8 +367,29 @@ export const EmploymentInput: React.FC<EmploymentInputProps> = ({
               <VStack space="md">
                 <Text size="lg" bold style={textStyle}>{t('Settings.customCategoriesTitle')}</Text>
                 <Text size="sm" style={{ color: theme.gray[6] }}>
-                  {t('Settings.customCategoriesInfo')}
+                  {profileCategories.length > 0
+                    ? t('Settings.customCategoriesInfo')
+                    : t('Settings.customCategoriesInfoEmpty')}
                 </Text>
+
+                {(profileCategories.length === 0 ||
+                  Math.abs(totalProfileWeight - 100) > 0.01) && (
+                  <View
+                    style={[
+                      styles.customCategoriesWarning,
+                      {
+                        borderLeftColor: theme.primary[5],
+                        backgroundColor: isDark ? theme.gray[8] : theme.primary[0],
+                      },
+                    ]}
+                  >
+                    <Text size="sm" style={{ color: theme.text }}>
+                      {profileCategories.length === 0
+                        ? t('Settings.customCategoriesWarningNoCategories')
+                        : t('Settings.customCategoriesWarningTotal')}
+                    </Text>
+                  </View>
+                )}
 
                 <View style={styles.tableContainer}>
                     <View style={[styles.tableHeader, isDark && styles.tableHeaderDark]}>
@@ -470,13 +518,6 @@ export const EmploymentInput: React.FC<EmploymentInputProps> = ({
             )}
           </>
         )}
-
-        <Button
-          onPress={handleSave}
-          style={[styles.button, hasUnsavedChanges && styles.buttonWithChanges]}
-        >
-          <ButtonText>{t('Settings.save')}</ButtonText>
-        </Button>
       </VStack>
     </Card>
   );
@@ -489,10 +530,6 @@ const styles = StyleSheet.create({
     width: '100%'
   },
   container: { width: '100%' },
-  headerContainer: {
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
   segmentedControl: {
     flexDirection: 'row',
     borderRadius: 8,
@@ -526,12 +563,6 @@ const styles = StyleSheet.create({
   segmentTextDark: {
     color: '#aaa',
   },
-  button: { marginTop: 16, width: '100%' },
-  buttonWithChanges: { backgroundColor: '#4CAF50' },
-  unsavedIndicator: {
-    color: '#FF9800',
-    fontStyle: 'italic',
-  },
   categoryCard: {
     marginTop: 8,
     padding: 8,
@@ -545,6 +576,13 @@ const styles = StyleSheet.create({
   },
   profileCategoryCardDark: {
     backgroundColor: '#3A3B3E',
+  },
+  customCategoriesWarning: {
+    marginTop: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderLeftWidth: 4,
   },
   tableContainer: {
     width: '100%',

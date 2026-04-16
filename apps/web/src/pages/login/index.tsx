@@ -29,6 +29,7 @@ export default function AuthenticationTitle() {
   const [showResendConfirmation, setShowResendConfirmation] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const loginInFlightRef = useRef(false)
 
   // Error states for fields
   const [emailError, setEmailError] = useState('')
@@ -122,6 +123,11 @@ export default function AuthenticationTitle() {
       return
     }
 
+    if (loginInFlightRef.current) {
+      return
+    }
+    loginInFlightRef.current = true
+
     setIsLoading(true)
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -196,6 +202,8 @@ export default function AuthenticationTitle() {
         color: 'red',
       })
       setIsLoading(false)
+    } finally {
+      loginInFlightRef.current = false
     }
   }
 

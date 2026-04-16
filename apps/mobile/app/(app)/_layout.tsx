@@ -1,5 +1,5 @@
 import { Tabs, Redirect } from "expo-router";
-import React, { useEffect } from "react";
+import React from "react";
 import { Platform, View, ActivityIndicator } from "react-native";
 import { HapticTab } from "@/components/HapticTab";
 import { IconSymbol } from "@/components/ui/IconSymbol";
@@ -15,33 +15,9 @@ const TabLayout = () => {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const { isValid: isVersionValid, isLoading: isVersionLoading } = useVersionCheck();
-  const {
-    data: missingDocs,
-    isLoading: legalLoading,
-    error: legalError,
-  } = useLegalCheck(!!user && hasActiveSubscription);
-
-  useEffect(() => {
-    console.log("[TabLayout] startup gates", {
-      hasUser: !!user,
-      hasActiveSubscription,
-      isLoading,
-      isVersionLoading,
-      isVersionValid,
-      legalLoading,
-      legalError: legalError instanceof Error ? legalError.message : null,
-      missingDocsCount: missingDocs?.length ?? null,
-    });
-  }, [
-    user,
-    hasActiveSubscription,
-    isLoading,
-    isVersionLoading,
-    isVersionValid,
-    legalLoading,
-    legalError,
-    missingDocs,
-  ]);
+  const { data: missingDocs, isLoading: legalLoading } = useLegalCheck(
+    !!user && hasActiveSubscription
+  );
 
   if (isLoading || isVersionLoading || (!!user && hasActiveSubscription && legalLoading)) {
     return (

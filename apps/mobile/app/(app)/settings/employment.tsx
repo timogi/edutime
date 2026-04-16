@@ -1,5 +1,5 @@
 import React from "react";
-import { ScrollView, StyleSheet } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -33,7 +33,24 @@ export default function EmploymentSettingsScreen() {
     handleDeleteProfileCategory,
   } = useSettingsActions();
 
+  /** Kanton-Modus: Payload kommt async — nicht als «nicht verfügbar» flackern lassen. */
+  const awaitingCantonPayload =
+    configMode === "default" && Boolean(user?.canton_code) && !cantonData;
+
   const showEditor = Boolean(cantonData || configMode === "custom");
+
+  if (awaitingCantonPayload) {
+    return (
+      <SafeAreaView
+        style={[styles.safe, { backgroundColor: theme.background }]}
+        edges={["bottom", "left", "right"]}
+      >
+        <ThemedView style={styles.centered}>
+          <ActivityIndicator size="large" color={theme.primary[5]} />
+        </ThemedView>
+      </SafeAreaView>
+    );
+  }
 
   if (!showEditor) {
     return (

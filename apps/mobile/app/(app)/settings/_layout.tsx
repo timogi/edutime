@@ -13,6 +13,7 @@ export default function SettingsStackLayout() {
     <Stack
       screenOptions={{
         headerShown: true,
+        headerBackTitle: t("Settings.back"),
         headerTitleStyle: {
           fontWeight: "600",
           fontSize: 17,
@@ -23,7 +24,7 @@ export default function SettingsStackLayout() {
         contentStyle: { backgroundColor: theme.background },
       }}
     >
-      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="index" options={{ headerShown: false, title: t("Settings.settingsTitle") }} />
       <Stack.Screen
         name="employment"
         options={{ title: t("Settings.employment") }}
@@ -35,7 +36,7 @@ export default function SettingsStackLayout() {
       <Stack.Screen name="license" options={{ title: t("Settings.license") }} />
       <Stack.Screen
         name="information"
-        options={{ title: t("Settings.information") }}
+        options={{ title: t("Settings.documents") }}
       />
       <Stack.Screen name="account" options={{ title: t("Settings.account") }} />
     </Stack>

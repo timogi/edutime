@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from "react";
-import { ScrollView, RefreshControl, StyleSheet } from "react-native";
+import { Linking, Platform, ScrollView, RefreshControl, StyleSheet } from "react-native";
+import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { VStack } from "@gluestack-ui/themed";
@@ -27,6 +28,18 @@ export default function SettingsIndexScreen() {
     setRefreshing(false);
   }, [refreshUserData]);
 
+  const openExternalUrl = useCallback((url: string) => {
+    Linking.openURL(url).catch((error: unknown) => {
+      console.error("Failed to open external URL:", error);
+    });
+  }, []);
+
+  const handleContactPress = useCallback(() => {
+    openExternalUrl(
+      `mailto:info@edutime.ch?body=\n\n\n------------------\nApp Information:\nPlatform: ${Platform.OS}\nVersion: ${Constants.expoConfig?.version}`
+    );
+  }, [openExternalUrl]);
+
   const showEmployment = Boolean(cantonData || configMode === "custom");
 
   return (
@@ -47,7 +60,7 @@ export default function SettingsIndexScreen() {
               {showEmployment ? (
                 <SettingsRow
                   title={t("Settings.employment")}
-                  icon="hourglass.tophalf.filled"
+                  icon="slider.horizontal.3"
                   isFirst
                   onPress={() => router.push("/settings/employment")}
                 />
@@ -68,9 +81,14 @@ export default function SettingsIndexScreen() {
                 onPress={() => router.push("/settings/license")}
               />
               <SettingsRow
-                title={t("Settings.information")}
-                icon="shield"
+                title={t("Settings.documents")}
+                icon="doc.text"
                 onPress={() => router.push("/settings/information")}
+              />
+              <SettingsRow
+                title={t("Settings.contact")}
+                icon="envelope"
+                onPress={handleContactPress}
               />
             </SettingsSection>
 

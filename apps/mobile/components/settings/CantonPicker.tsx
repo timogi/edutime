@@ -19,7 +19,7 @@ import { Colors, themeForScheme } from '@/constants/Colors';
 
 interface CantonPickerProps {
   selectedCanton: string;
-  onCantonChange: (canton: string) => void;
+  onCantonChange: (canton: string) => void | Promise<void>;
 }
 
 const cantons = [
