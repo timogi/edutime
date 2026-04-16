@@ -19,7 +19,7 @@ import { DeleteAccount } from './DeleteAccount'
 import { GetStaticPropsContext } from 'next/types'
 import { IconDeviceFloppy } from '@tabler/icons-react'
 import LocaleSwitcher from '../Settings/LocaleSwitcher'
-import { getUserEntitlements } from '@edutime/shared'
+import { getUserEntitlements, visibleUserEntitlements } from '@edutime/shared'
 import { UserData, Entitlement } from '@/types/globals'
 import { supabase } from '@/utils/supabase/client'
 import { getMemberships, getOrganizations } from '@/utils/supabase/organizations'
@@ -60,7 +60,7 @@ export const Account = ({ userData, reloadUserData }: AccountProps) => {
   const [isLoadingLicenseManagement, setIsLoadingLicenseManagement] = useState(false)
   const t = useTranslations('Index')
   const tNoLicense = useTranslations('NoLicense')
-  const visibleEntitlements = entitlements.filter((entitlement) => entitlement.status !== 'expired')
+  const visibleEntitlements = visibleUserEntitlements(entitlements)
 
   const getLicenseStatusColor = (status: Entitlement['status']) => {
     if (status === 'active') return 'green'

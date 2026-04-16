@@ -242,7 +242,7 @@ export default function AuthenticationTitle() {
   return (
     <>
       <Head>
-        <title>EduTime - {t('page-title-login')}</title>
+        <title>{`EduTime - ${t('page-title-login')}`}</title>
       </Head>
       <AppShell
         style={{

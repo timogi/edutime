@@ -18,7 +18,7 @@ export default function PasswordChanged() {
   return (
     <>
       <Head>
-        <title>EduTime - {t('page-title-reset-success')}</title>
+        <title>{`EduTime - ${t('page-title-reset-success')}`}</title>
       </Head>
       <AppShell
         style={{

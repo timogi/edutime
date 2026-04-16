@@ -39,7 +39,7 @@ export default function ChangePassword() {
   return (
     <>
       <Head>
-        <title>EduTime - {t('page-title-reset')}</title>
+        <title>{`EduTime - ${t('page-title-reset')}`}</title>
       </Head>
       <AppShell
         style={{

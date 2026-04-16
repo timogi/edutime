@@ -12,6 +12,9 @@ import { Colors, themeForScheme } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { TextStyles, Spacing, BorderRadius, ShadowStyles, LayoutStyles } from '@/constants/Styles';
 
+const APP_STORE_URL = 'https://apps.apple.com/ch/app/edutime-zeitmanagement/id6739214927';
+const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=ch.edutime.app';
+
 export default function UpdateRequiredScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -20,13 +23,10 @@ export default function UpdateRequiredScreen() {
 
   const handleUpdateApp = () => {
     HapticFeedback.light();
-    
-    // Open the app store for updates
-    if (Platform.OS === 'ios') {
-      Linking.openURL('https://apps.apple.com/app/id123456789'); // Replace with your actual App Store URL
-    } else {
-      Linking.openURL('https://play.google.com/store/apps/details?id=com.yourcompany.edutime'); // Replace with your actual Play Store URL
-    }
+    const url = Platform.OS === 'ios' ? APP_STORE_URL : PLAY_STORE_URL;
+    Linking.openURL(url).catch((error: unknown) => {
+      console.error('Failed to open store URL:', error);
+    });
   };
 
   return (

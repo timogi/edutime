@@ -19,7 +19,7 @@ export default function EmailVerified() {
   return (
     <>
       <Head>
-        <title>EduTime - {t('page-title-register-verified')}</title>
+        <title>{`EduTime - ${t('page-title-register-verified')}`}</title>
       </Head>
       <AppShell
         style={{

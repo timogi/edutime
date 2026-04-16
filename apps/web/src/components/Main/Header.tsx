@@ -7,7 +7,11 @@ import { supabase } from '@/utils/supabase/client'
 import { ActionToggle } from '@/components/Header/ActionToggle'
 import classes from './Header.module.css'
 
-export function HeaderSimple() {
+interface HeaderSimpleProps {
+  showThemeToggle?: boolean
+}
+
+export function HeaderSimple({ showThemeToggle = true }: HeaderSimpleProps) {
   const t = useTranslations('Index')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
 
@@ -25,12 +29,12 @@ export function HeaderSimple() {
     <Container className={classes.header} h={60}>
       <Link href={'/'}>
         <Group>
-          <Image src='/logo.svg' width={28} height={28} alt={'logo'} />
+          <Image src='/logo.svg' width={28} height={28} alt={'logo'} priority loading='eager' />
           <Text>EduTime</Text>
         </Group>
       </Link>
       <Group gap='sm'>
-        <ActionToggle />
+        {showThemeToggle && <ActionToggle />}
         {isLoggedIn ? (
           <Link href={'/app'}>
             <Button variant='default'>{t('go_back_to_app')}</Button>

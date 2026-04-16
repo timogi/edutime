@@ -12,7 +12,7 @@ const NoAccountPage = () => {
   return (
     <>
       <Head>
-        <title>EduTime - {t('page-title-no-account')}</title>
+        <title>{`EduTime - ${t('page-title-no-account')}`}</title>
       </Head>
       <AppShell>
         <Container size={600} my={40}>

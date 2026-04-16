@@ -23,7 +23,7 @@ export const userKeys = {
 export const useUserData = () => {
   return useQuery({
     queryKey: userKeys.data(),
-    queryFn: getUserData,
+    queryFn: () => getUserData(),
     staleTime: 1000 * 60 * 5, // 5 minutes - user data doesn't change often
   })
 }

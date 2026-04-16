@@ -3,6 +3,7 @@ import Head from 'next/head'
 import { AppShell, Center, Loader } from '@mantine/core'
 import { AppNavbar } from '@/components/Navbar'
 import { Header } from '@/components/Header/Header'
+import { ThemeNavItem } from '@/components/Header/ThemeNavItem'
 import { LoadingScreen } from '@/components/LoadingScreen'
 import { LegalGate } from '@/components/LegalGate'
 import { useUser } from '@/contexts/UserProvider'
@@ -11,6 +12,8 @@ import { useTranslations } from 'next-intl'
 import classes from '../pages/app/index.module.css'
 
 export const HEADER_HEIGHT = 60
+/** Taller than header: theme row is title + caption (two lines). */
+const NO_SIDEBAR_FOOTER_HEIGHT = 72
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -130,6 +133,13 @@ export function AppLayout({ children }: AppLayoutProps) {
         header={{
           height: HEADER_HEIGHT,
         }}
+        footer={
+          !showSidebar
+            ? {
+                height: NO_SIDEBAR_FOOTER_HEIGHT,
+              }
+            : undefined
+        }
         padding={0}
       >
         <AppShell.Header>
@@ -147,6 +157,11 @@ export function AppLayout({ children }: AppLayoutProps) {
           </AppShell.Navbar>
         )}
         <AppShell.Main className={classes.wrapper}>{renderContent()}</AppShell.Main>
+        {!showSidebar && (
+          <AppShell.Footer withBorder>
+            <ThemeNavItem variant='footer' />
+          </AppShell.Footer>
+        )}
       </AppShell>
     </LegalGate>
   )

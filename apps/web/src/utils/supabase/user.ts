@@ -1,5 +1,6 @@
 import { Category, CategoryBase, EmploymentCategory, UserData } from '@/types/globals'
 import type { Database } from '@edutime/shared'
+import type { User as AuthUser } from '@supabase/supabase-js'
 import { supabase } from './client'
 
 type UsersRowUpdate = Database['public']['Tables']['users']['Update']
@@ -67,10 +68,13 @@ export const getUserCategories = async (userId: string): Promise<EmploymentCateg
   return categoriesData || []
 }
 
-export const getUserData = async (): Promise<UserData | null> => {
-  const user = await supabase.auth.getUser()
-
-  const userObject = user?.data.user
+/**
+ * Loads app user row + categories. If `authUser` is omitted, calls `getUser()` (extra auth lock).
+ * Prefer passing `authUser` from `getSession().user` when you already have a session to avoid
+ * concurrent `getSession` + `getUser` fighting the same Supabase storage lock.
+ */
+export const getUserData = async (authUser?: AuthUser): Promise<UserData | null> => {
+  const userObject = authUser ?? (await supabase.auth.getUser()).data.user
 
   if (!userObject) {
     return null
@@ -80,10 +84,15 @@ export const getUserData = async (): Promise<UserData | null> => {
     .from('users')
     .select('*')
     .eq('user_id', userObject.id)
-    .single()
+    .maybeSingle()
 
   if (userError) {
-    console.error('error', userError)
+    console.error('Error loading user profile:', userError)
+    return null
+  }
+
+  if (!userData) {
+    // Auth user exists but no `public.users` row yet (incomplete signup, etc.) — not an application error
     return null
   }
 

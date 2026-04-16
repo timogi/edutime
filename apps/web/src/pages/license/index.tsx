@@ -16,7 +16,7 @@ export default function EduTimeLicense() {
       bg='light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-8))'
     >
       <Head>
-        <title>EduTime - {t('license-title')}</title>
+        <title>{`EduTime - ${t('license-title')}`}</title>
       </Head>
       <Container size={1100} my={75}>
         <Stack gap='sm'>

@@ -6,7 +6,7 @@ import {
   Text
 } from "@gluestack-ui/themed";
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { Colors, themeForScheme } from "@/constants/Colors";
+import { themeForScheme } from "@/constants/Colors";
 
 export default function SettingsHeader() {
   const { t } = useTranslation();
@@ -18,19 +18,23 @@ export default function SettingsHeader() {
     color: theme.text,
   };
 
+  const versionMutedStyle = {
+    color: theme.gray[6],
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.headerContainer}>
         <View style={styles.textContainer}>
           <Text style={[styles.title, textStyle]}>edutime.ch</Text>
           <HStack space="sm" style={styles.versionContainer}>
-            <Text style={[styles.version, textStyle]}>{t('Settings.version')} {version}</Text>
+            <Text style={[styles.version, versionMutedStyle]}>{t('Settings.version')} {version}</Text>
             {/* <Badge size="sm" variant="solid" action="info">
               <BadgeText>Beta</BadgeText>
             </Badge> */}
           </HStack>
         </View>
-        <View style={styles.iconContainer}>
+        <View style={[styles.iconContainer, { borderColor: theme.gray[3] }]}>
           <Image
             source={require("@/assets/images/icon.png")}
             style={styles.appIcon}
@@ -62,7 +66,6 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.light.gray[2],
     overflow: "hidden",
   },
   appIcon: {
@@ -76,6 +79,5 @@ const styles = StyleSheet.create({
   },
   version: {
     fontSize: 16,
-    color: Colors.light.gray[6],
   },
 });

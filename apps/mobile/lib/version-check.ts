@@ -16,32 +16,48 @@ export const useVersionCheck = (): VersionCheckResult => {
   });
 
   React.useEffect(() => {
+    const withTimeout = <T,>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> =>
+      new Promise((resolve, reject) => {
+        const id = setTimeout(() => {
+          reject(new Error(`${label} timed out after ${ms}ms`));
+        }, ms);
+
+        promise.then(
+          (value) => {
+            clearTimeout(id);
+            resolve(value);
+          },
+          (error: unknown) => {
+            clearTimeout(id);
+            reject(error instanceof Error ? error : new Error(String(error)));
+          }
+        );
+      });
+
     const checkVersion = async () => {
       try {
         const platform = Platform.OS;
-        const minVersion = await getMinVersion(platform);
+        const minVersion = await withTimeout(getMinVersion(platform), 10_000, 'getMinVersion');
         const currentVersion = Constants.expoConfig?.version || "0.0.0";
-        
+
         if (!minVersion) {
           setResult({ isValid: true, isLoading: false });
           return;
         }
-        
-        if (currentVersion) {
-          const isValid = currentVersion >= minVersion;
-          setResult({ isValid, isLoading: false });
-        }
+
+        const isValid = currentVersion >= minVersion;
+        setResult({ isValid, isLoading: false });
       } catch (error) {
         console.error("Error checking version:", error);
-        setResult({ 
-          isValid: true, 
-          isLoading: false, 
-          error: error instanceof Error ? error.message : 'Unknown error' 
+        setResult({
+          isValid: true,
+          isLoading: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
         });
       }
     };
 
-    checkVersion();
+    void checkVersion();
   }, []);
 
   return result;

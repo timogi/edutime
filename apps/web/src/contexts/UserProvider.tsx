@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { User } from '@supabase/supabase-js'
 import { useRouter } from 'next/router'
 import { useMantineColorScheme } from '@mantine/core'
@@ -71,7 +71,9 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
 
   const [currentSession, setCurrentSession] = useState<{ user: User; event: string } | null>(null)
   const router = useRouter()
-  const { colorScheme, toggleColorScheme } = useMantineColorScheme()
+  const { setColorScheme } = useMantineColorScheme()
+  /** Coalesce concurrent fetchUserData for the same user (Strict Mode / overlapping effects). */
+  const fetchUserDataInFlightRef = useRef<Map<string, Promise<boolean>>>(new Map())
 
   // Define public routes that don't require authentication
   const isPublicRoute = (pathname: string) => {
@@ -107,6 +109,13 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
 
   // Simplified data fetching with proper error handling
   const fetchUserData = useCallback(async (sessionUser: User): Promise<boolean> => {
+    const userId = sessionUser.id
+    const inFlight = fetchUserDataInFlightRef.current.get(userId)
+    if (inFlight) {
+      return inFlight
+    }
+
+    const run = async (): Promise<boolean> => {
     try {
       // Check if session still exists before fetching data
       const {
@@ -116,7 +125,7 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
         return false
       }
 
-      if (await hasPendingAccountDeletion(supabase, sessionUser.id)) {
+      if (await hasPendingAccountDeletion(supabase, session.user.id)) {
         try {
           await supabase.auth.signOut()
         } catch (signOutError) {
@@ -133,18 +142,22 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
         return false
       }
 
-      if (sessionUser.email) {
-        setUserEmail(sessionUser.email)
+      if (session.user.email) {
+        setUserEmail(session.user.email)
       }
 
-      const userData = await getUserData()
+      // Pass session.user so getUserData does not call auth.getUser() (avoids lock contention).
+      const userData = await getUserData(session.user)
       if (!userData) {
-        // Don't throw error - user might have logged out or data might not exist yet
-        console.warn('No user data available')
+        // Auth session without `public.users` row (incomplete signup, etc.) — not a PostgREST error
         return false
       }
 
       setUser(userData)
+
+      // Apply DB preference once per fetch. Do not sync theme in a useEffect that also
+      // depends on colorScheme — that fights Mantine’s cross-tab localStorage sync and causes flicker.
+      setColorScheme(userData.is_mode_dark ? 'dark' : 'light')
 
       const mode = getConfigMode(userData as unknown as { active_config_profile_id: string | null })
       setConfigMode(mode)
@@ -209,9 +222,9 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
       }
 
       // Fetch memberships if email is available (for display purposes only, not for license checking)
-      if (sessionUser.email) {
+      if (session.user.email) {
         try {
-          const fetchedMemberships = await getMemberships(sessionUser.email)
+          const fetchedMemberships = await getMemberships(session.user.email)
           setMemberships(fetchedMemberships || [])
         } catch (error) {
           console.error('Error fetching memberships:', error)
@@ -224,7 +237,14 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
       console.error('Error fetching user data:', error)
       return false
     }
-  }, [router])
+    }
+
+    const promise = run().finally(() => {
+      fetchUserDataInFlightRef.current.delete(userId)
+    })
+    fetchUserDataInFlightRef.current.set(userId, promise)
+    return promise
+  }, [router, setColorScheme])
 
   // Initialize session and set up auth listener
   useEffect(() => {
@@ -421,17 +441,6 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
       mounted = false
     }
   }, [currentSession, fetchUserData, router])
-
-  // Handle theme initialization after user data is loaded
-  useEffect(() => {
-    if (user) {
-      if (user.is_mode_dark && colorScheme !== 'dark') {
-        toggleColorScheme()
-      } else if (!user.is_mode_dark && colorScheme !== 'light') {
-        toggleColorScheme()
-      }
-    }
-  }, [user, colorScheme, toggleColorScheme])
 
   const login = async (email: string, password: string) => {
     setIsLoading(true)
