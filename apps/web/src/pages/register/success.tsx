@@ -12,7 +12,7 @@ export default function RegistrationSuccess() {
   return (
     <>
       <Head>
-        <title>EduTime - {t('page-title-register-success')}</title>
+        <title>{`EduTime - ${t('page-title-register-success')}`}</title>
       </Head>
       <AppShell
         style={{

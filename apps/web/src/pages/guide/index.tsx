@@ -15,7 +15,7 @@ export default function UserGuide() {
   return (
     <AppShell header={{ height: 60 }} padding={0}>
       <Head>
-        <title>EduTime - {t('user-guide-title')}</title>
+        <title>{`EduTime - ${t('user-guide-title')}`}</title>
       </Head>
       <Container size={1100} my={75}>
         <Stack gap='lg'>

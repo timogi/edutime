@@ -13,6 +13,7 @@ import { useTranslations } from 'next-intl'
 import { GetStaticPropsContext } from 'next'
 import { useRouter } from 'next/router'
 import { Organization, UserData } from '@/types/globals'
+import { ThemeNavItem } from '@/components/Header/ThemeNavItem'
 import classes from './Navbar.module.css'
 
 interface AppNavbarProps {
@@ -133,6 +134,7 @@ export function AppNavbar({
       </div>
 
       <div className={classes.footer}>
+        <ThemeNavItem variant='navbar' />
         <div
           className={`${classes.link} ${'settings' === currentView ? classes.linkActive : ''}`}
           onClick={(event) => {

@@ -76,7 +76,7 @@ export default function ForgotPassword() {
   return (
     <>
       <Head>
-        <title>EduTime - {t('page-title-recover')}</title>
+        <title>{`EduTime - ${t('page-title-recover')}`}</title>
       </Head>
       <AppShell
         style={{

@@ -48,6 +48,27 @@ const Context = createContext<UserContextType>({
   profileCategories: [],
 });
 
+const STARTUP_QUERY_TIMEOUT_MS = 10_000;
+
+function withTimeout<T>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const id = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${ms}ms`));
+    }, ms);
+
+    promise.then(
+      (value) => {
+        clearTimeout(id);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(id);
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
+    );
+  });
+}
+
 const Provider = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<
@@ -64,30 +85,37 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const initializeSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session) {
-        await updateData(session.user);
-      } else {
-        setUser(null);
-        setCategories([]);
-        setUserCategories([]);
-        setCantonData(null);
-        setConfigMode('default');
-        setConfigProfile(null);
-        setProfileCategories([]);
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (session) {
+          await updateData(session.user);
+        } else {
+          setUser(null);
+          setCategories([]);
+          setUserCategories([]);
+          setCantonData(null);
+          setConfigMode('default');
+          setConfigProfile(null);
+          setProfileCategories([]);
+        }
+      } catch (error) {
+        console.error('UserContext: initializeSession failed:', error);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
-    initializeSession();
+    void initializeSession();
 
     // Subscribe to auth state changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         if (session) {
-          updateData(session.user);
+          void updateData(session.user).catch((error) => {
+            console.error("UserContext: onAuthStateChange updateData failed:", error);
+          });
         } else {
           setUser(null);
           setCategories([]);
@@ -107,7 +135,12 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchUserEntitlements = async (userId: string) => {
     try {
+      console.log("[UserContext] checking entitlements", { userId });
       const subscriptionStatus = await hasActiveEntitlement(supabase, userId);
+      console.log("[UserContext] entitlements resolved", {
+        userId,
+        hasActiveSubscription: subscriptionStatus,
+      });
       setHasActiveSubscription(subscriptionStatus);
     } catch (error) {
       console.error("Error checking subscription:", error);
@@ -157,14 +190,78 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const updateData = async (sessionUser: User) => {
+  const loadDerivedUserData = async (
+    userData: Database["public"]["Tables"]["users"]["Row"] | null
+  ) => {
+    const mode = userData ? getConfigMode(userData) : "default";
+    setConfigMode(mode);
+
+    if (!userData) {
+      setConfigProfile(null);
+      setProfileCategories([]);
+      setUserCategories([]);
+      setCategories([]);
+      setCantonData(null);
+      return;
+    }
+
+    if (mode === "custom" && userData.active_config_profile_id) {
+      const [profile, profCats, fetchedUserCategories] = await Promise.all([
+        getConfigProfile(userData.active_config_profile_id),
+        getProfileCategories(userData.active_config_profile_id),
+        getUserCategories(userData.user_id),
+      ]);
+
+      setConfigProfile(profile);
+      setProfileCategories(profCats);
+      setUserCategories(fetchedUserCategories);
+
+      const profileCategoryResults = profileCategoriesToCategoryResults(profCats);
+      const additionalCategoryResults =
+        mapUserCategoriesToCategoryResults(fetchedUserCategories);
+      setCategories([...profileCategoryResults, ...additionalCategoryResults]);
+
+      if (userData.canton_code) {
+        await fetchCantonData(userData.canton_code, userData.user_id);
+      } else {
+        setCantonData(null);
+      }
+
+      return;
+    }
+
+    setConfigProfile(null);
+    setProfileCategories([]);
+
+    const [fetchedUserCategories] = await Promise.all([
+      getUserCategories(userData.user_id),
+      userData.canton_code
+        ? fetchCantonData(userData.canton_code, userData.user_id)
+        : Promise.resolve(setCantonData(null)),
+      fetchCategories(userData),
+    ]);
+
+    setUserCategories(fetchedUserCategories);
+  };
+
+  const checkPendingAccountDeletion = async (sessionUser: User) => {
     try {
-      const { data: pendingRow, error: pendingError } = await supabase
-        .from("account_deletion")
-        .select("id")
-        .eq("user_id", sessionUser.id)
-        .is("processed_at", null)
-        .maybeSingle();
+      const { data: pendingRow, error: pendingError } = await withTimeout(
+        supabase
+          .from("account_deletion")
+          .select("id")
+          .eq("user_id", sessionUser.id)
+          .is("processed_at", null)
+          .maybeSingle(),
+        STARTUP_QUERY_TIMEOUT_MS,
+        "account_deletion check"
+      );
+
+      console.log("[UserContext] pending deletion check resolved", {
+        userId: sessionUser.id,
+        hasPendingDeletion: !!pendingRow,
+        hasPendingError: !!pendingError,
+      });
 
       if (!pendingError && pendingRow) {
         try {
@@ -190,47 +287,37 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
           i18n.t("Settings.accountDeletionPendingTitle"),
           i18n.t("Settings.accountDeletionPendingMessage"),
         );
-        return;
       }
+    } catch (error) {
+      console.warn("[UserContext] pending deletion check skipped:", error);
+    }
+  };
+
+  const updateData = async (sessionUser: User) => {
+    try {
+      console.log("[UserContext] updateData:start", {
+        userId: sessionUser.id,
+        hasEmail: !!sessionUser.email,
+      });
 
       if (sessionUser.email) {
         setUserEmail(sessionUser.email);
       }
-      await fetchUserEntitlements(sessionUser.id);
-      const userData = await getUser(sessionUser.id);
+      void checkPendingAccountDeletion(sessionUser);
+      const [userData] = await Promise.all([
+        withTimeout(getUser(sessionUser.id), STARTUP_QUERY_TIMEOUT_MS, "getUser"),
+        withTimeout(fetchUserEntitlements(sessionUser.id), STARTUP_QUERY_TIMEOUT_MS, "hasActiveEntitlement"),
+      ]);
+      console.log("[UserContext] updateData:user-loaded", {
+        userId: sessionUser.id,
+        hasUserData: !!userData,
+        cantonCode: userData?.canton_code ?? null,
+        configMode: userData ? getConfigMode(userData) : "default",
+      });
       setUser(userData);
-
-      const mode = userData ? getConfigMode(userData) : 'default';
-      setConfigMode(mode);
-
-      if (mode === 'custom' && userData?.active_config_profile_id) {
-        const profile = await getConfigProfile(userData.active_config_profile_id);
-        setConfigProfile(profile);
-
-        const profCats = await getProfileCategories(userData.active_config_profile_id);
-        setProfileCategories(profCats);
-
-        const fetchedUserCategories = await getUserCategories(userData.user_id);
-        setUserCategories(fetchedUserCategories);
-
-        const profileCategoryResults = profileCategoriesToCategoryResults(profCats);
-        const additionalCategoryResults = mapUserCategoriesToCategoryResults(fetchedUserCategories);
-        setCategories([...profileCategoryResults, ...additionalCategoryResults]);
-
-        if (userData.canton_code) {
-          await fetchCantonData(userData.canton_code, userData.user_id);
-        }
-      } else {
-        setConfigProfile(null);
-        setProfileCategories([]);
-
-        if (userData?.canton_code) {
-          await fetchCantonData(userData.canton_code, userData.user_id);
-        }
-        await fetchCategories(userData);
-      }
-
-      await fetchUserCategories(sessionUser.id);
+      void loadDerivedUserData(userData).catch((error) => {
+        console.error("Error loading derived user data:", error);
+      });
     } catch (error) {
       console.error("Error updating data:", error);
     }
@@ -289,41 +376,13 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
   const refreshUserData = async () => {
     if (!user?.user_id) return;
     try {
-      const userData = await getUser(user.user_id);
+      console.log("[UserContext] refreshUserData:start", { userId: user.user_id });
+      const [userData] = await Promise.all([
+        getUser(user.user_id),
+        fetchUserEntitlements(user.user_id),
+      ]);
       setUser(userData);
-
-      const mode = userData ? getConfigMode(userData) : 'default';
-      setConfigMode(mode);
-
-      if (mode === 'custom' && userData?.active_config_profile_id) {
-        const profile = await getConfigProfile(userData.active_config_profile_id);
-        setConfigProfile(profile);
-
-        const profCats = await getProfileCategories(userData.active_config_profile_id);
-        setProfileCategories(profCats);
-
-        const fetchedUserCategories = await getUserCategories(userData.user_id);
-        setUserCategories(fetchedUserCategories);
-
-        const profileCategoryResults = profileCategoriesToCategoryResults(profCats);
-        const additionalCategoryResults = mapUserCategoriesToCategoryResults(fetchedUserCategories);
-        setCategories([...profileCategoryResults, ...additionalCategoryResults]);
-
-        if (userData.canton_code) {
-          await fetchCantonData(userData.canton_code, userData.user_id);
-        }
-      } else {
-        setConfigProfile(null);
-        setProfileCategories([]);
-
-        if (userData?.canton_code) {
-          await fetchCantonData(userData.canton_code, userData.user_id);
-        }
-        await fetchCategories(userData);
-      }
-
-      await fetchUserCategories(user.user_id);
-      await fetchUserEntitlements(user.user_id);
+      await loadDerivedUserData(userData);
     } catch (error) {
       console.error("Error refreshing user data:", error);
     }

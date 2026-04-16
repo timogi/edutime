@@ -82,7 +82,9 @@ export const StopWatchButton = ({ openTimeTrackerModal, size = 'md' }: StopWatch
       {activeSession ? (
         <Text className={classes.timerText}>{displayDuration}</Text>
       ) : (
-        <Text fw={600}>{t('startTimer')}</Text>
+        <Text fw={600} fz={isSmallScreen ? 'xs' : undefined}>
+          {t('startTimer')}
+        </Text>
       )}
     </Button>
   )

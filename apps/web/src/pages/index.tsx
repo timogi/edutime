@@ -71,7 +71,7 @@ export default function Home() {
         <title>EduTime</title>
       </Head>
       <AppShell.Header>
-        <HeaderSimple />
+        <HeaderSimple showThemeToggle={false} />
       </AppShell.Header>
       <TimeRecordingHero />
       <AppPlatforms />

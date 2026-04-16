@@ -13,7 +13,7 @@ export default function Contract() {
   return (
     <AppShell header={{ height: 60 }} padding={0}>
       <Head>
-        <title>EduTime - {t('title')}</title>
+        <title>{`EduTime - ${t('title')}`}</title>
       </Head>
       <HeaderSimple />
       <Container size={900} py='xl'>

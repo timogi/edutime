@@ -1,0 +1,68 @@
+/* Navbar: match `.link` in Navbar.module.css. */
+.root {
+  box-sizing: border-box;
+}
+
+.rootNavbar {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  font-size: var(--mantine-font-size-sm);
+  color: var(--mantine-color-gray-7);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-sm);
+  font-weight: 500;
+  transition: background-color 0.1s ease, color 0.1s ease;
+  cursor: pointer;
+}
+
+[data-mantine-color-scheme='dark'] .rootNavbar {
+  color: var(--mantine-color-dark-1);
+}
+
+.rootNavbar:hover {
+  background-color: var(--mantine-color-gray-0);
+  color: var(--mantine-color-gray-9);
+}
+
+[data-mantine-color-scheme='dark'] .rootNavbar:hover {
+  background-color: var(--mantine-color-dark-6);
+  color: var(--mantine-color-dark-0);
+}
+
+.rootFooter {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 0 var(--mantine-spacing-md);
+  text-align: left;
+  color: var(--mantine-color-text);
+  transition: background-color 0.1s ease;
+  cursor: pointer;
+}
+
+.rootFooter .icon {
+  margin-top: 0;
+}
+
+.rootFooter:hover {
+  background-color: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+}
+
+.icon {
+  color: var(--mantine-color-gray-7);
+  margin-right: var(--mantine-spacing-sm);
+  width: 25px;
+  height: 25px;
+  flex-shrink: 0;
+}
+
+[data-mantine-color-scheme='dark'] .icon {
+  color: var(--mantine-color-dark-1);
+}
+
+.title {
+  font-weight: 500;
+  line-height: 1;
+}

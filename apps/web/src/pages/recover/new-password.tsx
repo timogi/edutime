@@ -95,7 +95,7 @@ export default function NewPassword() {
   return (
     <>
       <Head>
-        <title>EduTime - {t('page-title-recover-new-password')}</title>
+        <title>{`EduTime - ${t('page-title-recover-new-password')}`}</title>
       </Head>
       <AppShell
         style={{

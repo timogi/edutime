@@ -28,6 +28,7 @@ export function AppPlatforms() {
   const t = useTranslations('AppPlatforms')
   const isSmallScreen = useMediaQuery('(max-width: 768px)')
   const isMediumScreen = useMediaQuery('(min-width: 769px) and (max-width: 1024px)')
+  const columnLayout = Boolean(isSmallScreen || isMediumScreen)
 
   return (
     <div className={classes.wrapper}>
@@ -43,11 +44,12 @@ export function AppPlatforms() {
           </div>
 
           <Flex
-            direction={isSmallScreen || isMediumScreen ? 'column' : 'row'}
+            direction={columnLayout ? 'column' : 'row'}
             gap='xl'
             justify='center'
-            align='stretch'
+            align={columnLayout ? 'center' : 'stretch'}
             wrap='wrap'
+            w='100%'
             className={isMediumScreen ? classes.mediumScreenContainer : undefined}
           >
             <Card withBorder radius='md' p='xl' className={classes.card}>

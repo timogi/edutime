@@ -3,6 +3,7 @@ import { useTranslations } from 'next-intl'
 import LocaleSwitcher from '../Settings/LocaleSwitcher'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
+import { useThemeToggle } from '@/hooks/useThemeToggle'
 import classes from './Footer.module.css'
 
 const CONTACT_MAIL = 'info@edutime.ch'
@@ -11,6 +12,7 @@ export function Footer() {
   const t = useTranslations('Index')
   const router = useRouter()
   const isHomePage = router.pathname === '/'
+  const { toggleTheme } = useThemeToggle()
 
   const internalLinks = [
     { href: '/docs/privacy', label: t('privacy') },
@@ -19,6 +21,13 @@ export function Footer() {
   ]
 
   const items = [
+    ...(isHomePage
+      ? [
+          <button key='theme' type='button' className={classes.linkButton} onClick={() => void toggleTheme()}>
+            {t('changeTheme')}
+          </button>,
+        ]
+      : []),
     ...internalLinks.map(({ href, label }) => (
       <Link key={href} href={href} className={classes.link}>
         {label}

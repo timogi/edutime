@@ -125,6 +125,8 @@
     "light": "Clair",
     "dark": "Sombre",
     "theme": "Thème",
+    "changeTheme": "Changer le thème",
+    "theme-toggle-aria": "Basculer le thème de couleur",
     "view": "Vue",
     "employment": "Emploi",
     "language": "Langue",

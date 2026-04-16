@@ -125,6 +125,8 @@
     "light": "Hell",
     "dark": "Dunkel",
     "theme": "Thema",
+    "changeTheme": "Thema wechseln",
+    "theme-toggle-aria": "Farbschema umschalten",
     "view": "Ansicht",
     "employment": "Anstellung",
     "language": "Sprache",

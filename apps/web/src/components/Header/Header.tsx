@@ -1,7 +1,6 @@
 import React from 'react'
 import { Group, Image, Text, Burger, useMantineTheme } from '@mantine/core'
 import classes from './Header.module.css'
-import { ActionToggle } from './ActionToggle'
 
 interface HeaderProps {
   opened: boolean
@@ -28,7 +27,6 @@ export function Header({ opened, setOpened, showBurger = true }: HeaderProps) {
         </Text>
       </div>
       <Group gap='sm' className={classes.rightGroup}>
-        <ActionToggle />
         {showBurger && (
           <Burger
             opened={opened}

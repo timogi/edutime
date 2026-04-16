@@ -196,6 +196,8 @@
     grid-template-columns: repeat(7, 1fr);
     font-size: var(--mantine-font-size-xs);
     margin: var(--mantine-spacing-xs) 0;
+    gap: 4px;
+    padding: 4px;
   }
 
   .headerCard {
@@ -228,6 +230,11 @@
 
 /* Very small screens */
 @media (max-width: 480px) {
+  .dayPickerGrid {
+    gap: 2px;
+    padding: 2px;
+  }
+
   .dayHeader {
     padding: 6px 4px;
     height: 40px;

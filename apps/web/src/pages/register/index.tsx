@@ -176,7 +176,7 @@ export default function RegistrationForm() {
   return (
     <>
       <Head>
-        <title>EduTime - {t('page-title-register')}</title>
+        <title>{`EduTime - ${t('page-title-register')}`}</title>
       </Head>
       <AppShell
         style={{

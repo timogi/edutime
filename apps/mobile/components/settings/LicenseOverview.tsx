@@ -4,10 +4,11 @@ import { Card, VStack, HStack, Text, Box } from '@gluestack-ui/themed';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '@/contexts/UserContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { Colors, themeForScheme } from '@/constants/Colors';
+import { themeForScheme } from '@/constants/Colors';
 import { supabase } from '@/lib/supabase';
 import {
   getUserEntitlements,
+  visibleUserEntitlements,
   Entitlement,
   EntitlementKind,
   EntitlementStatus,
@@ -70,6 +71,11 @@ export default function LicenseOverview() {
     };
   }, [user?.user_id]);
 
+  const visibleEntitlements = useMemo(
+    () => visibleUserEntitlements(entitlements),
+    [entitlements],
+  );
+
   const cardStyle = useMemo(
     () => ({
       ...styles.card,
@@ -113,11 +119,11 @@ export default function LicenseOverview() {
 
         {isLoading ? (
           <Text style={metaTextStyle}>{t('Settings.loading')}</Text>
-        ) : entitlements.length === 0 ? (
+        ) : visibleEntitlements.length === 0 ? (
           <Text style={metaTextStyle}>{t('Settings.noLicenses')}</Text>
         ) : (
           <VStack space="sm">
-            {entitlements.map((entitlement) => (
+            {visibleEntitlements.map((entitlement) => (
               <VStack key={entitlement.id} space="xs" style={itemStyle}>
                 <HStack style={styles.headerRow}>
                   <Text style={[styles.kindText, titleStyle]}>

@@ -11,6 +11,7 @@
 
 .inner {
   position: relative;
+  margin-inline: auto;
 }
 
 @media (min-width: 769px) and (max-width: 1024px) {

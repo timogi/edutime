@@ -13,7 +13,7 @@ export default function Imprint() {
   return (
     <AppShell header={{ height: 60 }} padding={0}>
       <Head>
-        <title>EduTime - {t('imprint')}</title>
+        <title>{`EduTime - ${t('imprint')}`}</title>
         <meta name='robots' content='noindex, nofollow' />
       </Head>
       <HeaderSimple />

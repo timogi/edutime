@@ -1,13 +1,21 @@
 import { IconMoon, IconSun } from '@tabler/icons-react'
-import { ActionIcon } from '@mantine/core'
+import { ActionIcon, type ActionIconProps } from '@mantine/core'
 import { useThemeToggle } from '@/hooks/useThemeToggle'
 import { useSyncExternalStore } from 'react'
+import { useTranslations } from 'next-intl'
 import classes from './ActionToggle.module.css'
 
 const emptySubscribe = () => () => {}
 
-export function ActionToggle() {
+export interface ActionToggleProps {
+  /** @default 'xl' — use `md` in nav/footer so it matches surrounding UI */
+  size?: ActionIconProps['size']
+}
+
+export function ActionToggle({ size = 'xl' }: ActionToggleProps) {
+  const t = useTranslations('Index')
   const { colorScheme, toggleTheme } = useThemeToggle()
+  const ariaLabel = t('theme-toggle-aria')
   const mounted = useSyncExternalStore(
     emptySubscribe,
     () => true,
@@ -19,9 +27,9 @@ export function ActionToggle() {
     return (
       <ActionIcon
         variant='default'
-        size='xl'
+        size={size}
         radius='md'
-        aria-label='Toggle color scheme'
+        aria-label={ariaLabel}
         style={{ visibility: 'hidden' }}
       >
         <IconSun className={classes.icon} stroke={1.5} />
@@ -33,9 +41,9 @@ export function ActionToggle() {
     <ActionIcon
       onClick={toggleTheme}
       variant='default'
-      size='xl'
+      size={size}
       radius='md'
-      aria-label='Toggle color scheme'
+      aria-label={ariaLabel}
     >
       {colorScheme === 'light' ? (
         <IconMoon className={classes.icon} stroke={1.5} />

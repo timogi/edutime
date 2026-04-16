@@ -224,7 +224,9 @@ export function TimeRecording({
                   color='violet'
                   size={isSmallScreen ? 'sm' : 'md'}
                 >
-                  <Text fw={600}>{t('createEntry')}</Text>
+                  <Text fw={600} fz={isSmallScreen ? 'xs' : undefined}>
+                    {t('createEntry')}
+                  </Text>
                 </Button>
               </div>
             </div>

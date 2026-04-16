@@ -7,7 +7,26 @@
   transition: color 100ms ease;
 }
 
+.linkButton {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  text-decoration: none;
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-gray-5));
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 24px;
+  transition: color 100ms ease;
+  cursor: pointer;
+}
+
 .link:hover {
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-gray-4));
+}
+
+.linkButton:hover {
   color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-gray-4));
 }
 

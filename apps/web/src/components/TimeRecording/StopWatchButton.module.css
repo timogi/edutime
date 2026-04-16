@@ -12,3 +12,10 @@
   letter-spacing: 0.5px;
   font-size: 0.85em;
 }
+
+@media (max-width: 768px) {
+  .timerText {
+    font-size: var(--mantine-font-size-xs);
+    letter-spacing: 0.3px;
+  }
+}

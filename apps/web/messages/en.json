@@ -125,6 +125,8 @@
     "light": "Light",
     "dark": "Dark",
     "theme": "Theme",
+    "changeTheme": "Change theme",
+    "theme-toggle-aria": "Toggle color theme",
     "view": "View",
     "employment": "Employment",
     "language": "Language",

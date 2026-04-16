@@ -1,5 +1,13 @@
 import type { Entitlement } from './types'
 
+/**
+ * License rows shown in account/settings UIs.
+ * Matches the web account license list: hides entitlements with status `expired` (e.g. abgelaufen).
+ */
+export function visibleUserEntitlements(entitlements: Entitlement[]): Entitlement[] {
+  return entitlements.filter((e) => e.status !== 'expired')
+}
+
 interface EntitlementFilterQuery {
   then<TResult1 = { data: Entitlement[] | null; error: unknown }, TResult2 = never>(
     onfulfilled?:
