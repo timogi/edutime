@@ -186,8 +186,10 @@ const Statistics: React.FC<StatisticsProps> = ({ userData, categories, reloadUse
     hasRequiredCategories,
   ])
 
-  // Check if canton has working hours disabled (no annual work time)
-  const hasNoAnnualWorkTime = cantonData?.is_working_hours_disabled === true
+  // Canton-only: Thurgau-style cantons disable Soll from canton data. Custom mode uses
+  // config profile annual hours instead — do not tie UI to canton flags in that case.
+  const hasNoAnnualWorkTime =
+    configMode === 'default' && cantonData?.is_working_hours_disabled === true
 
   return (
     <Stack className={classes.wrapper}>

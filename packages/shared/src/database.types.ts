@@ -1699,6 +1699,9 @@ export type Database = {
         Args: { p_name: string; p_organization_id: number }
         Returns: string
       }
+      api_get_my_entitlements: { Args: never; Returns: Json }
+      api_has_ever_had_trial: { Args: never; Returns: boolean }
+      api_user_has_active_entitlement: { Args: never; Returns: boolean }
       api_user_has_active_personal_license: { Args: never; Returns: boolean }
       check_organization_seats:
         | { Args: { org_id: number }; Returns: boolean }

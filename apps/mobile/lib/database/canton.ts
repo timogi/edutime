@@ -92,6 +92,7 @@ export const getCantonData = async (
   
     // Combine data
     const result: CantonData = {
+      canton_code: cantonCode,
       annual_work_hours: cantonData.annual_work_hours,
       title: cantonData.title,
       has_subcategories: cantonData.has_subcategories,

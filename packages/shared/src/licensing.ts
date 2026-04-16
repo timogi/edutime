@@ -1,4 +1,12 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from './database.types'
 import type { Entitlement } from './types'
+
+/**
+ * Browser / anon Supabase clients must not read `license.*` directly (no schema USAGE).
+ * Entitlement reads go through public `api_*` RPCs (SECURITY DEFINER).
+ */
+type LicensingClient = Pick<SupabaseClient<Database>, 'rpc'>
 
 /**
  * License rows shown in account/settings UIs.
@@ -8,99 +16,44 @@ export function visibleUserEntitlements(entitlements: Entitlement[]): Entitlemen
   return entitlements.filter((e) => e.status !== 'expired')
 }
 
-interface EntitlementFilterQuery {
-  then<TResult1 = { data: Entitlement[] | null; error: unknown }, TResult2 = never>(
-    onfulfilled?:
-      | ((value: { data: Entitlement[] | null; error: unknown }) => TResult1 | PromiseLike<TResult1>)
-      | null,
-    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
-  ): PromiseLike<TResult1 | TResult2>
-  eq(column: string, value: string): EntitlementFilterQuery
-  lte(column: string, value: string): EntitlementFilterQuery
-  or(filter: string): EntitlementFilterQuery
-  limit(count: number): EntitlementFilterQuery
-  order(column: string, options: { ascending: boolean }): EntitlementFilterQuery
-}
-
-interface LicenseClient {
-  schema(schema: 'license'): {
-    from(table: 'entitlements'): {
-      select(columns: string): unknown
-    }
+function parseEntitlementsPayload(data: unknown): Entitlement[] {
+  if (!Array.isArray(data)) {
+    return []
   }
+  return data as Entitlement[]
 }
 
-const entitlementTable = (supabase: LicenseClient) => supabase.schema('license').from('entitlements')
-
-const entitlementSelect = (supabase: LicenseClient, columns: string): EntitlementFilterQuery =>
-  entitlementTable(supabase).select(columns) as EntitlementFilterQuery
-
-const activeEntitlementFilter = (supabase: LicenseClient, userId: string, nowIso: string) =>
-  entitlementSelect(supabase, '*')
-    .eq('user_id', userId)
-    .eq('status', 'active')
-    .lte('valid_from', nowIso)
-    .or(`valid_until.is.null,valid_until.gte.${nowIso}`)
-
-export async function hasActiveEntitlement(
-  supabase: LicenseClient,
-  userId: string,
-): Promise<boolean> {
-  const nowIso = new Date().toISOString()
-  const { data, error } = await activeEntitlementFilter(supabase, userId, nowIso).limit(1)
-
+export async function hasActiveEntitlement(supabase: LicensingClient, _userId: string): Promise<boolean> {
+  void _userId
+  const { data, error } = await supabase.rpc('api_user_has_active_entitlement')
   if (error) throw error
-  if ((data?.length ?? 0) > 0) {
-    return true
-  }
-
-  // Defensive fallback for early-renewal edge cases where a paid personal entitlement
-  // remains "active" but valid_from was shifted into the future by backend period updates.
-  const { data: fallbackData, error: fallbackError } = await entitlementSelect(supabase, '*')
-    .eq('user_id', userId)
-    .eq('status', 'active')
-    .eq('kind', 'personal')
-    .or(`valid_until.is.null,valid_until.gte.${nowIso}`)
-    .limit(1)
-
-  if (fallbackError) throw fallbackError
-  return (fallbackData?.length ?? 0) > 0
+  return Boolean(data)
 }
 
-export async function getUserEntitlements(
-  supabase: LicenseClient,
-  userId: string,
-): Promise<Entitlement[]> {
-  const { data, error } = await entitlementSelect(supabase, '*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-
+export async function getUserEntitlements(supabase: LicensingClient, _userId: string): Promise<Entitlement[]> {
+  void _userId
+  const { data, error } = await supabase.rpc('api_get_my_entitlements')
   if (error) throw error
-  return (data || []) as Entitlement[]
+  return parseEntitlementsPayload(data)
 }
 
 export async function getActiveUserEntitlements(
-  supabase: LicenseClient,
+  supabase: LicensingClient,
   userId: string,
 ): Promise<Entitlement[]> {
   const nowIso = new Date().toISOString()
-  const { data, error } = await activeEntitlementFilter(supabase, userId, nowIso).order('created_at', {
-    ascending: false,
-  })
-
-  if (error) throw error
-  return (data || []) as Entitlement[]
+  const all = await getUserEntitlements(supabase, userId)
+  return all.filter(
+    (e) =>
+      e.status === 'active' &&
+      e.valid_from <= nowIso &&
+      (e.valid_until == null || e.valid_until >= nowIso),
+  )
 }
 
-export async function hasEverHadTrial(
-  supabase: LicenseClient,
-  userId: string,
-): Promise<boolean> {
-  const { data, error } = await entitlementSelect(supabase, 'id')
-    .eq('user_id', userId)
-    .eq('kind', 'trial')
-    .limit(1)
-
+export async function hasEverHadTrial(supabase: LicensingClient, _userId: string): Promise<boolean> {
+  void _userId
+  const { data, error } = await supabase.rpc('api_has_ever_had_trial')
   if (error) throw error
-  return (data?.length ?? 0) > 0
+  return Boolean(data)
 }

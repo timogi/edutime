@@ -1,8 +1,7 @@
 import React from "react";
-import { Linking, Platform, StyleSheet } from "react-native";
+import { Linking, StyleSheet } from "react-native";
 import { VStack } from "@gluestack-ui/themed";
 import { useTranslation } from "react-i18next";
-import Constants from "expo-constants";
 import { SettingsSection } from "@/components/settings/SettingsSection";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { Spacing } from "@/constants/Styles";
@@ -21,12 +20,6 @@ export default function Informations() {
     Linking.openURL(url).catch((error: unknown) => {
       console.error("Failed to open external URL:", error);
     });
-  };
-
-  const handleEmailPress = () => {
-    openExternalUrl(
-      `mailto:info@edutime.ch?body=\n\n\n------------------\nApp Information:\nPlatform: ${Platform.OS}\nVersion: ${Constants.expoConfig?.version}`
-    );
   };
 
   return (
@@ -52,11 +45,6 @@ export default function Informations() {
           title={t("Settings.imprint")}
           icon="doc.text"
           onPress={() => openExternalUrl(DOCUMENT_LINKS.imprint)}
-        />
-        <SettingsRow
-          title={t("Settings.contact")}
-          icon="envelope"
-          onPress={handleEmailPress}
         />
       </SettingsSection>
     </VStack>

@@ -484,8 +484,9 @@ export interface CategoryStatistics {
     const unmatchedDuration = data
       .filter((r) => {
         if (r.profile_category_id && !profileCatIds.has(r.profile_category_id)) return true
-      if (r.user_category_id && !userCategoryIds.has(r.user_category_id)) return true
-      if (!r.profile_category_id && r.category_id) return true
+        if (r.user_category_id && !userCategoryIds.has(r.user_category_id)) return true
+        // Do not treat user-category (Weiterbeschäftigung) rows as canton-only because of legacy category_id.
+        if (!r.profile_category_id && !r.user_category_id && r.category_id) return true
         return false
       })
       .reduce((sum, r) => sum + (r.duration || 0), 0)

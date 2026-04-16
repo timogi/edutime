@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useRef } from "react";
 import { Alert } from "react-native";
 import { User } from "@supabase/supabase-js";
 import { getUser } from "@/lib/database/user";
@@ -82,6 +82,8 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
   const [configMode, setConfigMode] = useState<ConfigMode>('default');
   const [configProfile, setConfigProfile] = useState<ConfigProfileData | null>(null);
   const [profileCategories, setProfileCategories] = useState<ProfileCategoryData[]>([]);
+  /** Bumps on each `loadDerivedUserData` run so in-flight async work cannot apply stale state. */
+  const derivedDataLoadIdRef = useRef(0);
 
   useEffect(() => {
     const initializeSession = async () => {
@@ -135,28 +137,11 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchUserEntitlements = async (userId: string) => {
     try {
-      console.log("[UserContext] checking entitlements", { userId });
       const subscriptionStatus = await hasActiveEntitlement(supabase, userId);
-      console.log("[UserContext] entitlements resolved", {
-        userId,
-        hasActiveSubscription: subscriptionStatus,
-      });
       setHasActiveSubscription(subscriptionStatus);
     } catch (error) {
       console.error("Error checking subscription:", error);
       setHasActiveSubscription(false);
-    }
-  };
-
-  const fetchCategories = async (
-    user: Database["public"]["Tables"]["users"]["Row"] | null
-  ) => {
-    if (!user) return;
-    try {
-      const fetchedCategories = await getAllCategories(user);
-      setCategories(fetchedCategories);
-    } catch (error) {
-      console.error("Error fetching categories", error);
     }
   };
 
@@ -180,12 +165,24 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const fetchCantonData = async (cantonCode: string, userId: string) => {
+  const applyCantonDataAfterFetch = async (
+    cantonCode: string | null | undefined,
+    userId: string,
+    loadId: number,
+  ) => {
+    if (!cantonCode) {
+      if (loadId === derivedDataLoadIdRef.current) {
+        setCantonData(null);
+      }
+      return;
+    }
     try {
       const data = await getCantonData(cantonCode, userId);
-      setCantonData(data || null);
+      if (loadId !== derivedDataLoadIdRef.current) return;
+      setCantonData(data ?? null);
     } catch (error) {
       console.error("Error fetching canton data:", error);
+      if (loadId !== derivedDataLoadIdRef.current) return;
       setCantonData(null);
     }
   };
@@ -193,6 +190,7 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
   const loadDerivedUserData = async (
     userData: Database["public"]["Tables"]["users"]["Row"] | null
   ) => {
+    const loadId = ++derivedDataLoadIdRef.current;
     const mode = userData ? getConfigMode(userData) : "default";
     setConfigMode(mode);
 
@@ -212,6 +210,8 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
         getUserCategories(userData.user_id),
       ]);
 
+      if (loadId !== derivedDataLoadIdRef.current) return;
+
       setConfigProfile(profile);
       setProfileCategories(profCats);
       setUserCategories(fetchedUserCategories);
@@ -221,11 +221,7 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
         mapUserCategoriesToCategoryResults(fetchedUserCategories);
       setCategories([...profileCategoryResults, ...additionalCategoryResults]);
 
-      if (userData.canton_code) {
-        await fetchCantonData(userData.canton_code, userData.user_id);
-      } else {
-        setCantonData(null);
-      }
+      await applyCantonDataAfterFetch(userData.canton_code, userData.user_id, loadId);
 
       return;
     }
@@ -233,14 +229,24 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
     setConfigProfile(null);
     setProfileCategories([]);
 
+    if (loadId !== derivedDataLoadIdRef.current) return;
+
     const [fetchedUserCategories] = await Promise.all([
       getUserCategories(userData.user_id),
-      userData.canton_code
-        ? fetchCantonData(userData.canton_code, userData.user_id)
-        : Promise.resolve(setCantonData(null)),
-      fetchCategories(userData),
+      applyCantonDataAfterFetch(userData.canton_code, userData.user_id, loadId),
+      (async () => {
+        try {
+          const fetchedCategories = await getAllCategories(userData);
+          if (loadId !== derivedDataLoadIdRef.current) return;
+          setCategories(fetchedCategories);
+        } catch (error) {
+          console.error("Error fetching categories", error);
+          if (loadId !== derivedDataLoadIdRef.current) return;
+        }
+      })(),
     ]);
 
+    if (loadId !== derivedDataLoadIdRef.current) return;
     setUserCategories(fetchedUserCategories);
   };
 
@@ -256,12 +262,6 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
         STARTUP_QUERY_TIMEOUT_MS,
         "account_deletion check"
       );
-
-      console.log("[UserContext] pending deletion check resolved", {
-        userId: sessionUser.id,
-        hasPendingDeletion: !!pendingRow,
-        hasPendingError: !!pendingError,
-      });
 
       if (!pendingError && pendingRow) {
         try {
@@ -289,17 +289,12 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
         );
       }
     } catch (error) {
-      console.warn("[UserContext] pending deletion check skipped:", error);
+      console.error("UserContext: pending account deletion check failed:", error);
     }
   };
 
   const updateData = async (sessionUser: User) => {
     try {
-      console.log("[UserContext] updateData:start", {
-        userId: sessionUser.id,
-        hasEmail: !!sessionUser.email,
-      });
-
       if (sessionUser.email) {
         setUserEmail(sessionUser.email);
       }
@@ -308,12 +303,6 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
         withTimeout(getUser(sessionUser.id), STARTUP_QUERY_TIMEOUT_MS, "getUser"),
         withTimeout(fetchUserEntitlements(sessionUser.id), STARTUP_QUERY_TIMEOUT_MS, "hasActiveEntitlement"),
       ]);
-      console.log("[UserContext] updateData:user-loaded", {
-        userId: sessionUser.id,
-        hasUserData: !!userData,
-        cantonCode: userData?.canton_code ?? null,
-        configMode: userData ? getConfigMode(userData) : "default",
-      });
       setUser(userData);
       void loadDerivedUserData(userData).catch((error) => {
         console.error("Error loading derived user data:", error);
@@ -376,7 +365,6 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
   const refreshUserData = async () => {
     if (!user?.user_id) return;
     try {
-      console.log("[UserContext] refreshUserData:start", { userId: user.user_id });
       const [userData] = await Promise.all([
         getUser(user.user_id),
         fetchUserEntitlements(user.user_id),

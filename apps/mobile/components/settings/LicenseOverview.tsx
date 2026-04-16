@@ -6,6 +6,7 @@ import { useUser } from '@/contexts/UserContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { themeForScheme } from '@/constants/Colors';
 import { supabase } from '@/lib/supabase';
+import { getMemberships, getOrganizations } from '@/lib/database/organization';
 import {
   getUserEntitlements,
   visibleUserEntitlements,
@@ -13,6 +14,7 @@ import {
   EntitlementKind,
   EntitlementStatus,
 } from '@edutime/shared';
+import type { TFunction } from 'i18next';
 
 const kindTranslationKey: Record<EntitlementKind, string> = {
   trial: 'Settings.licenseKindTrial',
@@ -35,13 +37,70 @@ const statusColorToken: Record<EntitlementStatus, string> = {
   expired: '$secondary500',
 };
 
+function resolveOrganizationNamesFromEntitlements(
+  list: Entitlement[],
+  userId: string,
+  userEmail: string | null,
+): Promise<Record<number, string>> {
+  const orgIds = Array.from(
+    new Set(
+      list
+        .filter((e) => e.kind === 'org_seat' && e.organization_id != null)
+        .map((e) => e.organization_id as number),
+    ),
+  );
+  if (orgIds.length === 0) {
+    return Promise.resolve({});
+  }
+  return (async () => {
+    const orgNames: Record<number, string> = {};
+    try {
+      const [memberships, adminOrganizations] = await Promise.all([
+        userEmail ? getMemberships(userEmail) : Promise.resolve([]),
+        getOrganizations(userId),
+      ]);
+      memberships.forEach((m) => {
+        if (orgIds.includes(m.id)) {
+          orgNames[m.id] = m.name;
+        }
+      });
+      adminOrganizations.forEach((o) => {
+        if (orgIds.includes(o.id)) {
+          orgNames[o.id] = o.name;
+        }
+      });
+    } catch (error) {
+      console.error('Error resolving organization names for licenses:', error);
+    }
+    return orgNames;
+  })();
+}
+
+function getLicenseKindTitle(
+  entitlement: Entitlement,
+  orgNamesById: Record<number, string>,
+  t: TFunction,
+): string {
+  if (entitlement.kind === 'org_seat' && entitlement.organization_id != null) {
+    const name = orgNamesById[entitlement.organization_id];
+    if (name) {
+      return t('Settings.licenseOrgSeatProvidedBy', { organization: name });
+    }
+    return t('Settings.licenseOrgSeatProvidedByIdOnly', {
+      id: entitlement.organization_id,
+    });
+  }
+  return t(kindTranslationKey[entitlement.kind]);
+}
+
 export default function LicenseOverview() {
   const { t } = useTranslation();
-  const { user } = useUser();
+  const { user, userEmail } = useUser();
   const colorScheme = useColorScheme();
   const theme = themeForScheme(colorScheme);
   const isDark = colorScheme === 'dark';
   const [entitlements, setEntitlements] = useState<Entitlement[]>([]);
+  const [organizationNamesById, setOrganizationNamesById] = useState<Record<number, string>>({});
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -52,8 +111,15 @@ export default function LicenseOverview() {
       setIsLoading(true);
       try {
         const data = await getUserEntitlements(supabase, user.user_id);
+        if (!isMounted) return;
+        setEntitlements(data);
+        const orgNames = await resolveOrganizationNamesFromEntitlements(
+          data,
+          user.user_id,
+          userEmail,
+        );
         if (isMounted) {
-          setEntitlements(data);
+          setOrganizationNamesById(orgNames);
         }
       } catch (error) {
         console.error('Error loading entitlements:', error);
@@ -64,12 +130,12 @@ export default function LicenseOverview() {
       }
     };
 
-    loadEntitlements();
+    void loadEntitlements();
 
     return () => {
       isMounted = false;
     };
-  }, [user?.user_id]);
+  }, [user?.user_id, userEmail]);
 
   const visibleEntitlements = useMemo(
     () => visibleUserEntitlements(entitlements),
@@ -126,10 +192,11 @@ export default function LicenseOverview() {
             {visibleEntitlements.map((entitlement) => (
               <VStack key={entitlement.id} space="xs" style={itemStyle}>
                 <HStack style={styles.headerRow}>
-                  <Text style={[styles.kindText, titleStyle]}>
-                    {t(kindTranslationKey[entitlement.kind])}
+                  <Text style={[styles.kindText, titleStyle]} flexShrink={1}>
+                    {getLicenseKindTitle(entitlement, organizationNamesById, t)}
                   </Text>
                   <Box
+                    flexShrink={0}
                     style={[
                       styles.statusPill,
                       {
@@ -142,10 +209,10 @@ export default function LicenseOverview() {
                     </Text>
                   </Box>
                 </HStack>
-                <Text size="sm" style={metaTextStyle}>
+                <Text size="sm" style={[styles.metaLine, metaTextStyle]}>
                   {t('Settings.licenseValidFrom')}: {formatDate(entitlement.valid_from)}
                 </Text>
-                <Text size="sm" style={metaTextStyle}>
+                <Text size="sm" style={[styles.metaLine, metaTextStyle]}>
                   {t('Settings.licenseValidUntil')}:{' '}
                   {entitlement.valid_until ? formatDate(entitlement.valid_until) : t('Settings.licenseUnlimited')}
                 </Text>
@@ -160,33 +227,49 @@ export default function LicenseOverview() {
 
 const styles = StyleSheet.create({
   card: {
-    marginHorizontal: 16,
     padding: 12,
     width: '100%',
+    maxWidth: '100%',
+    alignSelf: 'stretch',
     borderWidth: 1,
   },
   container: {
     width: '100%',
+    maxWidth: '100%',
   },
   item: {
     borderWidth: 1,
     borderRadius: 10,
     padding: 10,
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
   headerRow: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+    width: '100%',
+    maxWidth: '100%',
+    gap: 8,
   },
   kindText: {
     fontSize: 16,
     fontWeight: '600',
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 0,
     paddingRight: 8,
+  },
+  metaLine: {
+    flexShrink: 1,
+    maxWidth: '100%',
   },
   statusPill: {
     borderWidth: 1,
     borderRadius: 999,
     paddingVertical: 3,
     paddingHorizontal: 10,
+    maxWidth: '100%',
   },
 });

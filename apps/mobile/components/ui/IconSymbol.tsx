@@ -14,6 +14,8 @@ const MAPPING = {
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
   'hourglass.tophalf.filled': 'hourglass-top',
+  /** Sliders / parameters (employment configuration) */
+  'slider.horizontal.3': 'tune',
   'gearshape.fill': 'settings',
   'power': 'logout',
   'keyboard.chevron.compact.down': 'keyboard-hide',

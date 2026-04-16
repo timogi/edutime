@@ -411,25 +411,23 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
 
         if (!mounted) return
 
-        if (!loaded) {
-          if (currentSession.event === 'SIGNED_IN') {
-            setIsLoading(false)
-          }
-          return
-        }
+        // Always clear loading when this handler finishes. Auth can emit several events in
+        // quick succession (e.g. SIGNED_IN then USER_UPDATED). A strict-mode / dependency
+        // re-run can leave the first effect's completion aborted (mounted=false) while the
+        // second run only saw USER_UPDATED — previously we never cleared loading or redirected.
+        setIsLoading(false)
 
-        if (currentSession.event === 'SIGNED_IN') {
-          setIsLoading(false)
-          // Redirect to app if on login page
-          if (router.pathname === '/login' || router.pathname === '/register') {
-            const { intent, qty } = parseIntentFromQuery(router.query)
-            const postAuthRedirect = getPostAuthRedirect(intent, qty)
-            router.replace(postAuthRedirect)
-          }
+        if (
+          loaded &&
+          (router.pathname === '/login' || router.pathname === '/register')
+        ) {
+          const { intent, qty } = parseIntentFromQuery(router.query)
+          const postAuthRedirect = getPostAuthRedirect(intent, qty)
+          router.replace(postAuthRedirect)
         }
       } catch (error) {
         console.error('Error handling session change:', error)
-        if (mounted && currentSession.event === 'SIGNED_IN') {
+        if (mounted) {
           setIsLoading(false)
         }
       }

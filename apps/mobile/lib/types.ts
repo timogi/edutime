@@ -115,6 +115,8 @@ export type Membership = {
 
 
 export interface CantonData {
+  /** Canton this payload was loaded for (for guarding against stale context). */
+  canton_code: string
   annual_work_hours: number
   title: string
   has_subcategories: boolean
