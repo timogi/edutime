@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { Alert } from "react-native";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import { Database, ProfileCategoryData } from "@edutime/shared";
 import { useUser } from "@/contexts/UserContext";
 import { updateUserData, deleteAccount } from "@/lib/database/user";
@@ -22,6 +23,7 @@ import {
 } from "@/lib/database/config_profiles";
 import { EmploymentCategory } from "@/lib/types";
 import { showToast } from "@/components/ui/Toast";
+import { settingsKeys } from "./useSettingsDataQuery";
 
 const deleteUserAccount = async (
   userId: string,
@@ -46,9 +48,30 @@ const deleteUserAccount = async (
  * Shared handlers for settings sub-screens (employment, categories, account, etc.).
  */
 export function useSettingsActions() {
-  const { userEmail, user, cantonData, refreshUserData, logout, configProfile } =
+  const { userEmail, user, cantonData, logout, configProfile } =
     useUser();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+
+  const invalidateSettingsData = useCallback(async () => {
+    if (!user?.user_id) return;
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: settingsKeys.user(user.user_id) }),
+      queryClient.invalidateQueries({ queryKey: settingsKeys.entitlement(user.user_id) }),
+      queryClient.invalidateQueries({ queryKey: settingsKeys.dataScope(user.user_id) }),
+    ]);
+  }, [queryClient, user?.user_id]);
+
+  const resolveConfigProfileId = useCallback(async (): Promise<string> => {
+    if (!user?.user_id) {
+      throw new Error("User not found");
+    }
+    if (configProfile?.id) {
+      return configProfile.id;
+    }
+    const profile = await getOrCreateConfigProfile(user.user_id);
+    return profile.id;
+  }, [user?.user_id, configProfile?.id]);
 
   const saveConfigurablePercentages = useCallback(
     async (userPercentages: { [key: number]: number }, cantonDataArg: unknown) => {
@@ -130,26 +153,30 @@ export function useSettingsActions() {
           await saveConfigurablePercentages(userPercentages, cantonData);
         }
 
-        await refreshUserData();
+        await invalidateSettingsData();
       } catch (error) {
         console.error("Error saving employment:", error);
       }
     },
-    [user?.user_id, cantonData, refreshUserData, saveConfigurablePercentages]
+    [user?.user_id, cantonData, invalidateSettingsData, saveConfigurablePercentages]
   );
 
   const handleSaveCustom = useCallback(
     async (annualWorkHours: number, workload: number) => {
-      if (!user?.user_id || !configProfile) return;
+      if (!user?.user_id) {
+        throw new Error("User not found");
+      }
       try {
-        await updateConfigProfile(configProfile.id, { annual_work_hours: annualWorkHours });
+        const profileId = await resolveConfigProfileId();
+        await updateConfigProfile(profileId, { annual_work_hours: annualWorkHours });
         await updateUserData(user.user_id, { workload });
-        await refreshUserData();
+        await invalidateSettingsData();
       } catch (error) {
         console.error("Error saving custom settings:", error);
+        throw error;
       }
     },
-    [user?.user_id, configProfile, refreshUserData]
+    [user?.user_id, resolveConfigProfileId, invalidateSettingsData]
   );
 
   const handleActivateCustomMode = useCallback(async () => {
@@ -157,33 +184,33 @@ export function useSettingsActions() {
     try {
       const profile = await getOrCreateConfigProfile(user.user_id);
       await activateCustomMode(user.user_id, profile.id);
-      await refreshUserData();
+      await invalidateSettingsData();
     } catch (error) {
       console.error("Error activating custom mode:", error);
     }
-  }, [user?.user_id, refreshUserData]);
+  }, [user?.user_id, invalidateSettingsData]);
 
   const handleDeactivateCustomMode = useCallback(async () => {
     if (!user?.user_id) return;
     try {
       await deactivateCustomMode(user.user_id);
-      await refreshUserData();
+      await invalidateSettingsData();
     } catch (error) {
       console.error("Error deactivating custom mode:", error);
     }
-  }, [user?.user_id, refreshUserData]);
+  }, [user?.user_id, invalidateSettingsData]);
 
   const handleCantonChange = useCallback(
     async (newCanton: string) => {
       if (!user?.user_id) return;
       try {
         await updateUserData(user.user_id, { canton_code: newCanton });
-        await refreshUserData();
+        await invalidateSettingsData();
       } catch (error) {
         console.error("Error changing canton:", error);
       }
     },
-    [user?.user_id, refreshUserData]
+    [user?.user_id, invalidateSettingsData]
   );
 
   const handleEditCategory = useCallback(
@@ -195,12 +222,12 @@ export function useSettingsActions() {
           color: category.color || "#845ef7",
         };
         await updateUserCategory(category.id, categoryData);
-        await refreshUserData();
+        await invalidateSettingsData();
       } catch (error) {
         console.error("Error editing category:", error);
       }
     },
-    [user?.user_id, refreshUserData]
+    [user?.user_id, invalidateSettingsData]
   );
 
   const handleCreateCategory = useCallback(
@@ -213,49 +240,54 @@ export function useSettingsActions() {
           color: categoryWithoutId.color || "#845ef7",
         };
         await createUserCategory(user.user_id, categoryData);
-        await refreshUserData();
+        await invalidateSettingsData();
       } catch (error) {
         console.error("Error creating category:", error);
       }
     },
-    [user?.user_id, refreshUserData]
+    [user?.user_id, invalidateSettingsData]
   );
 
   const handleDeleteCategory = useCallback(
     async (categoryId: number) => {
       try {
         await deleteUserCategory(categoryId);
-        await refreshUserData();
+        await invalidateSettingsData();
       } catch (error) {
         console.error("Error deleting category:", error);
       }
     },
-    [refreshUserData]
+    [invalidateSettingsData]
   );
 
   const handleCreateProfileCategory = useCallback(
     async (category: Omit<ProfileCategoryData, "id" | "config_profile_id">) => {
-      if (!user?.user_id || !configProfile) return;
+      if (!user?.user_id) {
+        throw new Error("User not found");
+      }
       try {
-        await createProfileCategory(user.user_id, configProfile.id, category);
-        await refreshUserData();
+        const profileId = await resolveConfigProfileId();
+        await createProfileCategory(user.user_id, profileId, category);
+        await invalidateSettingsData();
       } catch (error) {
         console.error("Error creating profile category:", error);
+        throw error;
       }
     },
-    [user?.user_id, configProfile, refreshUserData]
+    [user?.user_id, resolveConfigProfileId, invalidateSettingsData]
   );
 
   const handleEditProfileCategory = useCallback(
     async (id: string, updates: Partial<ProfileCategoryData>) => {
       try {
         await updateProfileCategory(id, updates);
-        await refreshUserData();
+        await invalidateSettingsData();
       } catch (error) {
         console.error("Error editing profile category:", error);
+        throw error;
       }
     },
-    [refreshUserData]
+    [invalidateSettingsData]
   );
 
   const handleDeleteProfileCategory = useCallback(
@@ -276,7 +308,7 @@ export function useSettingsActions() {
             onPress: async () => {
               try {
                 await deleteProfileCategory(id);
-                await refreshUserData();
+                await invalidateSettingsData();
               } catch (error) {
                 console.error("Error deleting profile category:", error);
               }
@@ -287,7 +319,7 @@ export function useSettingsActions() {
         console.error("Error deleting profile category:", error);
       }
     },
-    [user?.user_id, t, refreshUserData]
+    [user?.user_id, t, invalidateSettingsData]
   );
 
   const handleDeleteAccount = useCallback(

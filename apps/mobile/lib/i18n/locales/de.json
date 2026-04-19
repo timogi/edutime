@@ -246,6 +246,7 @@
     "back": "Zurück",
     "settingsTitle": "Einstellungen",
     "saveFailed": "Speichern ist fehlgeschlagen. Bitte versuche es erneut.",
+    "loadFailed": "Die Einstellungen konnten nicht geladen werden. Bitte versuche es erneut.",
     "employmentUnavailable": "Anstellungs-Einstellungen sind derzeit nicht verfügbar.",
     "unsaved-changes": "Nicht gespeichert",
     "save": "Speichern",

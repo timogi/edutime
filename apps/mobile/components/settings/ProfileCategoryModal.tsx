@@ -76,7 +76,7 @@ export const ProfileCategoryModal: React.FC<ProfileCategoryModalProps> = ({
     setLocal(cat);
     setWeightInput(cat.weight.toFixed(1));
     setTitleError('');
-  }, [category]);
+  }, [category, isOpen]);
 
   const commitWeight = (num: number) => {
     const clamped = Math.min(Math.max(num, 0), 100);

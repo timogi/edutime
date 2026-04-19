@@ -2,7 +2,7 @@
   "expo": {
     "name": "EduTime",
     "slug": "EduTime",
-    "version": "2.0.2",
+    "version": "2.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
@@ -22,7 +22,8 @@
           "imageWidth": 200,
           "backgroundColor": "#000000"
         }
-      }
+      },
+      "buildNumber": "52"
     },
     "android": {
       "adaptiveIcon": {

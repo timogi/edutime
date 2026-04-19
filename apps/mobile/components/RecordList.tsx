@@ -9,13 +9,13 @@ import { HStack } from "@gluestack-ui/themed";
 import { Colors, themeForScheme } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Ionicons } from '@expo/vector-icons';
-import { findCategory } from '@/lib/database/categories';
 import { useUser } from '@/contexts/UserContext';
 import { useRecordsQuery } from '@/hooks/useRecordsQuery';
 import { TimeRecord } from '@/lib/types';
 import { useTranslation } from "react-i18next";
 import { TextStyles, Spacing, BorderRadius, ShadowStyles, LayoutStyles } from '@/constants/Styles';
 import { useNavigationGuard } from '@/hooks/useNavigationGuard';
+import { resolveRecordCategory } from '@/lib/domain/categories';
 
 interface RecordListProps {
   date: Date;
@@ -59,7 +59,14 @@ export const RecordList = ({ date }: RecordListProps) => {
   };
 
   const RecordItem = ({ record }: { record: TimeRecord }) => {
-    const category = findCategory(record, categories);
+    const { categoryType, category } = resolveRecordCategory(record, categories);
+    const categoryLabel = category
+      ? category.is_further_employment || category.is_profile_category
+        ? category.title
+        : t(`Categories.${category.title}`)
+      : categoryType === "other_canton"
+        ? t("Categories.other_canton")
+        : t("Index.noCategory");
 
     return (
       <View style={styles.listItemContainer}>
@@ -104,7 +111,7 @@ export const RecordList = ({ date }: RecordListProps) => {
                   numberOfLines={2}
                   ellipsizeMode="tail"
                 >
-                  {category ? (category.is_further_employment || category.is_profile_category ? category.title : t('Categories.' + category.title)) : t('Index.noCategory')}
+                  {categoryLabel}
                 </ThemedText>
               </HStack>
             </View>

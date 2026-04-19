@@ -205,45 +205,20 @@ export const getRecordsForOtherCanton = async (
   return filteredData;
 };
 
-// Helper function to check if title matches user categories
-const isUserCategoriesTitle = (title: string): boolean => {
-  return title.includes('Weitere Anstellungen') || 
-         title.includes('Zusätzliche Aufgaben') ||
-         title.includes('Zusätzliche Kategorien') ||
-         title.includes('Further employments') || 
-         title.includes('Additional tasks') ||
-         title.includes('Additional categories') ||
-         title.includes('Autres emplois') ||
-         title.includes('Tâches supplémentaires') ||
-         title.includes('Catégories supplémentaires');
-};
-
-// Helper function to check if title matches no category
-const isNoCategoryTitle = (title: string): boolean => {
-  return title.includes('Keine Kategorie') || 
-         title.includes('No category') || 
-         title.includes('Pas de catégorie');
-};
-
-// Helper function to check if title matches other canton
-const isOtherCantonTitle = (title: string): boolean => {
-  return title.includes('Anderer Kanton') || 
-         title.includes('Other canton') || 
-         title.includes('Autre canton');
-};
+export type RecordsCategoryType = 'user' | 'none' | 'other_canton';
 
 // Generic function to get records for any category type
 export const getRecordsForCategoryType = async (
   start: Date,
   end: Date,
   user_id: string,
-  categoryTitle: string,
+  categoryType: RecordsCategoryType,
   categories: any[] = []
 ) => {
   const startISO = getIsoDate(start);
   const endISO = getIsoDate(end);
 
-  if (isUserCategoriesTitle(categoryTitle)) {
+  if (categoryType === 'user') {
     // User categories (Weiterbeschäftigung) - get all user category IDs and fetch their records
     const userCategoryIds = categories
       .filter(cat => cat.is_further_employment)
@@ -273,11 +248,11 @@ export const getRecordsForCategoryType = async (
 
     return data || [];
     
-  } else if (isNoCategoryTitle(categoryTitle)) {
+  } else if (categoryType === 'none') {
     // No category records
     return await getRecordsByCategory(start, end, user_id, null, false);
     
-  } else if (isOtherCantonTitle(categoryTitle)) {
+  } else if (categoryType === 'other_canton') {
     // Other canton records
     const currentCantonCategoryIds = categories
       .filter(cat => !cat.is_further_employment)
@@ -285,10 +260,9 @@ export const getRecordsForCategoryType = async (
     
     return await getRecordsForOtherCanton(start, end, user_id, currentCantonCategoryIds);
     
-  } else {
-    // Regular category in remaining categories - this shouldn't happen in the generic function
-    return [];
   }
+
+  return [];
 };
 
 // Helper function to get category color for a record

@@ -246,6 +246,7 @@
     "back": "Retour",
     "settingsTitle": "Réglages",
     "saveFailed": "Enregistrement impossible. Réessaie plus tard.",
+    "loadFailed": "Impossible de charger les réglages. Réessaie plus tard.",
     "employmentUnavailable": "Les réglages de l'emploi ne sont pas disponibles pour le moment.",
     "unsaved-changes": "Non enregistré",
     "save": "Enregistrer",

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
@@ -10,6 +10,8 @@ import { Spacing, LayoutStyles } from "@/constants/Styles";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { themeForScheme } from "@/constants/Colors";
 import { useTranslation } from "react-i18next";
+import { useSettingsDataQuery } from "@/hooks/useSettingsDataQuery";
+import { showToast } from "@/components/ui/Toast";
 
 export default function EmploymentSettingsScreen() {
   const { t } = useTranslation();
@@ -17,11 +19,8 @@ export default function EmploymentSettingsScreen() {
   const theme = themeForScheme(colorScheme);
   const {
     user,
-    cantonData,
-    configMode,
-    configProfile,
-    profileCategories,
   } = useUser();
+  const settingsDataQuery = useSettingsDataQuery(user);
   const {
     handleSaveEmployment,
     handleSaveCustom,
@@ -33,9 +32,23 @@ export default function EmploymentSettingsScreen() {
     handleDeleteProfileCategory,
   } = useSettingsActions();
 
+  useEffect(() => {
+    if (!settingsDataQuery.error) return;
+    showToast({
+      type: "error",
+      title: t("Index.error"),
+      message: t("Settings.loadFailed"),
+    });
+  }, [settingsDataQuery.error, t]);
+
+  const configMode = settingsDataQuery.data?.configMode ?? "default";
+  const cantonData = settingsDataQuery.data?.cantonData ?? null;
+  const configProfile = settingsDataQuery.data?.configProfile ?? null;
+  const profileCategories = settingsDataQuery.data?.profileCategories ?? [];
+
   /** Kanton-Modus: Payload kommt async — nicht als «nicht verfügbar» flackern lassen. */
   const awaitingCantonPayload =
-    configMode === "default" && Boolean(user?.canton_code) && !cantonData;
+    settingsDataQuery.isLoading || (configMode === "default" && Boolean(user?.canton_code) && !cantonData);
 
   const showEditor = Boolean(cantonData || configMode === "custom");
 

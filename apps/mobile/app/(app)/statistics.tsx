@@ -70,6 +70,7 @@ export default function Statistics() {
 
     if (mode === 'custom' && profile) {
       const mainId = ++mainStatsGenerationRef.current;
+      const remId = ++remainingStatsGenerationRef.current;
       void (async () => {
         try {
           const statistics = await getCustomCategoryStatisticsData(
@@ -86,11 +87,10 @@ export default function Statistics() {
         } catch (error) {
           console.error('Error fetching custom main statistics:', error);
           if (mainId !== mainStatsGenerationRef.current) return;
-          setCategoryStatistics(EMPTY_MAIN_CATEGORY_STATS);
+          // Keep previous main stats on transient failures.
         }
       })();
 
-      const remId = ++remainingStatsGenerationRef.current;
       void (async () => {
         try {
           const remainingStats = await getCustomRemainingStatisticsData(
@@ -106,7 +106,7 @@ export default function Statistics() {
         } catch (error) {
           console.error('Error fetching custom additional-task statistics:', error);
           if (remId !== remainingStatsGenerationRef.current) return;
-          setRemainingCategoryStatistics([]);
+          // Keep previous additional-task stats on transient failures.
         }
       })();
       return;
@@ -137,7 +137,7 @@ export default function Statistics() {
         } catch (error) {
           console.error('Error fetching additional tasks (custom, profile pending):', error);
           if (remId !== remainingStatsGenerationRef.current) return;
-          setRemainingCategoryStatistics([]);
+          // Keep previous additional-task stats while profile is settling.
         }
       })();
       return;
@@ -145,6 +145,7 @@ export default function Statistics() {
 
     if (mode === 'default' && cantonDataMatchesUser && cd) {
       const mainId = ++mainStatsGenerationRef.current;
+      const remId = ++remainingStatsGenerationRef.current;
       void (async () => {
         try {
           const categories = await getAllCategories({ canton_code: u.canton_code, user_id: u.user_id });
@@ -163,11 +164,10 @@ export default function Statistics() {
         } catch (error) {
           console.error('Error fetching canton main statistics:', error);
           if (mainId !== mainStatsGenerationRef.current) return;
-          setCategoryStatistics(EMPTY_MAIN_CATEGORY_STATS);
+          // Keep previous main stats on transient failures.
         }
       })();
 
-      const remId = ++remainingStatsGenerationRef.current;
       void (async () => {
         try {
           const categories = await getAllCategories({ canton_code: u.canton_code, user_id: u.user_id });
@@ -186,7 +186,7 @@ export default function Statistics() {
         } catch (error) {
           console.error('Error fetching canton additional-task statistics:', error);
           if (remId !== remainingStatsGenerationRef.current) return;
-          setRemainingCategoryStatistics([]);
+          // Keep previous additional-task stats on transient failures.
         }
       })();
       return;

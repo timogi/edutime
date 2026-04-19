@@ -247,6 +247,7 @@
     "back": "Back",
     "settingsTitle": "Settings",
     "saveFailed": "Could not save your changes. Please try again.",
+    "loadFailed": "Could not load your settings. Please try again.",
     "employmentUnavailable": "Employment settings are not available right now.",
     "unsaved-changes": "Unsaved changes",
     "save": "Save",

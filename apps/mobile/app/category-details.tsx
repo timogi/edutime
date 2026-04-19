@@ -39,6 +39,8 @@ export default function CategoryDetails() {
   const categoryId = params.categoryId ? Number(params.categoryId) : null;
   const isUserCategory = params.isUserCategory === 'true';
   const categoryTitle = params.categoryTitle as string;
+  const categoryType =
+    typeof params.categoryType === "string" ? params.categoryType : undefined;
   const userId = params.userId as string;
   const categoryIds = params.categoryIds ? JSON.parse(params.categoryIds as string) : null;
   
@@ -47,6 +49,7 @@ export default function CategoryDetails() {
     startDate,
     endDate,
     categoryTitle,
+    categoryType: categoryType as "user" | "none" | "other_canton" | undefined,
     categoryId,
     isUserCategory,
     categoryIds,
@@ -185,12 +188,20 @@ export default function CategoryDetails() {
                             {/* Display subcategory for canton categories */}
                             {!record.is_user_category && record.categories?.subtitle && (
                               <Text style={[styles.recordSubcategory, { color: theme.primary[5] }]} numberOfLines={1}>
-                                {t(`Categories.${record.categories.subtitle}`) || record.categories.subtitle}
+                                {(() => {
+                                  const key = `Categories.${record.categories?.subtitle}`;
+                                  const translated = t(key);
+                                  return translated === key ? record.categories?.subtitle : translated;
+                                })()}
                               </Text>
                             )}
                             {record.is_user_category && record.user_categories?.subtitle && (
                               <Text style={[styles.recordSubcategory, { color: theme.primary[5] }]} numberOfLines={1}>
-                                {t(`Categories.${record.user_categories.subtitle}`) || record.user_categories.subtitle}
+                                {(() => {
+                                  const key = `Categories.${record.user_categories?.subtitle}`;
+                                  const translated = t(key);
+                                  return translated === key ? record.user_categories?.subtitle : translated;
+                                })()}
                               </Text>
                             )}
                             {record.description && (

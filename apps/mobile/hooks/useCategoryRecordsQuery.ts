@@ -1,5 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { getRecordsForCategoryType, getCategoryColorForRecord, getRecordsByCategory, getRecordsByCategorySet } from '@/lib/database/records';
+import {
+  getRecordsForCategoryType,
+  getCategoryColorForRecord,
+  getRecordsByCategory,
+  getRecordsByCategorySet,
+  RecordsCategoryType,
+} from '@/lib/database/records';
 import { Database } from '@edutime/shared';
 import { useUser } from '@/contexts/UserContext';
 
@@ -9,6 +15,7 @@ interface UseCategoryRecordsQueryProps {
   startDate: Date;
   endDate: Date;
   categoryTitle: string;
+  categoryType?: RecordsCategoryType;
   categoryId?: number | null;
   isUserCategory?: boolean;
   categoryIds?: number[];
@@ -19,6 +26,7 @@ export const useCategoryRecordsQuery = ({
   startDate,
   endDate,
   categoryTitle,
+  categoryType,
   categoryId,
   isUserCategory = false,
   categoryIds,
@@ -27,7 +35,7 @@ export const useCategoryRecordsQuery = ({
   const { user, categories } = useUser();
 
   return useQuery({
-    queryKey: ['category-records', categoryTitle, categoryId, isUserCategory, categoryIds, startDate.toISOString(), endDate.toISOString()],
+    queryKey: ['category-records', categoryTitle, categoryType, categoryId, isUserCategory, categoryIds, startDate.toISOString(), endDate.toISOString()],
     queryFn: async () => {
       if (!user?.user_id) {
         throw new Error('User not authenticated');
@@ -39,12 +47,18 @@ export const useCategoryRecordsQuery = ({
       if (categoryIds && categoryIds.length > 0) {
         // Category set - get records for multiple categories
         records = await getRecordsByCategorySet(startDate, endDate, user.user_id, categoryIds, isUserCategory);
-      } else if (categoryId !== null) {
+      } else if (categoryId != null) {
         // Single category (regular or user category)
-        records = await getRecordsByCategory(startDate, endDate, user.user_id, categoryId ?? null, isUserCategory);
+        records = await getRecordsByCategory(startDate, endDate, user.user_id, categoryId, isUserCategory);
       } else {
-        // Use generic function for special category types
-        records = await getRecordsForCategoryType(startDate, endDate, user.user_id, categoryTitle, categories);
+        const resolvedCategoryType = categoryType ?? 'none';
+        records = await getRecordsForCategoryType(
+          startDate,
+          endDate,
+          user.user_id,
+          resolvedCategoryType,
+          categories,
+        );
       }
 
       // Add category colors to each record

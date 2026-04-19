@@ -3,6 +3,8 @@ import { getIsoDate } from '../helpers';
 import { CantonData, Category } from '../types';
 import { getUserCategories } from './categories';
 import { Database, ConfigMode, ConfigProfileData, ProfileCategoryData } from '@edutime/shared';
+import { TimeRecord } from '../types';
+import { resolveRecordCategory } from '../domain/categories';
 
 export interface CategoryStatistic {
   duration: number;
@@ -157,12 +159,8 @@ export interface CategoryStatistics {
     return percentage.toFixed(2) // returns as string
   }
   
-  const findCategory = (record: any, categories: Category[]): Category | undefined => {
-    if (record.profile_category_id) {
-      return categories.find(cat => cat.profile_category_id === record.profile_category_id);
-    }
-    return categories.find(cat => cat.id === record.category_id);
-  };
+  const findCategory = (record: TimeRecord, categories: Category[]): Category | undefined =>
+    resolveRecordCategory(record, categories).category as Category | undefined;
   
   export const getCategoryStatisticsData = async (
     start: Date,
@@ -191,10 +189,7 @@ export interface CategoryStatistics {
   
     const rows = Object.entries(groupedCategories).map(([setTitle, categoryGroup]) => {
       const setTotalDuration = categoryGroup.reduce((sum, category) => {
-        const duration =
-          aggregation[`cat_${category.id}`]?.duration ||
-          aggregation[`user_cat_${category.id}`]?.duration ||
-          0
+        const duration = aggregation[`cat_${category.id}`]?.duration || 0
         return sum + duration
       }, 0)
   
@@ -226,10 +221,7 @@ export interface CategoryStatistics {
         subcategories: cantonData.has_subcategories
           ? categoryGroup.map((category) => ({
               title: t_cat(`Categories.${category.title}`),
-              duration:
-                aggregation[`cat_${category.id}`]?.duration ||
-                aggregation[`user_cat_${category.id}`]?.duration ||
-                0,
+              duration: aggregation[`cat_${category.id}`]?.duration || 0,
               color: category.color,
             }))
           : [],
@@ -297,10 +289,7 @@ export interface CategoryStatistics {
     )
   
     const rows: RemainingCategoryStatisticsProps[] = furtherEmploymentCategories.map((category) => {
-      const effectiveDuration =
-        aggregation[`cat_${category.id}`]?.duration ||
-        aggregation[`user_cat_${category.id}`]?.duration ||
-        0
+      const effectiveDuration = aggregation[`user_cat_${category.id}`]?.duration || 0
   
       const workloadPercentage = userCategoryWorkloads[category.id] || 0
       const targetDuration = calculateRequiredHours(
@@ -339,7 +328,12 @@ export interface CategoryStatistics {
     }
     // Calculate otherCantonDuration excluding the selected canton and add it to rows with default color
     const otherCantonDuration = data
-      .filter((record) => record.category_id && !findCategory(record, categories))
+      .filter(
+        (record) =>
+          !record.is_user_category &&
+          Boolean(record.category_id) &&
+          !findCategory(record as TimeRecord, categories),
+      )
       .reduce((sum, record) => sum + record.duration, 0)
   
     if (otherCantonDuration > 0) {
@@ -447,10 +441,7 @@ export interface CategoryStatistics {
   const userCategoryIds = new Set(userCategories.map((category) => category.id))
 
   userCategories.forEach((category) => {
-    const effectiveDuration =
-      aggregation[`user_cat_${category.id}`]?.duration ||
-      aggregation[`cat_${category.id}`]?.duration ||
-      0
+    const effectiveDuration = aggregation[`user_cat_${category.id}`]?.duration || 0
 
     rows.push({
       title: category.title,
