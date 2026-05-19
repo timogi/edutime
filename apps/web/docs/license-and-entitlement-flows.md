@@ -35,6 +35,10 @@ This document maps **product flows** to **data** (`billing.*`, `license.*`, `pub
 
 Shared helper: `hasActiveEntitlement` / active entitlement queries in `@edutime/shared` (`licensing.ts`) — **active** row, `valid_from` ≤ now, `valid_until` null or ≥ now.
 
+### Web: hide self-service purchase UI
+
+Set `NEXT_PUBLIC_LICENSE_SELF_SERVICE_ENABLED=false` in the web app env to hide demo, checkout, pricing, and org price calculator UI (default: enabled when unset). See `apps/web/src/utils/licenseUiFlags.ts`.
+
 ---
 
 ## Demo (trial)

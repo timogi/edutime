@@ -1,3 +1,5 @@
+import { isLicenseSelfServiceEnabled } from '@/utils/licenseUiFlags'
+
 export type IntentType = 'demo' | 'annual' | 'org'
 
 /**
@@ -18,15 +20,27 @@ export function buildEmailRedirectTo(origin: string, intent: IntentType, qty?: n
  * based on their registration intent
  */
 export function getPostAuthRedirect(intent?: IntentType, qty?: number): string {
+  if (!isLicenseSelfServiceEnabled()) {
+    switch (intent) {
+      case 'demo':
+      case 'annual':
+      case 'org':
+        return '/app/no-license'
+      default:
+        break
+    }
+  }
+
   switch (intent) {
     case 'demo':
       // Redirect to app - demo will be activated in callback
       return '/app'
     case 'annual':
       return '/checkout?plan=annual'
-    case 'org':
+    case 'org': {
       const qtyParam = qty && qty > 0 ? qty : 3
       return `/checkout?plan=org&qty=${qtyParam}`
+    }
     default:
       // Default to app if no intent specified
       return '/app'

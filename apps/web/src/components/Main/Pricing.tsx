@@ -20,6 +20,7 @@ import { OrgPriceCalculatorModal } from './OrgPriceCalculatorModal'
 import { INDIVIDUAL_ANNUAL_PRICE_CHF } from '@/utils/payments/pricing'
 import { useUser } from '@/contexts/UserProvider'
 import { hasEverHadTrial } from '@edutime/shared'
+import { isLicenseSelfServiceEnabled } from '@/utils/licenseUiFlags'
 import classes from './Pricing.module.css'
 
 export function Pricing() {
@@ -153,6 +154,10 @@ export function PricingCards({
   const handleOrganizationClick = onOrganizationClick ?? (() => setOrgModalOpened(true))
 
   const mdPricingCols = showOnlyOrganizationOption ? 1 : hideDemoCard ? 2 : 3
+
+  if (!isLicenseSelfServiceEnabled()) {
+    return null
+  }
 
   const content = (
     <Stack gap='xl' align='center'>

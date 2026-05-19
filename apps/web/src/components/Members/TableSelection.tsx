@@ -60,6 +60,21 @@ type MemberStatus = (typeof MEMBER_STATUSES)[number]
 /** Default: hide canceled (revoked) rows; user can add statuses via filter. */
 const DEFAULT_STATUS_FILTER: MemberStatus[] = ['active', 'invited', 'rejected']
 
+const getStatusBadgeColor = (status: MemberStatus): string => {
+  switch (status) {
+    case 'active':
+      return 'teal'
+    case 'invited':
+      return 'blue'
+    case 'rejected':
+      return 'orange'
+    case 'canceled':
+      return 'gray'
+    default:
+      return 'gray'
+  }
+}
+
 interface TableSelectionProps {
   organizations: Organization[]
   currentUserEmail: string | null
@@ -513,8 +528,8 @@ const TableSelection = ({
             </ActionIcon>
           </Group>
         </Table.Td>
-        <Table.Td style={{ verticalAlign: 'middle' }}>
-          <Badge variant='light' size='sm'>
+        <Table.Td style={{ verticalAlign: 'middle' }} className={classes.statusCell}>
+          <Badge variant='light' size='sm' color={getStatusBadgeColor(item.status)}>
             {t(item.status)}
           </Badge>
         </Table.Td>
@@ -529,23 +544,39 @@ const TableSelection = ({
         </Table.Td>
         <Table.Td style={{ verticalAlign: 'middle' }} className={classes.commentCell}>
           {item.comment ? (
-            <Tooltip label={item.comment} multiline w={300} withArrow>
-              <Text size='sm' lineClamp={3} className={classes.commentText}>
-                {item.comment}
-              </Text>
+            <Tooltip label={item.comment} multiline w={320} withArrow>
+              <button
+                type='button'
+                className={classes.commentButton}
+                onClick={() => handleAddComment(item.id)}
+                aria-label={t('edit-comment')}
+              >
+                <IconMessage size='0.875rem' className={classes.commentIcon} aria-hidden />
+                <Text size='xs' lineClamp={1} className={classes.commentText}>
+                  {item.comment}
+                </Text>
+              </button>
             </Tooltip>
           ) : (
-            <Text size='sm' c='dimmed'>
-              -
-            </Text>
+            <Tooltip label={t('edit-comment')} withArrow>
+              <ActionIcon
+                variant='subtle'
+                color='gray'
+                size='sm'
+                onClick={() => handleAddComment(item.id)}
+                aria-label={t('edit-comment')}
+              >
+                <IconMessage size='0.875rem' />
+              </ActionIcon>
+            </Tooltip>
           )}
         </Table.Td>
         <Table.Td style={{ verticalAlign: 'middle' }} className={classes.actionsCell}>
           <Menu>
             <Menu.Target>
-              <Button variant='subtle' size='xs'>
+              <ActionIcon variant='subtle' color='gray' size='sm' aria-label={t('Actions')}>
                 <IconDots size='1rem' />
-              </Button>
+              </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
               {(item.status === 'invited' || item.status === 'rejected' || item.status === 'canceled') && (
@@ -578,19 +609,13 @@ const TableSelection = ({
     )
   })
 
-  return (
-    <Stack gap='lg' className={classes.wrapper} w='100%' maw='100%'>
-      <Stack
-        align='stretch'
-        gap='lg'
-        w='100%'
-        style={{ flexDirection: isMediumScreen ? 'column' : 'row' }}
-      >
+  const sidebar = (
         <Stack
           w={isSmallScreen ? '100%' : 300}
           maw={isSmallScreen ? '100%' : 300}
           mx={isMediumScreen ? 'auto' : undefined}
           flex='none'
+          className={classes.sidebar}
         >
           <Card p={0} radius='md' withBorder>
             <Stack gap={0}>
@@ -626,8 +651,15 @@ const TableSelection = ({
             </Stack>
           </Card>
         </Stack>
+  )
 
-        <Card radius='md' withBorder style={{ flex: 1, minWidth: 0, width: '100%' }}>
+  const membersTable = (
+        <Card
+          radius='md'
+          withBorder
+          className={classes.tableCard}
+          style={{ flex: 1, minWidth: 0, width: '100%' }}
+        >
           <Stack gap='sm'>
             <div className={classes.toolbar}>
               <div className={classes.toolbarTop}>
@@ -713,7 +745,7 @@ const TableSelection = ({
                 </Center>
               ) : (
                 <Table
-                  verticalSpacing='sm'
+                  verticalSpacing='xs'
                   className={classes.table}
                   highlightOnHover
                   striped
@@ -832,6 +864,27 @@ const TableSelection = ({
             )}
           </Stack>
         </Card>
+  )
+
+  return (
+    <Stack gap='md' className={classes.wrapper} w='100%' maw='100%'>
+      <Stack
+        align='flex-start'
+        gap='md'
+        w='100%'
+        className={classes.layout}
+      >
+        {isMediumScreen ? (
+          <>
+            {membersTable}
+            {sidebar}
+          </>
+        ) : (
+          <>
+            {sidebar}
+            {membersTable}
+          </>
+        )}
       </Stack>
 
       <InviteModal

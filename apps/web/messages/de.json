@@ -1083,6 +1083,7 @@
     "purchase-title": "Lizenz kaufen",
     "purchase-description": "Erwerbe eine Jahreslizenz für EduTime",
     "purchase-now": "Jetzt kaufen",
+    "self-service-disabled-hint": "Lizenzerwerb und Demos sind in dieser Umgebung nicht verfügbar. Falls du eine Organisationseinladung erhalten hast, kannst du sie oben annehmen.",
     "start-test-renew": "Tägliches Testabo starten",
     "org-calculator-title": "Mehrere Lizenzen",
     "org-calculator-subtitle": "Für Schulen & Organisationen",
@@ -1214,6 +1215,8 @@
     "activationPendingDescription": "Wir prüfen deine Zahlung und aktivieren deine Lizenz automatisch.",
     "activationPendingNote": "Die Freischaltung läuft im Hintergrund. Sobald die Lizenz aktiv ist, leiten wir dich automatisch weiter – oder nutze jederzeit den Button unten.",
     "activationFailedNote": "Die Zahlung konnte nicht abgeschlossen werden. Bitte versuche den Kauf erneut.",
-    "refreshStatus": "Status aktualisieren"
+    "refreshStatus": "Status aktualisieren",
+    "selfServiceDisabledTitle": "Kauf nicht verfügbar",
+    "selfServiceDisabledDescription": "Lizenzerwerb und Demo sind in dieser Umgebung deaktiviert. Wende dich an deine Administration, wenn du Zugang benötigst."
   }
 }

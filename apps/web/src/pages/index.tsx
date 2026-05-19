@@ -3,7 +3,6 @@ import { ContactHero } from '@/components/Main/Contact'
 import { CookieDialog } from '@/components/Main/CookieDialog'
 import { AppPlatforms } from '@/components/Main/AppPlatforms'
 import { PartnerOrganizations } from '@/components/Main/PartnerOrganizations'
-import { DemoSection } from '@/components/Main/DemoSection'
 import { Pricing } from '@/components/Main/Pricing'
 import { ShareWithSchool } from '@/components/Main/ShareWithSchool'
 import { HeaderSimple } from '@/components/Main/Header'
@@ -15,6 +14,7 @@ import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useTranslations } from 'next-intl'
 import { useEffect } from 'react'
+import { isLicenseSelfServiceEnabled } from '@/utils/licenseUiFlags'
 
 const ACCOUNT_DELETION_QUEUED_TOAST_KEY = 'edutime_account_deletion_queued_toast_shown'
 /** @deprecated Old redirect param; same toast as queued deletion */
@@ -76,9 +76,11 @@ export default function Home() {
       <TimeRecordingHero />
       <AppPlatforms />
       <PartnerOrganizations />
-      <div id='pricing'>
-        <Pricing />
-      </div>
+      {isLicenseSelfServiceEnabled() ? (
+        <div id='pricing'>
+          <Pricing />
+        </div>
+      ) : null}
       <ShareWithSchool />
       <ContactHero />
       <Footer />

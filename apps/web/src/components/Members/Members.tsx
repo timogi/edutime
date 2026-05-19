@@ -152,8 +152,8 @@ export const Members = ({
   }
 
   return (
-    <Container fluid py='xl' px={{ base: 'xs', sm: 'md', lg: 'xl' }}>
-      <Stack gap='lg' w='100%'>
+    <Container fluid py={{ base: 'md', sm: 'lg' }} px={{ base: 'xs', sm: 'md', lg: 'xl' }}>
+      <Stack gap='md' w='100%'>
         <Stack gap='xs' align='flex-start'>
           {showBackToNoLicense ? (
             <Button variant='subtle' w='fit-content' onClick={() => void router.push('/app/no-license')}>

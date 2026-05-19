@@ -36,6 +36,7 @@ import { useUser } from '@/contexts/UserProvider'
 import { OrganizationPicker } from '@/components/Organization/OrganizationPicker'
 import { MIN_ORG_LICENSES } from '@/utils/payments/pricing'
 import { supabase } from '@/utils/supabase/client'
+import { isLicenseSelfServiceEnabled } from '@/utils/licenseUiFlags'
 
 type OrgAdmin = {
   user_id: string
@@ -715,6 +716,7 @@ export default function OrganizationManagementPage() {
         ? '/app/members'
         : '/app/no-license'
   const showBackButton = !hasActiveSubscription || typeof router.query.organizationId === 'string'
+  const licenseSelfServiceEnabled = isLicenseSelfServiceEnabled()
 
   const requestSeatAdjustment = useCallback(
     async (confirm: boolean) => {
@@ -960,7 +962,7 @@ export default function OrganizationManagementPage() {
             ) : !payload?.billing ? (
               <Stack gap='sm'>
                 <Text c='dimmed'>{t('org-license-empty')}</Text>
-                {payload?.organization ? (
+                {payload?.organization && licenseSelfServiceEnabled ? (
                   <>
                     <Text size='sm' c='dimmed'>
                       {t('checkout-org-seat-count-info', {
@@ -1029,7 +1031,7 @@ export default function OrganizationManagementPage() {
                   ) : null}
                 </Group>
 
-                {isOrgSuspended ? (
+                {isOrgSuspended && licenseSelfServiceEnabled ? (
                   <Button variant='outline' onClick={handleStartOrganizationCheckout}>
                     {t('org-management-reactivate-paid-button')}
                   </Button>
@@ -1153,8 +1155,9 @@ export default function OrganizationManagementPage() {
               </Stack>
             )}
 
-            <Divider my='md' />
+            {licenseSelfServiceEnabled ? <Divider my='md' /> : null}
 
+            {licenseSelfServiceEnabled ? (
             <Stack gap='sm'>
               <Title order={4}>{t('org-management-seat-plan-title')}</Title>
               <Text size='sm' c='dimmed'>
@@ -1254,6 +1257,7 @@ export default function OrganizationManagementPage() {
                 </Button>
               </Group>
             </Stack>
+            ) : null}
           </Stack>
         </Card>
 
