@@ -51,6 +51,7 @@ import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/router'
 import { showNotification } from '@mantine/notifications'
 import { Organization } from '@/types/globals'
+import { isLicenseSelfServiceEnabled } from '@/utils/licenseUiFlags'
 import classes from './TableSelection.module.css'
 
 const MEMBER_STATUSES = ['active', 'invited', 'rejected', 'canceled'] as const
@@ -620,16 +621,18 @@ const TableSelection = ({
           <Card p={0} radius='md' withBorder>
             <Stack gap={0}>
               <Progress takenSeats={takenSeats} totalSeats={totalSeats} />
-              <Button
-                radius={0}
-                variant='light'
-                onClick={() => {
-                  if (!currentOrg?.id) return
-                  void router.push(`/app/organization-management?organizationId=${currentOrg.id}`)
-                }}
-              >
-                {t('org-management-seat-plan-title')}
-              </Button>
+              {isLicenseSelfServiceEnabled() ? (
+                <Button
+                  radius={0}
+                  variant='light'
+                  onClick={() => {
+                    if (!currentOrg?.id) return
+                    void router.push(`/app/organization-management?organizationId=${currentOrg.id}`)
+                  }}
+                >
+                  {t('org-management-seat-plan-title')}
+                </Button>
+              ) : null}
               <Button
                 onClick={open}
                 radius={0}
