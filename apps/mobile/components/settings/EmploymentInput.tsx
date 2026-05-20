@@ -279,23 +279,28 @@ export const EmploymentInput: React.FC<EmploymentInputProps> = ({
   };
 
   const handleProfileCategoryModalSave = async (category: ProfileCategoryData) => {
-    if (selectedProfileCategory) {
-      await onEditProfileCategory?.(selectedProfileCategory.id, {
-        title: category.title,
-        color: category.color,
-        weight: category.weight,
-        order: category.order,
-      });
-    } else {
-      await onCreateProfileCategory?.({
-        title: category.title,
-        color: category.color,
-        weight: category.weight,
-        order: category.order,
-      });
+    try {
+      if (selectedProfileCategory) {
+        await onEditProfileCategory?.(selectedProfileCategory.id, {
+          title: category.title,
+          color: category.color,
+          weight: category.weight,
+          order: category.order,
+        });
+      } else {
+        await onCreateProfileCategory?.({
+          title: category.title,
+          color: category.color,
+          weight: category.weight,
+          order: category.order,
+        });
+      }
+      setProfileCatModalVisible(false);
+      setSelectedProfileCategory(null);
+    } catch (error) {
+      console.error("Error saving custom category:", error);
+      showErrorToast(t('Index.error'), t('Settings.saveFailed'));
     }
-    setProfileCatModalVisible(false);
-    setSelectedProfileCategory(null);
   };
 
   const handleProfileCategoryDelete = async (id: string) => {

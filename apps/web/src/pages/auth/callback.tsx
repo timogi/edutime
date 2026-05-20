@@ -5,6 +5,7 @@ import { Container, Paper, Stack, Text, Title, Loader, Center } from '@mantine/c
 import Link from 'next/link'
 import { supabase } from '@/utils/supabase/client'
 import { getPostAuthRedirect, parseIntentFromQuery } from '@/utils/auth/intent'
+import { isLicenseSelfServiceEnabled } from '@/utils/licenseUiFlags'
 import { LoadingScreen } from '@/components/LoadingScreen'
 import { acceptUserDocument, getMissingUserDocuments } from '@edutime/shared'
 
@@ -93,7 +94,7 @@ export default function AuthCallback() {
         const { intent, qty } = parseIntentFromQuery(router.query)
 
         // If intent is demo, activate demo before redirecting
-        if (intent === 'demo') {
+        if (intent === 'demo' && isLicenseSelfServiceEnabled()) {
           try {
             const {
               data: { session: currentSession },

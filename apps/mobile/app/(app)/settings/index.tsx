@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { Linking, Platform, ScrollView, RefreshControl, StyleSheet } from "react-native";
+import { ActivityIndicator, Linking, Platform, ScrollView, RefreshControl, StyleSheet } from "react-native";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -13,11 +13,13 @@ import { useTranslation } from "react-i18next";
 import { Spacing, LayoutStyles } from "@/constants/Styles";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { themeForScheme } from "@/constants/Colors";
+import { useSettingsDataQuery } from "@/hooks/useSettingsDataQuery";
 
 export default function SettingsIndexScreen() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { refreshUserData, userEmail, cantonData, configMode } = useUser();
+  const { refreshUserData, userEmail, user } = useUser();
+  const settingsDataQuery = useSettingsDataQuery(user);
   const colorScheme = useColorScheme();
   const theme = themeForScheme(colorScheme);
   const [refreshing, setRefreshing] = useState(false);
@@ -40,7 +42,9 @@ export default function SettingsIndexScreen() {
     );
   }, [openExternalUrl]);
 
-  const showEmployment = Boolean(cantonData || configMode === "custom");
+  const showEmployment = Boolean(
+    settingsDataQuery.data?.configMode === "custom" || settingsDataQuery.data?.cantonData
+  );
 
   return (
     <SafeAreaView
@@ -56,6 +60,11 @@ export default function SettingsIndexScreen() {
       >
         <ThemedView style={styles.inner}>
           <VStack space="lg" style={styles.stack}>
+            {settingsDataQuery.isLoading ? (
+              <ThemedView style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={theme.primary[5]} />
+              </ThemedView>
+            ) : null}
             <SettingsSection title={t("Settings.groupWork")}>
               {showEmployment ? (
                 <SettingsRow
@@ -125,5 +134,10 @@ const styles = StyleSheet.create({
   stack: {
     width: "100%",
     paddingBottom: Spacing.lg,
+  },
+  loadingContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.sm,
   },
 });

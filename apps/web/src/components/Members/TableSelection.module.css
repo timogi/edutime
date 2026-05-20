@@ -5,6 +5,24 @@
   width: 100%;
 }
 
+.layout {
+  flex-direction: row;
+}
+
+@media (max-width: 1200px) {
+  .layout {
+    flex-direction: column;
+  }
+}
+
+.tableCard {
+  align-self: stretch;
+}
+
+.sidebar {
+  align-self: flex-start;
+}
+
 .table {
   width: 100%;
   max-width: 100%;
@@ -98,30 +116,55 @@
   min-width: 0;
 }
 
+.statusCell {
+  white-space: nowrap;
+}
+
 .commentHeader {
-  width: 180px;
+  width: 140px;
 }
 
 .commentCell {
-  width: 180px;
-  max-width: 180px;
+  width: 140px;
+  max-width: 140px;
+}
+
+.commentButton {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+  text-align: left;
+  border-radius: var(--mantine-radius-sm);
+}
+
+.commentButton:hover .commentText {
+  color: var(--mantine-color-primary);
+}
+
+.commentIcon {
+  flex: 0 0 auto;
+  color: var(--mantine-color-dimmed);
 }
 
 .commentText {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1 1 auto;
+  color: var(--mantine-color-dimmed);
 }
 
 .actionsHeader {
-  width: 110px;
+  width: 72px;
 }
 
 .actionsCell {
-  width: 110px;
+  width: 72px;
 }
 
 .mobileBottomActions {

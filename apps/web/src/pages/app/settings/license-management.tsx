@@ -27,6 +27,7 @@ import {
 import { useUser } from '@/contexts/UserProvider'
 import { supabase } from '@/utils/supabase/client'
 import { INDIVIDUAL_ANNUAL_PRICE_CHF } from '@/utils/payments/pricing'
+import { isLicenseSelfServiceEnabled } from '@/utils/licenseUiFlags'
 
 interface LicenseManagementSubscription {
   id: string
@@ -263,6 +264,8 @@ export default function LicenseManagementPage() {
 
   if (!user) return null
 
+  const licenseSelfServiceEnabled = isLicenseSelfServiceEnabled()
+
   return (
     <Container size={1200} py='xl'>
       <Modal
@@ -314,24 +317,26 @@ export default function LicenseManagementPage() {
             ) : !licenseManagementData?.subscription ? (
               <Stack gap='sm'>
                 <Text c='dimmed'>{t('license-management-empty')}</Text>
-                <Paper withBorder radius='md' p='md'>
-                  <Stack gap='md'>
-                    <Badge variant='light' w='fit-content'>
-                      {tPricing('mostPopular')}
-                    </Badge>
-                    <Text fw={600}>{tPricing('planName')}</Text>
-                    <Group gap='xs' align='baseline'>
-                      <Text size='2rem' fw={700}>
-                        {INDIVIDUAL_ANNUAL_PRICE_CHF}
-                      </Text>
-                      <Text c='dimmed'>CHF</Text>
-                      <Text c='dimmed'>{tPricing('perYear')}</Text>
-                    </Group>
-                    <Button onClick={handlePurchasePersonalLicense}>
-                      {tNoLicense('purchase-now')}
-                    </Button>
-                  </Stack>
-                </Paper>
+                {licenseSelfServiceEnabled ? (
+                  <Paper withBorder radius='md' p='md'>
+                    <Stack gap='md'>
+                      <Badge variant='light' w='fit-content'>
+                        {tPricing('mostPopular')}
+                      </Badge>
+                      <Text fw={600}>{tPricing('planName')}</Text>
+                      <Group gap='xs' align='baseline'>
+                        <Text size='2rem' fw={700}>
+                          {INDIVIDUAL_ANNUAL_PRICE_CHF}
+                        </Text>
+                        <Text c='dimmed'>CHF</Text>
+                        <Text c='dimmed'>{tPricing('perYear')}</Text>
+                      </Group>
+                      <Button onClick={handlePurchasePersonalLicense}>
+                        {tNoLicense('purchase-now')}
+                      </Button>
+                    </Stack>
+                  </Paper>
+                ) : null}
               </Stack>
             ) : (() => {
               const currentPeriodEnd = licenseManagementData.subscription.current_period_end
@@ -379,7 +384,7 @@ export default function LicenseManagementPage() {
                         </Button>
                       </Group>
                     ) : null}
-                    {isExpired ? (
+                    {isExpired && licenseSelfServiceEnabled ? (
                       <Alert color='red' variant='light' mt='xs'>
                         <Group justify='space-between' align='center'>
                           <Text size='sm'>{t('license-management-retry-info')}</Text>
@@ -391,6 +396,10 @@ export default function LicenseManagementPage() {
                             {t('license-management-retry-button')}
                           </Button>
                         </Group>
+                      </Alert>
+                    ) : isExpired ? (
+                      <Alert color='red' variant='light' mt='xs'>
+                        <Text size='sm'>{t('license-management-retry-info')}</Text>
                       </Alert>
                     ) : null}
                   </Stack>

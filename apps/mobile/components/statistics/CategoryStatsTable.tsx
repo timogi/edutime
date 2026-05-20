@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors, themeForScheme } from '@/constants/Colors';
@@ -44,9 +44,9 @@ export const CategoryStatsTable: React.FC<CategoryStatsTableProps> = ({ data, is
 
 
   return (
-    <ScrollView style={styles.scrollView}>
-      {data.map((row) => (
-        <Card key={row.title} style={cardStyle} variant='outline'>
+    <View style={styles.container}>
+      {data.map((row, index) => (
+        <Card key={`${row.title}-${index}`} style={cardStyle} variant='outline'>
             <View style={styles.headerRow}>
               <Ionicons 
                 name="folder" 
@@ -76,8 +76,8 @@ export const CategoryStatsTable: React.FC<CategoryStatsTableProps> = ({ data, is
             )}
           </View>
 
-          {isCategoryStatistics(row) && row.subcategories?.map((subcategory) => (
-            <View key={subcategory.title} style={subcategoryRowStyle}>
+          {isCategoryStatistics(row) && row.subcategories?.map((subcategory, subIndex) => (
+            <View key={`${subcategory.title}-${subIndex}`} style={subcategoryRowStyle}>
               <View style={styles.subcategoryHeader}>
                 <Ionicons 
                   name="folder" 
@@ -95,13 +95,13 @@ export const CategoryStatsTable: React.FC<CategoryStatsTableProps> = ({ data, is
           ))}
           </Card>
       ))}
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  scrollView: {
-    flex: 1,
+  container: {
+    width: '100%',
   },
   card: {
     margin: 6,

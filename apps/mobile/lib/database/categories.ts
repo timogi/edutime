@@ -119,8 +119,7 @@ export const getUserCategories = async (userId: string): Promise<EmploymentCateg
     .order('id')
 
   if (categoriesError) {
-    console.error('error', categoriesError)
-    return []
+    throw categoriesError
   }
 
   return categoriesData || []

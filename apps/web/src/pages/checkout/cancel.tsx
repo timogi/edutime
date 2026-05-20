@@ -3,6 +3,7 @@ import { GetStaticPropsContext } from 'next/types'
 import { Container, Paper, Stack, Text, Title, Button, ThemeIcon } from '@mantine/core'
 import { useTranslations } from 'next-intl'
 import { IconArrowBack } from '@tabler/icons-react'
+import { isLicenseSelfServiceEnabled } from '@/utils/licenseUiFlags'
 
 export default function CheckoutCancelPage() {
   const router = useRouter()
@@ -25,9 +26,15 @@ export default function CheckoutCancelPage() {
           </Text>
 
           <Stack gap='sm' w='100%' mt='md'>
-            <Button onClick={() => router.push('/checkout')} variant='filled' fullWidth>
-              {t('tryAgain')}
-            </Button>
+            {isLicenseSelfServiceEnabled() ? (
+              <Button onClick={() => router.push('/checkout')} variant='filled' fullWidth>
+                {t('tryAgain')}
+              </Button>
+            ) : (
+              <Button onClick={() => router.push('/app/no-license')} variant='filled' fullWidth>
+                {t('goToNoLicense')}
+              </Button>
+            )}
             <Button onClick={() => router.push('/')} variant='subtle' fullWidth>
               {t('backToHome')}
             </Button>

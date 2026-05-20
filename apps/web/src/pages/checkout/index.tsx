@@ -18,6 +18,7 @@ import { supabase } from '@/utils/supabase/client'
 import { LoadingScreen } from '@/components/LoadingScreen'
 import { CheckoutLegalGate } from '@/components/CheckoutLegalGate'
 import { IconAlertCircle } from '@tabler/icons-react'
+import { isLicenseSelfServiceEnabled } from '@/utils/licenseUiFlags'
 
 type CheckoutApiResponse = {
   checkoutUrl?: string
@@ -426,6 +427,32 @@ export default function CheckoutPage() {
 
   if (isLoading) {
     return <LoadingScreen />
+  }
+
+  if (!isLicenseSelfServiceEnabled()) {
+    return (
+      <Container size={480} my={40}>
+        <Paper withBorder p={30} radius='md'>
+          <Stack gap='md' align='center'>
+            <IconAlertCircle size={48} color='var(--mantine-color-dimmed)' />
+            <Title order={3} ta='center'>
+              {tCheckout('selfServiceDisabledTitle')}
+            </Title>
+            <Text c='dimmed' ta='center' size='sm'>
+              {tCheckout('selfServiceDisabledDescription')}
+            </Text>
+            <Stack gap='sm' w='100%' mt='md'>
+              <Button onClick={() => void router.push('/app/no-license')} variant='filled' fullWidth>
+                {tCheckout('goToNoLicense')}
+              </Button>
+              <Button onClick={() => void router.push('/')} variant='subtle' fullWidth>
+                {tCheckout('backToHome')}
+              </Button>
+            </Stack>
+          </Stack>
+        </Paper>
+      </Container>
+    )
   }
 
   if (error) {

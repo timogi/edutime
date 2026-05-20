@@ -1125,6 +1125,7 @@
     "purchase-title": "Acheter une licence",
     "purchase-description": "Obtenez une licence annuelle pour EduTime",
     "purchase-now": "Acheter maintenant",
+    "self-service-disabled-hint": "L'achat de licence et les démos ne sont pas disponibles dans cet environnement. Si vous avez reçu une invitation d'organisation, vous pouvez l'accepter ci-dessus.",
     "start-test-renew": "Demarrer l'abonnement test quotidien",
     "org-calculator-title": "Licences multiples",
     "org-calculator-subtitle": "Pour écoles et organisations",
@@ -1256,6 +1257,8 @@
     "activationPendingDescription": "Nous verifions votre paiement et activons automatiquement votre licence.",
     "activationPendingNote": "L'activation se fait en arrière-plan. Dès que la licence est prête, nous vous redirigerons automatiquement — ou utilisez le bouton ci-dessous à tout moment.",
     "activationFailedNote": "Le paiement n'a pas pu etre finalise. Veuillez reessayer l'achat.",
-    "refreshStatus": "Actualiser le statut"
+    "refreshStatus": "Actualiser le statut",
+    "selfServiceDisabledTitle": "Achat indisponible",
+    "selfServiceDisabledDescription": "L'achat de licence et le démarrage d'une démo sont désactivés dans cet environnement. Contactez votre administration si vous avez besoin d'un accès."
   }
 }

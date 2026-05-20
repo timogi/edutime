@@ -1,12 +1,12 @@
 import React from "react";
-import { TouchableOpacity, View, StyleSheet } from "react-native";
-import { Text, VStack, HStack, Pressable } from "@gluestack-ui/themed";
+import { View, StyleSheet } from "react-native";
+import { Text, VStack, Pressable } from "@gluestack-ui/themed";
 import { CategoryResult } from "@/lib/database/categories";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useUser } from "@/contexts/UserContext";
 import { useTranslation } from "react-i18next";
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { Colors, themeForScheme } from "@/constants/Colors";
+import { themeForScheme } from "@/constants/Colors";
 
 interface CategorySelectorProps {
   selectedCategory?: CategoryResult | null | undefined;
@@ -17,7 +17,7 @@ export const CategorySelector = ({
   selectedCategory,
   onCategorySelect,
 }: CategorySelectorProps) => {
-  const { categories, configMode } = useUser();
+  const { categories } = useUser();
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const theme = themeForScheme(colorScheme);
@@ -41,6 +41,21 @@ export const CategorySelector = ({
 
   const handleCategoryPress = (category: CategoryResult | null) => {
     onCategorySelect(category);
+  };
+
+  const translateCategory = (key: string) => {
+    const translationKey = `Categories.${key}`;
+    const translated = t(translationKey);
+    if (!translated || translated === translationKey) return key;
+    return translated;
+  };
+
+  const getCategoryItemKey = (category: (CategoryResult & { id: number | null }) | { id: null; title: string; subtitle: string; color: null; is_further_employment: boolean; category_set_title: string }) => {
+    if (category.id === null) return "none:none";
+    const scope = category.is_profile_category
+      ? `profile:${category.profile_category_id ?? category.id}`
+      : `${category.category_set_title}:${category.id}`;
+    return scope;
   };
 
   const modifyColor = (color: string | null, amount: number = 0.3) => {
@@ -96,7 +111,7 @@ export const CategorySelector = ({
 
             return (
               <Pressable
-                key={category.id || 'no-category'}
+                key={getCategoryItemKey(category)}
                 style={[
                   styles.categoryCard,
                   {
@@ -123,15 +138,15 @@ export const CategorySelector = ({
                       ? category.title
                       : (category.is_further_employment || category.is_profile_category)
                       ? category.title
-                      : t("Categories." + category.title)}
+                      : translateCategory(category.title)}
                   </Text>
                   {category.id !== null && (() => {
                     const titleText = (category.is_further_employment || category.is_profile_category)
                       ? category.title
-                      : t("Categories." + category.title);
+                      : translateCategory(category.title);
                     const subtitleText = (category.is_further_employment || category.is_profile_category)
                       ? category.subtitle
-                      : t("Categories." + category.category_set_title);
+                      : translateCategory(category.category_set_title);
                     
                     if (subtitleText && subtitleText !== titleText) {
                       return (
@@ -160,7 +175,7 @@ export const CategorySelector = ({
 
             return (
               <Pressable
-                key={category.id || 'no-category'}
+                key={getCategoryItemKey(category)}
                 style={[
                   styles.categoryCard,
                   {
@@ -187,15 +202,15 @@ export const CategorySelector = ({
                       ? category.title
                       : (category.is_further_employment || category.is_profile_category)
                       ? category.title
-                      : t("Categories." + category.title)}
+                      : translateCategory(category.title)}
                   </Text>
                   {category.id !== null && (() => {
                     const titleText = (category.is_further_employment || category.is_profile_category)
                       ? category.title
-                      : t("Categories." + category.title);
+                      : translateCategory(category.title);
                     const subtitleText = (category.is_further_employment || category.is_profile_category)
                       ? category.subtitle
-                      : t("Categories." + category.category_set_title);
+                      : translateCategory(category.category_set_title);
                     
                     // Only show subtitle if it's different from title and not empty
                     if (subtitleText && subtitleText !== titleText) {

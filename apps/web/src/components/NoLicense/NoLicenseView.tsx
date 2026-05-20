@@ -24,6 +24,7 @@ import { PricingCards } from '@/components/Main/Pricing'
 import { acceptOrganizationInvite, rejectOrganizationInvite } from '@/utils/supabase/organizations'
 import { supabase } from '@/utils/supabase/client'
 import { hasActiveEntitlement, hasEverHadTrial } from '@edutime/shared'
+import { isLicenseSelfServiceEnabled } from '@/utils/licenseUiFlags'
 import classes from './NoLicenseView.module.css'
 
 type OrgBillingGateStatus =
@@ -394,6 +395,8 @@ export function NoLicenseView() {
   const showIndividualCheckoutPendingAlert =
     router.query.checkout === 'pending' && !showOrgCheckoutPendingAlert
 
+  const showSelfServicePricing = isLicenseSelfServiceEnabled() && !isAdministrator
+
   return (
     <>
       <Container size={1200} py='xl'>
@@ -563,8 +566,7 @@ export function NoLicenseView() {
             </Card>
           )}
 
-          {/* Pricing Cards - hide for administrators who manage members */}
-          {!isAdministrator && (
+          {showSelfServicePricing ? (
             <PricingCards
               embedded
               hideDemoCard={hasUsedDemo !== false}
@@ -573,12 +575,18 @@ export function NoLicenseView() {
               demoButtonLabel={t_noLicense('start-demo')}
               standardButtonLabel={t_noLicense('purchase-now')}
             />
-          )}
+          ) : null}
+
+          {!isLicenseSelfServiceEnabled() && !isAdministrator && pendingInvitations.length === 0 ? (
+            <Text size='sm' c='dimmed' ta='center' maw={560}>
+              {t_noLicense('self-service-disabled-hint')}
+            </Text>
+          ) : null}
 
           <Divider
             w='100%'
             my='lg'
-            label={!isAdministrator ? t_noLicense('personal-license-section-label') : undefined}
+            label={showSelfServicePricing ? t_noLicense('personal-license-section-label') : undefined}
             labelPosition='center'
           />
 
