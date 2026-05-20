@@ -29,6 +29,21 @@ const nextConfig = {
         destination: '/docs/privacy',
         permanent: true,
       },
+      {
+        source: '/license',
+        destination: '/no-account',
+        permanent: true,
+      },
+      {
+        source: '/en/license',
+        destination: '/en/no-account',
+        permanent: true,
+      },
+      {
+        source: '/fr/license',
+        destination: '/fr/no-account',
+        permanent: true,
+      },
     ]
   },
   async rewrites() {

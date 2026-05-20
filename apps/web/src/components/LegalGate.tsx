@@ -24,7 +24,7 @@ import {
 } from '@edutime/shared'
 
 const REGISTER_LEGAL_METADATA_KEY = 'register_legal_accepted_v1'
-const AUTO_ACCEPT_DOC_CODES = new Set(['terms_of_use', 'privacy_policy'])
+const AUTO_ACCEPT_DOC_CODES = new Set(['terms_of_use'])
 
 export function LegalGate({ children }: { children: React.ReactNode }) {
   const [missingDocs, setMissingDocs] = useState<MissingDocument[]>([])

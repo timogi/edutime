@@ -1,7 +1,9 @@
-import React from 'react';
-import { View, Platform, StyleSheet } from 'react-native';
-import { Control, Controller } from 'react-hook-form';
-import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
+import React from "react";
+import { View, Platform, StyleSheet } from "react-native";
+import { Control, Controller, useWatch } from "react-hook-form";
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 import { Text } from "@gluestack-ui/themed";
 import { TouchableOpacity } from "react-native";
 import { TextStyles, Spacing, BorderRadius } from "@/constants/Styles";
@@ -14,12 +16,16 @@ import {
 } from "@gluestack-ui/themed";
 import { ColorTheme } from "@/lib/types";
 import type { RecordFormData } from "./record-form-types";
+import { formatTimeDisplay } from "./record-form-time";
 
 interface DurationInputProps {
   control: Control<RecordFormData>;
   isExpanded: boolean;
   onToggleDurationPicker: () => void;
-  onDurationChange: (event: DateTimePickerEvent, selectedTime: Date | undefined) => void;
+  onDurationChange: (
+    event: DateTimePickerEvent,
+    selectedTime: Date | undefined
+  ) => void;
   colorScheme: string | null | undefined;
   theme: ColorTheme;
 }
@@ -33,19 +39,14 @@ export function DurationInput({
   theme,
 }: DurationInputProps) {
   const { t } = useTranslation();
-
-  const formatDuration = (date: Date): string => {
-    return date.toLocaleTimeString("en-US", {
-      hour12: false,
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  const duration = useWatch({ control, name: "duration" });
 
   return (
     <FormControl>
       <FormControlLabel>
-        <FormControlLabelText style={[styles.label, colorScheme === "dark" && { color: "white" }]}>
+        <FormControlLabelText
+          style={[styles.label, colorScheme === "dark" && { color: "white" }]}
+        >
           {t("Index.duration")}
         </FormControlLabelText>
       </FormControlLabel>
@@ -60,31 +61,27 @@ export function DurationInput({
             borderColor: isExpanded
               ? theme.primary[6]
               : colorScheme === "dark"
-              ? theme.gray[6]
-              : "#ddd",
+                ? theme.gray[6]
+                : "#ddd",
             borderWidth: isExpanded ? 2 : 1,
           },
         ]}
       >
         <View style={styles.buttonContent}>
           <Text style={colorScheme === "dark" && { color: "white" }}>
-            {formatDuration(control._formValues.duration)}
+            {duration ? formatTimeDisplay(duration) : "--:--"}
           </Text>
           {isExpanded ? (
             <ChevronUpIcon
               color={
-                colorScheme === "dark"
-                  ? theme.primary[3]
-                  : theme.primary[6]
+                colorScheme === "dark" ? theme.primary[3] : theme.primary[6]
               }
               size={20}
             />
           ) : (
             <ChevronDownIcon
               color={
-                colorScheme === "dark"
-                  ? theme.primary[3]
-                  : theme.primary[6]
+                colorScheme === "dark" ? theme.primary[3] : theme.primary[6]
               }
               size={20}
             />
@@ -122,23 +119,20 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xs,
   },
   inputButton: {
-    flexDirection: "row" as const,
-    justifyContent: "space-between" as const,
-    alignItems: "center" as const,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: Spacing.md,
-    backgroundColor: "#f5f5f5",
-    borderWidth: 1,
-    borderColor: "#ddd",
     borderRadius: BorderRadius.sm,
     minHeight: 48,
   },
   buttonContent: {
-    flexDirection: "row" as const,
-    justifyContent: "space-between" as const,
-    alignItems: "center" as const,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     width: "100%",
   },
   pickerContainer: {
-    marginTop: 8,
+    marginTop: Spacing.sm,
   },
 });

@@ -110,6 +110,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         })
       }
     } else {
+      const { data: missingIndividualLegalDocs, error: missingIndividualLegalDocsError } =
+        await supabase.rpc('legal_missing_documents', {
+          p_context: 'checkout_individual',
+        })
+
+      if (missingIndividualLegalDocsError) {
+        console.error(
+          'Failed to check missing individual legal documents:',
+          missingIndividualLegalDocsError,
+        )
+        return res.status(500).json({ error: 'Failed to verify required legal documents' })
+      }
+
+      if ((missingIndividualLegalDocs?.length ?? 0) > 0) {
+        return res.status(409).json({
+          error:
+            'Legal documents must be accepted before checkout. Please accept them and try again.',
+        })
+      }
+
       const { data: hasPersonal, error: entitlementError } = await supabase.rpc(
         'api_user_has_active_personal_license',
       )

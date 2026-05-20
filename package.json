@@ -14,6 +14,7 @@
     "dev:mobile:ios:build": "npm run ios:build -w @edutime/mobile",
     "dev:mobile:ios:dev": "npm run eas:build:ios:dev -w @edutime/mobile",
     "dev:mobile:android": "npm run android -w @edutime/mobile",
+    "dev:mobile:android:build": "npm run android:build -w @edutime/mobile",
     "build:web": "npm run build -w @edutime/web",
     "build:shared": "npm run build -w @edutime/shared",
     "build:mobile:ios": "npm run eas:build:ios -w @edutime/mobile",

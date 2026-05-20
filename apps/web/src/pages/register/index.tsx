@@ -300,28 +300,20 @@ export default function RegistrationForm() {
                   error={confirmPasswordError}
                   size='md'
                 />
-                <div>
+                <Stack gap='xs'>
                   <Checkbox
                     required
                     label={
-                      <Text>
-                        Ich akzeptiere die{' '}
+                      <Text size='sm'>
+                        {t('accept-terms-prefix')}{' '}
                         <Link
-                          href={'/docs/terms'}
+                          href='/docs/terms'
                           target='_blank'
                           style={{ textDecoration: 'underline' }}
                         >
-                          Nutzungsbedingungen
-                        </Link>{' '}
-                        und die{' '}
-                        <Link
-                          href={'/docs/privacy'}
-                          target='_blank'
-                          style={{ textDecoration: 'underline' }}
-                        >
-                          Datenschutzbestimmungen
+                          {t('termsOfService')}
                         </Link>
-                        .
+                        {t('accept-terms-suffix')}
                       </Text>
                     }
                     checked={termsAccepted}
@@ -331,12 +323,23 @@ export default function RegistrationForm() {
                     }}
                     error={termsError ? true : false}
                   />
-                  {termsError && (
-                    <Text size='xs' c='red' mt={4} ml={28}>
+                  {termsError ? (
+                    <Text size='xs' c='red' ml={28}>
                       {termsError}
                     </Text>
-                  )}
-                </div>
+                  ) : null}
+                  <Text size='sm' c='dimmed' ml={0}>
+                    {t('register-privacy-notice-prefix')}{' '}
+                    <Link
+                      href='/docs/privacy'
+                      target='_blank'
+                      style={{ textDecoration: 'underline' }}
+                    >
+                      {t('privacy')}
+                    </Link>
+                    {t('register-privacy-notice-suffix')}
+                  </Text>
+                </Stack>
                 <Button
                   fullWidth
                   onClick={handleRegister}

@@ -328,7 +328,9 @@ export default function CheckoutPage() {
             ? t('checkout-personal-license-already-active')
             : normalizedMessage.includes('organization legal documents must be accepted')
               ? t('checkout-org-legal-required')
-          : message
+              : normalizedMessage.includes('legal documents must be accepted')
+                ? t('checkout-personal-legal-required')
+                : message
 
       // Stop auto-looping through legal acceptance and show a dedicated error state instead.
       setCheckoutUrl(null)
@@ -545,6 +547,9 @@ export default function CheckoutPage() {
         <CheckoutLegalGate
           accessToken={accessToken || undefined}
           legalContext={legalContext}
+          plan={plan}
+          qty={qty ?? undefined}
+          billingCycle={billingCycle}
           organizationId={plan === 'org' ? organizationId : undefined}
           onAllAccepted={handleLegalAccepted}
           onAuthError={handleAuthError}

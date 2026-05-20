@@ -20,7 +20,7 @@ export function FAQ() {
             <Accordion.Panel>
               <Stack>
                 {t('get-license-text')}
-                <Link href='/license'>
+                <Link href='/no-account'>
                   <Text c='light-dark(blue, blue.4)'>{t('more-informations')}</Text>
                 </Link>
               </Stack>
