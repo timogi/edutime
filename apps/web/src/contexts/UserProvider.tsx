@@ -92,7 +92,6 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
       '/guide',
       '/mobile',
       '/new-edutime',
-      '/license',
       '/delete/success',
       '/reset',
       '/wrong-password',

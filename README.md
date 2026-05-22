@@ -60,8 +60,12 @@ npm run dev:mobile
 # Start directly on iOS simulator
 npm run dev:mobile:ios
 
-# Start directly on Android emulator
+# Start directly on Android emulator (requires dev build installed)
 npm run dev:mobile:android
+
+# First-time Android: install JDK 17, then build & install the dev client
+brew install openjdk@17
+npm run dev:mobile:android:build
 ```
 
 ## Building

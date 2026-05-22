@@ -223,7 +223,7 @@ export function AGBFr() {
           Dans la mesure où le Client utilise le service SaaS ou le logiciel SaaS en version
           d'essai, EduTime lui accorde à cette fin une licence aux seules fins de test et
           d'évaluation et exclusivement pour des usages internes non productifs et, sauf indication
-          contraire expresse, pour une durée limitée de 30 jours (« version d'essai »).
+          contraire expresse, pour une durée limitée de 14 jours (« version d'essai »).
         </p>
         <p>
           La version d'essai ainsi que le logiciel SaaS choisi par le Client avec une étendue

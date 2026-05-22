@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Alert,
-  Anchor,
   Badge,
   Button,
   Card,
@@ -10,7 +9,6 @@ import {
   Divider,
   Group,
   Loader,
-  Modal,
   NumberInput,
   Paper,
   SimpleGrid,
@@ -21,11 +19,10 @@ import {
   Title,
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
-import { IconAlertTriangle, IconCheck, IconExternalLink, IconFileTypePdf } from '@tabler/icons-react'
+import { IconAlertTriangle, IconFileTypePdf } from '@tabler/icons-react'
 import { GetServerSidePropsContext } from 'next'
 import { useRouter } from 'next/router'
 import { useTranslations } from 'next-intl'
-import { DOCUMENT_LABELS, DOCUMENT_ROUTES } from '@edutime/shared'
 import {
   PaymentReceiptDocument,
   renderPaymentReceiptPdfBlob,
@@ -111,17 +108,6 @@ type SeatAdjustmentPreview = {
   autoRenewEnabled: boolean
 }
 
-type MissingOrgDocument = {
-  document_code: string
-  document_version_id: number
-  title: string
-  version_label: string
-  can_accept: boolean
-}
-
-const ORG_LEGAL_REQUIRED_ERROR_MESSAGE =
-  'organization legal documents must be accepted before managing this organization.'
-
 /** Postgres RPC `add_organization_admin_by_email` raises English text; map for i18n. */
 const localizeOrgManagementApiError = (
   message: string,
@@ -198,17 +184,9 @@ export default function OrganizationManagementPage() {
   const [isUpdatingSeatPlan, setIsUpdatingSeatPlan] = useState(false)
   const [isPreviewingSeatPlan, setIsPreviewingSeatPlan] = useState(false)
   const [seatAdjustmentPreview, setSeatAdjustmentPreview] = useState<SeatAdjustmentPreview | null>(null)
-  const [isOrgLegalModalOpen, setIsOrgLegalModalOpen] = useState(false)
-  const [missingOrgLegalDocs, setMissingOrgLegalDocs] = useState<MissingOrgDocument[]>([])
-  const [isLoadingOrgLegalDocs, setIsLoadingOrgLegalDocs] = useState(false)
-  const [orgLegalError, setOrgLegalError] = useState<string | null>(null)
-  const [acceptingOrgDocumentId, setAcceptingOrgDocumentId] = useState<number | null>(null)
   const [generatingOrgReceiptInvoiceId, setGeneratingOrgReceiptInvoiceId] = useState<string | null>(null)
 
   const locale = router.locale || 'de-CH'
-  const isOrgLegalMissingError = useCallback((message: string) => {
-    return message.trim().toLowerCase().includes(ORG_LEGAL_REQUIRED_ERROR_MESSAGE)
-  }, [])
 
   const getAuthenticatedRequestInit = useCallback(
     async (init?: Omit<RequestInit, 'headers' | 'credentials'>): Promise<RequestInit> => {
@@ -228,48 +206,6 @@ export default function OrganizationManagementPage() {
       }
     },
     [],
-  )
-
-  const loadMissingOrgLegalDocuments = useCallback(
-    async (organizationId: number) => {
-      setIsLoadingOrgLegalDocs(true)
-      setOrgLegalError(null)
-      try {
-        const requestInit = await getAuthenticatedRequestInit({
-          method: 'POST',
-          body: JSON.stringify({
-            context: 'checkout_org',
-            organizationId,
-          }),
-        })
-        const response = await fetch('/api/legal/missing', requestInit)
-        const data = (await response.json()) as { missing?: MissingOrgDocument[]; error?: string }
-        if (!response.ok) {
-          throw new Error(data.error || t('org-management-load-error'))
-        }
-        const missing = data.missing || []
-        setMissingOrgLegalDocs(missing)
-        setIsOrgLegalModalOpen(missing.length > 0)
-        return missing
-      } catch (error) {
-        setMissingOrgLegalDocs([])
-        setOrgLegalError(
-          error instanceof Error ? error.message : t('org-management-legal-modal-load-error'),
-        )
-        setIsOrgLegalModalOpen(true)
-        return null
-      } finally {
-        setIsLoadingOrgLegalDocs(false)
-      }
-    },
-    [getAuthenticatedRequestInit, t],
-  )
-
-  const openOrgLegalModal = useCallback(
-    async (organizationId: number) => {
-      await loadMissingOrgLegalDocuments(organizationId)
-    },
-    [loadMissingOrgLegalDocuments],
   )
 
   const getInvoiceStatusLabel = useCallback(
@@ -387,12 +323,6 @@ export default function OrganizationManagementPage() {
         setTargetSeatCount(Math.max(minSeats, preferredNum))
         setSeatAdjustmentPreview(null)
       } catch (error) {
-        const message = error instanceof Error ? error.message : ''
-        if (isOrgLegalMissingError(message)) {
-          await openOrgLegalModal(Number(organizationId))
-          setPayload(null)
-          return
-        }
         notifications.show({
           title: t('error'),
           message: error instanceof Error ? error.message : t('org-management-load-error'),
@@ -403,7 +333,7 @@ export default function OrganizationManagementPage() {
         setIsLoading(false)
       }
     },
-    [getAuthenticatedRequestInit, isOrgLegalMissingError, openOrgLegalModal, t],
+    [getAuthenticatedRequestInit, t],
   )
 
   useEffect(() => {
@@ -452,12 +382,7 @@ export default function OrganizationManagementPage() {
   )
 
   const handleOrgManagementError = useCallback(
-    async (error: unknown, fallbackTranslationKey: string, organizationId?: number | null) => {
-      const message = error instanceof Error ? error.message : ''
-      if (organizationId && isOrgLegalMissingError(message)) {
-        await openOrgLegalModal(organizationId)
-        return
-      }
+    async (error: unknown, fallbackTranslationKey: string) => {
       notifications.show({
         title: t('error'),
         message:
@@ -467,45 +392,7 @@ export default function OrganizationManagementPage() {
         color: 'red',
       })
     },
-    [isOrgLegalMissingError, openOrgLegalModal, t],
-  )
-
-  const handleAcceptOrgLegalDocument = useCallback(
-    async (documentCode: string, documentVersionId: number) => {
-      if (!selectedOrganizationId) return
-      const organizationId = Number(selectedOrganizationId)
-      if (!Number.isInteger(organizationId) || organizationId <= 0) return
-
-      setAcceptingOrgDocumentId(documentVersionId)
-      setOrgLegalError(null)
-      try {
-        const requestInit = await getAuthenticatedRequestInit({
-          method: 'POST',
-          body: JSON.stringify({
-            documentCode,
-            source: 'web',
-            organizationId,
-          }),
-        })
-        const response = await fetch('/api/legal/accept', requestInit)
-        const data = (await response.json()) as { error?: string }
-        if (!response.ok) {
-          throw new Error(data.error || t('org-management-legal-modal-accept-error'))
-        }
-        const missing = await loadMissingOrgLegalDocuments(organizationId)
-        if (missing && missing.length === 0) {
-          setIsOrgLegalModalOpen(false)
-          await loadManagementData(String(organizationId))
-        }
-      } catch (error) {
-        setOrgLegalError(
-          error instanceof Error ? error.message : t('org-management-legal-modal-accept-error'),
-        )
-      } finally {
-        setAcceptingOrgDocumentId(null)
-      }
-    },
-    [getAuthenticatedRequestInit, loadManagementData, loadMissingOrgLegalDocuments, selectedOrganizationId, t],
+    [t],
   )
 
   const handleRename = async () => {
@@ -532,7 +419,7 @@ export default function OrganizationManagementPage() {
       await refreshUserData()
       await loadManagementData(selectedOrganizationId)
     } catch (error) {
-      await handleOrgManagementError(error, 'org-management-rename-error', Number(selectedOrganizationId))
+      await handleOrgManagementError(error, 'org-management-rename-error')
     } finally {
       setIsSavingName(false)
     }
@@ -555,7 +442,7 @@ export default function OrganizationManagementPage() {
       setNewAdminEmail('')
       await loadManagementData(selectedOrganizationId)
     } catch (error) {
-      await handleOrgManagementError(error, 'org-management-admin-add-error', Number(selectedOrganizationId))
+      await handleOrgManagementError(error, 'org-management-admin-add-error')
     } finally {
       setIsAddingAdmin(false)
     }
@@ -577,7 +464,7 @@ export default function OrganizationManagementPage() {
       })
       await loadManagementData(selectedOrganizationId)
     } catch (error) {
-      await handleOrgManagementError(error, 'org-management-admin-remove-error', Number(selectedOrganizationId))
+      await handleOrgManagementError(error, 'org-management-admin-remove-error')
     } finally {
       setRemovingAdminUserId(null)
     }
@@ -599,7 +486,7 @@ export default function OrganizationManagementPage() {
       setIsCancelRenewalConfirmOpen(false)
       await loadManagementData(selectedOrganizationId)
     } catch (error) {
-      await handleOrgManagementError(error, 'org-management-cancel-error', Number(selectedOrganizationId))
+      await handleOrgManagementError(error, 'org-management-cancel-error')
     } finally {
       setIsCanceling(false)
     }
@@ -620,7 +507,7 @@ export default function OrganizationManagementPage() {
       })
       await loadManagementData(selectedOrganizationId)
     } catch (error) {
-      await handleOrgManagementError(error, 'org-management-reactivate-error', Number(selectedOrganizationId))
+      await handleOrgManagementError(error, 'org-management-reactivate-error')
     } finally {
       setIsReactivating(false)
     }
@@ -647,7 +534,7 @@ export default function OrganizationManagementPage() {
       await refreshUserData()
       void router.push('/app/no-license')
     } catch (error) {
-      await handleOrgManagementError(error, 'org-management-delete-error', Number(selectedOrganizationId))
+      await handleOrgManagementError(error, 'org-management-delete-error')
     } finally {
       setIsDeactivatingOrg(false)
       setIsDeactivateConfirmOpen(false)
@@ -782,7 +669,7 @@ export default function OrganizationManagementPage() {
       }
       await loadManagementData(selectedOrganizationId)
     } catch (error) {
-      await handleOrgManagementError(error, 'org-management-seat-plan-error', Number(selectedOrganizationId))
+      await handleOrgManagementError(error, 'org-management-seat-plan-error')
     } finally {
       setIsUpdatingSeatPlan(false)
     }
@@ -1282,87 +1169,6 @@ export default function OrganizationManagementPage() {
           </Card>
         ) : null}
       </Stack>
-      <Modal
-        opened={isOrgLegalModalOpen}
-        onClose={() => setIsOrgLegalModalOpen(false)}
-        title={t('org-management-legal-modal-title')}
-        centered
-        size='lg'
-      >
-        <Stack gap='md'>
-          <Text size='sm' c='dimmed'>
-            {t('org-management-legal-modal-description')}
-          </Text>
-          {isLoadingOrgLegalDocs ? (
-            <Group gap='sm'>
-              <Loader size='sm' />
-              <Text size='sm' c='dimmed'>
-                {t('org-management-legal-modal-loading')}
-              </Text>
-            </Group>
-          ) : null}
-          {orgLegalError ? (
-            <Alert color='red' variant='light'>
-              <Stack gap='sm'>
-                <Text size='sm'>{orgLegalError}</Text>
-                {selectedOrganizationId ? (
-                  <Button
-                    variant='light'
-                    onClick={() => loadMissingOrgLegalDocuments(Number(selectedOrganizationId))}
-                  >
-                    {t('org-management-legal-modal-retry')}
-                  </Button>
-                ) : null}
-              </Stack>
-            </Alert>
-          ) : null}
-          {!isLoadingOrgLegalDocs && !orgLegalError && missingOrgLegalDocs.length === 0 ? (
-            <Text size='sm' c='dimmed'>
-              {t('org-management-legal-modal-no-missing')}
-            </Text>
-          ) : null}
-          {!isLoadingOrgLegalDocs && !orgLegalError && missingOrgLegalDocs.length > 0
-            ? missingOrgLegalDocs.map((doc) => (
-                <Group key={doc.document_version_id} justify='space-between' align='flex-start' wrap='nowrap'>
-                  <Stack gap={4} style={{ flex: 1 }}>
-                    <Group gap='xs'>
-                      <Text fw={500}>{DOCUMENT_LABELS[doc.document_code] || doc.title}</Text>
-                      {doc.version_label ? (
-                        <Text size='sm' c='dimmed'>
-                          ({doc.version_label})
-                        </Text>
-                      ) : null}
-                    </Group>
-                    {DOCUMENT_ROUTES[doc.document_code] ? (
-                      <Anchor href={DOCUMENT_ROUTES[doc.document_code]} target='_blank' size='sm'>
-                        <Group gap={4}>
-                          <IconExternalLink size='0.875rem' />
-                          <span>{t('org-management-legal-modal-open-doc')}</span>
-                        </Group>
-                      </Anchor>
-                    ) : null}
-                  </Stack>
-                  {doc.can_accept ? (
-                    <Button
-                      size='xs'
-                      leftSection={<IconCheck size='1rem' />}
-                      loading={acceptingOrgDocumentId === doc.document_version_id}
-                      onClick={() =>
-                        handleAcceptOrgLegalDocument(doc.document_code, doc.document_version_id)
-                      }
-                    >
-                      {t('org-management-legal-modal-accept')}
-                    </Button>
-                  ) : (
-                    <Text size='sm' c='dimmed'>
-                      {t('org-management-legal-modal-not-acceptable')}
-                    </Text>
-                  )}
-                </Group>
-              ))
-            : null}
-        </Stack>
-      </Modal>
       <Dialog
         opened={isDeactivateConfirmOpen}
         onClose={() => setIsDeactivateConfirmOpen(false)}

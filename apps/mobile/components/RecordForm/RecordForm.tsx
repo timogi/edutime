@@ -3,14 +3,15 @@ import {
   Alert,
   ScrollView,
   StyleSheet,
-  TouchableOpacity,
   View,
   Platform,
   KeyboardAvoidingView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useForm, Controller } from "react-hook-form";
+import { useHeaderHeight } from "@react-navigation/elements";
+import { useForm } from "react-hook-form";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { showSuccessToast, showErrorToast } from "@/components/ui/Toast";
 import { HapticFeedback } from "@/lib/haptics";
 
@@ -56,45 +57,14 @@ import { DescriptionInput } from "./DescriptionInput";
 import { CategoryInput } from "./CategoryInput";
 import { FooterButtons } from "./FooterButtons";
 import type { RecordFormData } from "./record-form-types";
-
-//-------------------------------
-// Utility Functions
-//-------------------------------
-function timeToMinutes(date: Date): number {
-  return date.getHours() * 60 + date.getMinutes();
-}
-
-function minutesToTime(minutes: number): Date {
-  const date = new Date();
-  date.setHours(Math.floor(minutes / 60));
-  date.setMinutes(minutes % 60);
-  return date;
-}
-
-function parseTimeFromDB(timeStr: string): Date | null {
-  if (!timeStr || timeStr === "00:00:00") return null;
-  const [hours, minutes] = timeStr.split(":").map(Number);
-  const date = new Date();
-  date.setHours(hours);
-  date.setMinutes(minutes);
-  return date;
-}
-
-function calculateDuration(startTime: Date, endTime: Date): number {
-  let diff = endTime.getTime() - startTime.getTime();
-  if (diff < 0) diff += 24 * 60 * 60 * 1000;
-  return Math.round(diff / (1000 * 60));
-}
-
-function formatTimeForDB(date: Date | null): string | null {
-  if (!date) return null;
-  return date.toLocaleTimeString("en-US", {
-    hour12: false,
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-}
+import {
+  timeToMinutes,
+  minutesToTime,
+  parseTimeFromDB,
+  calculateDurationMinutes,
+  formatTimeForDB,
+  seedTimeForPicker,
+} from "./record-form-time";
 
 function showToastMessage(
   message: string,
@@ -126,8 +96,8 @@ export default function RecordForm() {
     "start" | "end" | null
   >(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [timePickerValue, setTimePickerValue] = useState<Date>(new Date());
   const [isDescriptionFocused, setIsDescriptionFocused] = useState(false);
+  const headerHeight = useHeaderHeight();
 
   const { user, categories, isLoading, configMode } = useUser();
   const { setActiveSession } = useStopWatch();
@@ -140,9 +110,6 @@ export default function RecordForm() {
 
   const allCategories: CategoryResult[] = categories;
 
-  const startTimeRef = useRef<View>(null);
-  const endTimeRef = useRef<View>(null);
-  const durationRef = useRef<View>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Determine if we're editing an existing record or creating a new one
@@ -173,6 +140,7 @@ export default function RecordForm() {
     setValue,
     formState: { errors },
   } = useForm<RecordFormData>({
+    shouldUnregister: false,
     defaultValues: {
       date:
         stopwatchSessionId && dateParam
@@ -313,45 +281,87 @@ export default function RecordForm() {
     }
   }
 
-  function handleStartTimeChange(_event: unknown, selectedTime?: Date) {
-    if (selectedTime) {
-      setValue("startTime", selectedTime);
+  function handleStartTimeChange(
+    _event: DateTimePickerEvent,
+    selectedTime?: Date
+  ) {
+    if (!selectedTime) return;
+    setValue("startTime", selectedTime);
 
-      const end = watch("endTime");
-      if (end) {
-        // beide Zeiten gesetzt → Duration anpassen
-        const diffMin = calculateDuration(selectedTime, end);
-        setValue("duration", minutesToTime(diffMin));
-      } else {
-        // End noch null → End aus Duration setzen
-        const durMin = timeToMinutes(watch("duration"));
-        let endMin = timeToMinutes(selectedTime) + durMin;
-        if (endMin >= 24 * 60) endMin -= 24 * 60;
-        setValue("endTime", minutesToTime(endMin));
-      }
+    const end = watch("endTime");
+    if (end) {
+      setValue(
+        "duration",
+        minutesToTime(calculateDurationMinutes(selectedTime, end))
+      );
+    } else {
+      const durMin = timeToMinutes(watch("duration"));
+      let endMin = timeToMinutes(selectedTime) + durMin;
+      if (endMin >= 24 * 60) endMin -= 24 * 60;
+      setValue("endTime", minutesToTime(endMin));
     }
   }
 
-  function handleEndTimeChange(_event: unknown, selectedTime?: Date) {
-    if (selectedTime) {
-      setValue("endTime", selectedTime);
+  function handleEndTimeChange(
+    _event: DateTimePickerEvent,
+    selectedTime?: Date
+  ) {
+    if (!selectedTime) return;
+    setValue("endTime", selectedTime);
 
-      const start = watch("startTime");
-      if (start) {
-        // beide Zeiten gesetzt → Duration anpassen
-        const diffMin = calculateDuration(start, selectedTime);
-        setValue("duration", minutesToTime(diffMin));
-      } else {
-        // Start noch null → Start aus Duration setzen
-        const durMin = timeToMinutes(watch("duration"));
-        let startMin = timeToMinutes(selectedTime) - durMin;
-        if (startMin < 0) startMin += 24 * 60;
-        setValue("startTime", minutesToTime(startMin));
-      }
+    const start = watch("startTime");
+    if (start) {
+      setValue(
+        "duration",
+        minutesToTime(calculateDurationMinutes(start, selectedTime))
+      );
+    } else {
+      const durMin = timeToMinutes(watch("duration"));
+      let startMin = timeToMinutes(selectedTime) - durMin;
+      if (startMin < 0) startMin += 24 * 60;
+      setValue("startTime", minutesToTime(startMin));
     }
   }
 
-  function handleDurationChange(_event: unknown, selectedTime: Date | undefined) {
+  function handleToggleTimePicker(type: "start" | "end") {
+    HapticFeedback.light();
+
+    if (type === activeTimePicker) {
+      setActiveTimePicker(null);
+      return;
+    }
+
+    setShowDatePicker(false);
+    setIsExpanded(false);
+
+    const currentStart = watch("startTime");
+    const currentEnd = watch("endTime");
+    const currentDuration = watch("duration");
+
+    const needsSeed =
+      type === "start" ? !currentStart : !currentEnd;
+
+    if (needsSeed) {
+      const seed = seedTimeForPicker(
+        type,
+        currentStart,
+        currentEnd,
+        currentDuration
+      );
+      if (type === "start") {
+        handleStartTimeChange({} as DateTimePickerEvent, seed);
+      } else {
+        handleEndTimeChange({} as DateTimePickerEvent, seed);
+      }
+    }
+
+    setActiveTimePicker(type);
+  }
+
+  function handleDurationChange(
+    _event: DateTimePickerEvent,
+    selectedTime: Date | undefined
+  ) {
     HapticFeedback.light();
     if (Platform.OS === "android") {
       setIsExpanded(false);
@@ -369,7 +379,10 @@ export default function RecordForm() {
     }
   }
 
-  function handleDateChange(_event: unknown, selectedDate: Date | undefined) {
+  function handleDateChange(
+    _event: DateTimePickerEvent,
+    selectedDate: Date | undefined
+  ) {
     HapticFeedback.light();
     if (Platform.OS === "android") {
       setShowDatePicker(false);
@@ -379,7 +392,7 @@ export default function RecordForm() {
     }
   }
 
-  function resetTime(type: "start" | "end") {
+  function resetTimes() {
     HapticFeedback.light();
     setValue("startTime", null);
     setValue("endTime", null);
@@ -501,9 +514,15 @@ export default function RecordForm() {
           backgroundColor: colorScheme === "dark" ? theme.gray[9] : "white"
         }]}
       >
-        <SafeAreaView style={[styles.container, {
-          backgroundColor: colorScheme === "dark" ? theme.gray[9] : "white"
-        }]}>
+        <SafeAreaView
+          edges={Platform.OS === "ios" ? ["bottom", "left", "right"] : undefined}
+          style={[
+            styles.container,
+            {
+              backgroundColor: colorScheme === "dark" ? theme.gray[9] : "white",
+            },
+          ]}
+        >
           {/* Scrollable Form */}
           <ScrollView
             ref={scrollViewRef}
@@ -515,6 +534,10 @@ export default function RecordForm() {
               {
                 backgroundColor:
                   colorScheme === "dark" ? theme.background : "#f3f3f3",
+                paddingTop:
+                  Platform.OS === "ios"
+                    ? headerHeight + Spacing.sm
+                    : Spacing.lg,
               },
             ]}
           >
@@ -547,25 +570,10 @@ export default function RecordForm() {
                 <TimeInput
                   control={control}
                   activeTimePicker={activeTimePicker}
-                  onToggleTimePicker={(type: "start" | "end") => {
-                    if (type === activeTimePicker) {
-                      setActiveTimePicker(null);
-                    } else {
-                      setActiveTimePicker(type);
-                      setShowDatePicker(false);
-                      setIsExpanded(false);
-
-                      // Set picker value manually from the corresponding time
-                      const selectedValue =
-                        type === "start" ? watch("startTime") : watch("endTime");
-                      setTimePickerValue(selectedValue || new Date());
-                    }
-                  }}
+                  onToggleTimePicker={handleToggleTimePicker}
                   onStartTimeChange={handleStartTimeChange}
                   onEndTimeChange={handleEndTimeChange}
-                  onResetTime={resetTime}
-                  timePickerValue={timePickerValue}
-                  setTimePickerValue={setTimePickerValue}
+                  onResetTime={resetTimes}
                   colorScheme={colorScheme}
                   theme={theme}
                 />
@@ -652,7 +660,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.lg,
     paddingBottom: 100,
   },
   formCard: {

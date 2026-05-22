@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   Stack,
   Text,
@@ -15,6 +15,7 @@ import {
 } from '@mantine/core'
 import { IconAlertCircle, IconExternalLink } from '@tabler/icons-react'
 import { supabase } from '@/utils/supabase/client'
+import { useUser } from '@/contexts/UserProvider'
 import {
   getMissingUserDocuments,
   acceptUserDocument,
@@ -24,31 +25,43 @@ import {
 } from '@edutime/shared'
 
 const REGISTER_LEGAL_METADATA_KEY = 'register_legal_accepted_v1'
-const AUTO_ACCEPT_DOC_CODES = new Set(['terms_of_use', 'privacy_policy'])
+const AUTO_ACCEPT_DOC_CODES = new Set(['terms_of_use'])
 
 export function LegalGate({ children }: { children: React.ReactNode }) {
+  const { user, isInitialized } = useUser()
   const [missingDocs, setMissingDocs] = useState<MissingDocument[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [accepting, setAccepting] = useState(false)
   const [acceptedDocs, setAcceptedDocs] = useState<Set<string>>(new Set())
+  const [checkError, setCheckError] = useState<string | null>(null)
 
-  useEffect(() => {
-    checkMissingDocuments()
-  }, [])
-
-  const checkMissingDocuments = async () => {
+  const checkMissingDocuments = useCallback(async () => {
     setIsLoading(true)
+    setCheckError(null)
     try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError) {
+        throw sessionError
+      }
+      if (!session) {
+        setMissingDocs([])
+        return
+      }
+
       let docs = await getMissingUserDocuments(supabase, 'app')
 
       if (docs.length > 0) {
         const {
-          data: { user },
+          data: { user: authUser },
         } = await supabase.auth.getUser()
 
         const shouldAutoAcceptFromRegistration =
-          user?.user_metadata?.[REGISTER_LEGAL_METADATA_KEY] === true ||
-          user?.user_metadata?.[REGISTER_LEGAL_METADATA_KEY] === 'true'
+          authUser?.user_metadata?.[REGISTER_LEGAL_METADATA_KEY] === true ||
+          authUser?.user_metadata?.[REGISTER_LEGAL_METADATA_KEY] === 'true'
 
         if (shouldAutoAcceptFromRegistration) {
           let autoAcceptSucceeded = false
@@ -86,10 +99,21 @@ export function LegalGate({ children }: { children: React.ReactNode }) {
       setMissingDocs(docs)
     } catch (error) {
       console.error('Error checking missing documents:', error)
+      setMissingDocs([])
+      setCheckError(
+        error instanceof Error ? error.message : 'Legal documents could not be verified.',
+      )
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (!isInitialized || !user) {
+      return
+    }
+    void checkMissingDocuments()
+  }, [isInitialized, user?.user_id, checkMissingDocuments])
 
   const handleCheckboxChange = (code: string, checked: boolean) => {
     const newAccepted = new Set(acceptedDocs)
@@ -122,10 +146,38 @@ export function LegalGate({ children }: { children: React.ReactNode }) {
     }
   }
 
+  if (!isInitialized || !user) {
+    return (
+      <Center h='100vh'>
+        <Loader size='lg' />
+      </Center>
+    )
+  }
+
   if (isLoading) {
     return (
       <Center h='100vh'>
         <Loader size='lg' />
+      </Center>
+    )
+  }
+
+  if (checkError) {
+    return (
+      <Center h='100vh' style={{ backgroundColor: 'var(--mantine-color-body)' }}>
+        <Container size={600}>
+          <Paper withBorder p={30} radius='md'>
+            <Stack gap='lg'>
+              <Title order={2}>Rechtliche Dokumente</Title>
+              <Alert icon={<IconAlertCircle size='1rem' />} color='red' title='Fehler'>
+                {checkError}
+              </Alert>
+              <Button onClick={() => void checkMissingDocuments()} variant='filled'>
+                Erneut versuchen
+              </Button>
+            </Stack>
+          </Paper>
+        </Container>
       </Center>
     )
   }

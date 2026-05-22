@@ -197,7 +197,7 @@ export function AGBEn() {
           To the extent the customer uses the SaaS service or the SaaS software as a trial version,
           EduTime grants the customer a licence for the sole purpose of testing and evaluating and
           exclusively for internal, non-production purposes and, unless expressly stated otherwise,
-          for a limited period of 30 days («trial version»).
+          for a limited period of 14 days («trial version»).
         </p>
         <p>
           The trial version and the SaaS software with a free scope of services chosen by the

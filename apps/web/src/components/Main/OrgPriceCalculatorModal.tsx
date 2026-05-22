@@ -88,6 +88,7 @@ export function OrgPriceCalculatorModal({ opened, onClose }: OrgPriceCalculatorM
         date: t('quoteDate'),
         quoteNumber: t('quoteNumber'),
         disclaimer: t('quoteDisclaimer'),
+        agbReference: t('quoteAgbReference'),
         numberOfLicenses: t('quoteNumberOfLicenses'),
         duration: t('quoteDuration'),
         oneYear: t('quoteOneYear'),
@@ -504,7 +505,8 @@ const QuoteDocument = ({ licenseCount, breakdown, total, translations }: QuoteDo
 
         {/* Title */}
         <View style={pdfStyles.titleSection}>
-          <PdfText style={pdfStyles.title}>{translations.nonBinding}</PdfText>
+          <PdfText style={pdfStyles.title}>{translations.title}</PdfText>
+          <PdfText style={pdfStyles.nonBinding}>{translations.disclaimer}</PdfText>
           <PdfText style={pdfStyles.subtitle}>{translations.subtitle}</PdfText>
         </View>
 
@@ -576,8 +578,8 @@ const QuoteDocument = ({ licenseCount, breakdown, total, translations }: QuoteDo
           </View>
         </View>
 
-        {/* Disclaimer */}
-        <PdfText style={pdfStyles.disclaimer}>{translations.disclaimer}</PdfText>
+        {/* Legal notes */}
+        <PdfText style={pdfStyles.disclaimer}>{translations.agbReference}</PdfText>
 
         {/* Custom pricing note for >100 */}
         {licenseCount > MAX_AUTO_PRICING_LICENSES && (

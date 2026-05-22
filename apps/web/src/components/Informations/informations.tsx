@@ -10,6 +10,7 @@ import {
   IconScale,
   IconShieldLock,
   IconFileText,
+  IconShieldCheck,
   IconHeadset,
   IconArrowLeft,
 } from '@tabler/icons-react'
@@ -226,6 +227,21 @@ export function Informations({ userData }: InformationsProps) {
             </Card>
             <Card
               component='a'
+              href='/docs/agb'
+              target='_blank'
+              className={classes.documentCard}
+              padding='md'
+              withBorder
+            >
+              <Group gap='sm'>
+                <IconFileText size='1rem' className={classes.documentIcon} />
+                <Text fw={500} size='sm'>
+                  {t('agb')}
+                </Text>
+              </Group>
+            </Card>
+            <Card
+              component='a'
               href='/docs/privacy'
               target='_blank'
               className={classes.documentCard}
@@ -236,6 +252,21 @@ export function Informations({ userData }: InformationsProps) {
                 <IconShieldLock size='1rem' className={classes.documentIcon} />
                 <Text fw={500} size='sm'>
                   {t('privacyPolicy')}
+                </Text>
+              </Group>
+            </Card>
+            <Card
+              component='a'
+              href='/docs/avv'
+              target='_blank'
+              className={classes.documentCard}
+              padding='md'
+              withBorder
+            >
+              <Group gap='sm'>
+                <IconShieldCheck size='1rem' className={classes.documentIcon} />
+                <Text fw={500} size='sm'>
+                  {t('avv')}
                 </Text>
               </Group>
             </Card>

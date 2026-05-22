@@ -1,10 +1,12 @@
 import React from 'react'
-import { Paper, Title, Text, Container, Stack, Button, AppShell } from '@mantine/core'
+import { Paper, Container, Stack, Button, Box, Text } from '@mantine/core'
 import Head from 'next/head'
 import Link from 'next/link'
-import { IconUser, IconKey } from '@tabler/icons-react'
+import { IconUser, IconLogin } from '@tabler/icons-react'
 import { useTranslations } from 'next-intl'
 import { GetStaticPropsContext } from 'next/types'
+import { HeaderSimple } from '@/components/Main/Header'
+import { Footer } from '@/components/Footer/Footer'
 
 const NoAccountPage = () => {
   const t = useTranslations('Index')
@@ -14,50 +16,56 @@ const NoAccountPage = () => {
       <Head>
         <title>{`EduTime - ${t('page-title-no-account')}`}</title>
       </Head>
-      <AppShell>
-        <Container size={600} my={40}>
-          <Paper withBorder shadow='md' p={30} radius='md'>
-            <Stack gap='sm'>
-              <Title order={2}>{t('no_account_title')}</Title>
+      <Box
+        component='div'
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          backgroundColor: 'var(--mantine-color-body)',
+        }}
+      >
+        <Box component='header' style={{ flexShrink: 0, height: 60 }}>
+          <HeaderSimple showThemeToggle={false} />
+        </Box>
 
-              <Text>{t('no_account_description')}</Text>
-
-              <Stack gap='sm'>
-                <Stack gap={5}>
-                  <Text size='sm' c='dimmed'>
-                    {t('no_account_register_button')}
-                  </Text>
-                  <Button
-                    component={Link}
-                    href='/register'
-                    fullWidth
-                    size='md'
-                    leftSection={<IconUser size={20} />}
-                  >
-                    {t('register')}
-                  </Button>
-                </Stack>
-
-                <Stack gap={5}>
-                  <Text size='sm' c='dimmed'>
-                    {t('no_account_license_button')}
-                  </Text>
-                  <Button
-                    component={Link}
-                    href='/license'
-                    fullWidth
-                    size='md'
-                    variant='light'
-                    leftSection={<IconKey size={20} />}
-                  >
-                    {t('informations')}
-                  </Button>
+        <Box
+          component='main'
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '2rem 1rem',
+          }}
+        >
+          <Container size={400} w='100%'>
+            <Paper withBorder shadow='md' p={{ base: 'lg', sm: 30 }} radius='md'>
+              <Stack gap='md'>
+                <Text>{t('no_account_intro')}</Text>
+                <Stack gap='xs'>
+                <Button component={Link} href='/login' fullWidth leftSection={<IconLogin size={18} />}>
+                  {t('login')}
+                </Button>
+                <Button
+                  component={Link}
+                  href='/register'
+                  fullWidth
+                  variant='default'
+                  leftSection={<IconUser size={18} />}
+                >
+                  {t('register')}
+                </Button>
                 </Stack>
               </Stack>
-            </Stack>
-          </Paper>
-        </Container>
-      </AppShell>
+            </Paper>
+          </Container>
+        </Box>
+
+        <Box component='footer' style={{ flexShrink: 0 }}>
+          <Footer />
+        </Box>
+      </Box>
     </>
   )
 }

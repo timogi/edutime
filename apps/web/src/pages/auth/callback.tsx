@@ -10,7 +10,7 @@ import { LoadingScreen } from '@/components/LoadingScreen'
 import { acceptUserDocument, getMissingUserDocuments } from '@edutime/shared'
 
 const REGISTER_LEGAL_METADATA_KEY = 'register_legal_accepted_v1'
-const AUTO_ACCEPT_DOC_CODES = new Set(['terms_of_use', 'privacy_policy'])
+const AUTO_ACCEPT_DOC_CODES = new Set(['terms_of_use'])
 
 export default function AuthCallback() {
   const router = useRouter()

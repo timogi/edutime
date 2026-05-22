@@ -90,26 +90,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           .json({ error: 'Only organization admins can create org license checkouts' })
       }
 
-      const { data: missingOrgLegalDocs, error: missingOrgLegalDocsError } = await supabase.rpc(
-        'legal_missing_documents',
-        {
-          p_context: 'checkout_org',
-          p_organization_id: Number(organizationId),
-        },
-      )
+    }
 
-      if (missingOrgLegalDocsError) {
-        console.error('Failed to check missing organization legal documents:', missingOrgLegalDocsError)
-        return res.status(500).json({ error: 'Failed to verify required organization legal documents' })
-      }
+    const checkoutLegalContext = plan === 'org' ? 'checkout_org' : 'checkout_individual'
+    const { data: missingCheckoutLegalDocs, error: missingCheckoutLegalDocsError } =
+      await supabase.rpc('legal_missing_documents', {
+        p_context: checkoutLegalContext,
+      })
 
-      if ((missingOrgLegalDocs?.length ?? 0) > 0) {
-        return res.status(409).json({
-          error:
-            'Organization legal documents must be accepted before checkout. Please accept them and try again.',
-        })
-      }
-    } else {
+    if (missingCheckoutLegalDocsError) {
+      console.error('Failed to check missing checkout legal documents:', missingCheckoutLegalDocsError)
+      return res.status(500).json({ error: 'Failed to verify required legal documents' })
+    }
+
+    if ((missingCheckoutLegalDocs?.length ?? 0) > 0) {
+      return res.status(409).json({
+        error:
+          'Legal documents must be accepted before checkout. Please accept them and try again.',
+      })
+    }
+
+    if (plan !== 'org') {
+
       const { data: hasPersonal, error: entitlementError } = await supabase.rpc(
         'api_user_has_active_personal_license',
       )
