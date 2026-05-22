@@ -54,29 +54,114 @@ function resolveActorUserId(subscription: AutoRenewSubscriptionRow, fallbackAdmi
   return fallbackAdminUserId
 }
 
-function resolveBillingRecipientEmail(
-  subscription: AutoRenewSubscriptionRow,
-  fallbackAdminEmail: string | undefined,
-): string | undefined {
-  const raw = subscription.metadata?.responsible_email
-  if (typeof raw === 'string') {
-    const trimmed = raw.trim()
-    if (trimmed.includes('@')) return trimmed
-  }
-  return fallbackAdminEmail
-}
-
-type OrganizationAdminRow = {
-  organization_id: number
-  user_id: string
-  created_at: string
-}
-
-type UserRow = {
-  user_id: string
+type OrgAdminRecipient = {
+  userId: string
+  email: string
   language: string | null
-  first_name: string | null
-  last_name: string | null
+}
+
+type PublicSupabaseClient = ReturnType<typeof createClient>
+
+async function loadOrgAdminRecipientsByOrgIds(
+  publicClient: PublicSupabaseClient,
+  organizationIds: number[],
+): Promise<Map<number, OrgAdminRecipient[]>> {
+  const byOrg = new Map<number, OrgAdminRecipient[]>()
+  if (organizationIds.length === 0) return byOrg
+
+  const { data: adminRows, error: adminsError } = await publicClient
+    .from('organization_administrators')
+    .select('organization_id, user_id, created_at')
+    .in('organization_id', organizationIds)
+    .not('user_id', 'is', null)
+    .order('created_at', { ascending: true })
+
+  if (adminsError) {
+    throw new Error(`Failed to fetch organization admins: ${adminsError.message}`)
+  }
+
+  const userIds = Array.from(
+    new Set((adminRows || []).map((row) => row.user_id as string).filter((id): id is string => Boolean(id))),
+  )
+
+  const languageByUserId = new Map<string, string | null>()
+  if (userIds.length > 0) {
+    const { data: users, error: usersError } = await publicClient
+      .from('users')
+      .select('user_id, language')
+      .in('user_id', userIds)
+
+    if (usersError) {
+      throw new Error(`Failed to fetch admin profiles: ${usersError.message}`)
+    }
+
+    for (const user of users || []) {
+      languageByUserId.set(user.user_id as string, (user.language as string | null) ?? null)
+    }
+  }
+
+  const emailByUserId = new Map<string, string>()
+  for (const userId of userIds) {
+    const { data: authUserData, error: authUserError } = await publicClient.auth.admin.getUserById(userId)
+    if (authUserError) {
+      console.error(`Failed to fetch auth user email for ${userId}: ${authUserError.message}`)
+      continue
+    }
+    const email = authUserData.user?.email?.trim()
+    if (email && email.includes('@')) {
+      emailByUserId.set(userId, email)
+    }
+  }
+
+  for (const row of adminRows || []) {
+    const organizationId = row.organization_id as number
+    const userId = row.user_id as string
+    const email = emailByUserId.get(userId)
+    if (!email) continue
+
+    const existing = byOrg.get(organizationId) ?? []
+    if (existing.some((r) => r.email.toLowerCase() === email.toLowerCase())) continue
+
+    existing.push({
+      userId,
+      email,
+      language: languageByUserId.get(userId) ?? null,
+    })
+    byOrg.set(organizationId, existing)
+  }
+
+  return byOrg
+}
+
+async function sendTransactionalToOrgAdmins(params: {
+  resendApiKey: string
+  fromEmail: string
+  recipients: OrgAdminRecipient[]
+  buildTemplate: (locale: Locale) => TemplateContent
+  logContext: string
+}): Promise<{ sent: number; failed: number }> {
+  let sent = 0
+  let failed = 0
+
+  for (const recipient of params.recipients) {
+    try {
+      await sendEmailWithResend(
+        params.resendApiKey,
+        params.fromEmail,
+        recipient.email,
+        params.buildTemplate(detectLocale(recipient.language)),
+      )
+      sent += 1
+    } catch (error) {
+      failed += 1
+      console.error(
+        `${params.logContext} failed for ${recipient.email}:`,
+        error instanceof Error ? error.message : error,
+      )
+    }
+  }
+
+  return { sent, failed }
 }
 
 type PayrexxGatewayPayload = {
@@ -777,64 +862,7 @@ Deno.serve(async (req: Request) => {
             .filter((value): value is number => Number.isInteger(value)),
         ),
       )
-      const adminByOrg = new Map<number, OrganizationAdminRow>()
-      const userById = new Map<string, UserRow>()
-      const adminEmailByUserId = new Map<string, string>()
-
-      if (organizationIds.length > 0) {
-        const { data: organizationAdmins, error: organizationAdminsError } = await publicClient
-          .from('organization_administrators')
-          .select('organization_id, user_id, created_at')
-          .in('organization_id', organizationIds)
-          .not('user_id', 'is', null)
-          .order('created_at', { ascending: true })
-
-        if (organizationAdminsError) {
-          throw new Error(`Failed to fetch organization admins: ${organizationAdminsError.message}`)
-        }
-
-        for (const admin of (organizationAdmins || []) as OrganizationAdminRow[]) {
-          if (!adminByOrg.has(admin.organization_id)) {
-            adminByOrg.set(admin.organization_id, admin)
-          }
-        }
-      }
-
-      const userIdsForLookup = Array.from(
-        new Set(
-          Array.from(adminByOrg.values())
-            .map((row) => row.user_id)
-            .filter((value): value is string => Boolean(value)),
-        ),
-      )
-
-      if (userIdsForLookup.length > 0) {
-        const { data: users, error: usersError } = await publicClient
-          .from('users')
-          .select('user_id, language, first_name, last_name')
-          .in('user_id', userIdsForLookup)
-
-        if (usersError) {
-          throw new Error(`Failed to fetch admin profiles for org renewals: ${usersError.message}`)
-        }
-
-        for (const user of (users || []) as UserRow[]) {
-          userById.set(user.user_id, user)
-        }
-
-        for (const userId of userIdsForLookup) {
-          const { data: authUserData, error: authUserError } = await publicClient.auth.admin.getUserById(userId)
-          if (authUserError) {
-            console.error(`Failed to fetch auth user email for ${userId}: ${authUserError.message}`)
-            continue
-          }
-
-          const email = authUserData.user?.email
-          if (email) {
-            adminEmailByUserId.set(userId, email)
-          }
-        }
-      }
+      const adminsByOrg = await loadOrgAdminRecipientsByOrgIds(publicClient, organizationIds)
 
       for (const subscription of orgSubscriptions) {
         try {
@@ -847,15 +875,12 @@ Deno.serve(async (req: Request) => {
             throw new Error(`Missing organization mapping for account ${subscription.account_id}`)
           }
 
-          const admin = adminByOrg.get(organizationId)
-          if (!admin?.user_id) {
+          const orgAdmins = adminsByOrg.get(organizationId) ?? []
+          if (orgAdmins.length === 0) {
             throw new Error(`Missing organization admin for organization ${organizationId}`)
           }
 
-          const actorUserId = resolveActorUserId(subscription, admin.user_id)
-          const adminUser = userById.get(actorUserId) ?? userById.get(admin.user_id)
-          const adminEmail = adminEmailByUserId.get(actorUserId) ?? adminEmailByUserId.get(admin.user_id)
-          const recipientEmail = resolveBillingRecipientEmail(subscription, adminEmail)
+          const actorUserId = resolveActorUserId(subscription, orgAdmins[0].userId)
           const seatCountFromMetadata = Number(subscription.metadata?.next_period_seat_count ?? NaN)
           const seatCount = Number.isFinite(seatCountFromMetadata) && seatCountFromMetadata >= 3
             ? Math.trunc(seatCountFromMetadata)
@@ -880,8 +905,8 @@ Deno.serve(async (req: Request) => {
           const successUrl = `${appUrl}/checkout/success?ref=${referenceId}&plan=org`
           const failedUrl = `${appUrl}/checkout/failed?ref=${referenceId}`
           const cancelUrl = `${appUrl}/checkout/cancel?ref=${referenceId}`
-          const locale = detectLocale(adminUser?.language)
-          const language = locale === 'fr' ? 'fr' : locale === 'en' ? 'en' : 'de'
+          const payrexxLocale = detectLocale(orgAdmins[0].language)
+          const language = payrexxLocale === 'fr' ? 'fr' : payrexxLocale === 'en' ? 'en' : 'de'
 
           const gateway = await createPayrexxGateway({
             instance: payrexxInstance,
@@ -939,39 +964,32 @@ Deno.serve(async (req: Request) => {
 
           autoRenewCreatedCount += 1
 
-          if (resendApiKey && recipientEmail) {
-            try {
-              const locale = detectLocale(adminUser?.language)
-              const { data: orgRowForEmail } = await publicClient
-                .from('organizations')
-                .select('name')
-                .eq('id', organizationId)
-                .maybeSingle()
-              const orgNameForEmail = (orgRowForEmail?.name as string | undefined)?.trim() || 'Organisation'
-              const emailTemplate = buildCheckoutLinkTemplate(locale, gateway.checkoutUrl, {
-                orgName: orgNameForEmail,
-                amountCents,
-                currency: subscription.currency || 'CHF',
-                seatCount,
-                paymentDueIso: dueDate,
-              })
-              await sendEmailWithResend(resendApiKey, fromEmail, recipientEmail, emailTemplate)
-              checkoutLinkEmailsSent += 1
-            } catch (emailError) {
-              checkoutLinkEmailsFailed += 1
-              console.error(
-                `org-billing-jobs checkout-link email failed for subscription ${subscription.id}:`,
-                emailError instanceof Error ? emailError.message : emailError,
-              )
+          if (resendApiKey) {
+            const { data: orgRowForEmail } = await publicClient
+              .from('organizations')
+              .select('name')
+              .eq('id', organizationId)
+              .maybeSingle()
+            const orgNameForEmail = (orgRowForEmail?.name as string | undefined)?.trim() || 'Organisation'
+            const checkoutCtx: CheckoutLinkEmailContext = {
+              orgName: orgNameForEmail,
+              amountCents,
+              currency: subscription.currency || 'CHF',
+              seatCount,
+              paymentDueIso: dueDate,
             }
+            const checkoutSend = await sendTransactionalToOrgAdmins({
+              resendApiKey,
+              fromEmail,
+              recipients: orgAdmins,
+              logContext: `org-billing-jobs checkout-link (subscription ${subscription.id})`,
+              buildTemplate: (locale) =>
+                buildCheckoutLinkTemplate(locale, gateway.checkoutUrl, checkoutCtx),
+            })
+            checkoutLinkEmailsSent += checkoutSend.sent
+            checkoutLinkEmailsFailed += checkoutSend.failed
           } else {
-            if (!resendApiKey) {
-              console.warn('org-billing-jobs checkout-link email skipped: RESEND_API_KEY is not configured')
-            } else if (!recipientEmail) {
-              console.warn(
-                `org-billing-jobs checkout-link email skipped: missing billing recipient email for organization ${organizationId}`,
-              )
-            }
+            console.warn('org-billing-jobs checkout-link email skipped: RESEND_API_KEY is not configured')
           }
         } catch (error) {
           autoRenewFailedCount += 1
@@ -1003,9 +1021,15 @@ Deno.serve(async (req: Request) => {
 
     if (resendApiKey) {
       const managementUrlBase = `${appUrl}/app/organization-management`
+      const validCanceledOrgIds = canceledPeriodEndOrgIds.filter((orgId) => Number.isInteger(orgId) && orgId > 0)
+      const adminsByOrg = await loadOrgAdminRecipientsByOrgIds(publicClient, validCanceledOrgIds)
 
-      for (const orgId of canceledPeriodEndOrgIds) {
-        if (!Number.isInteger(orgId) || orgId <= 0) continue
+      for (const orgId of validCanceledOrgIds) {
+        const orgAdmins = adminsByOrg.get(orgId) ?? []
+        if (orgAdmins.length === 0) {
+          console.warn(`org-billing-jobs: no admin emails for org ${orgId} (cancel-at-period-end notice)`)
+          continue
+        }
 
         const { data: orgRow } = await publicClient
           .from('organizations')
@@ -1014,61 +1038,17 @@ Deno.serve(async (req: Request) => {
           .maybeSingle()
 
         const orgName = (orgRow?.name as string | undefined)?.trim() || 'Organisation'
-
-        const { data: adminRows, error: adminsError } = await publicClient
-          .from('organization_administrators')
-          .select('user_id')
-          .eq('organization_id', orgId)
-          .not('user_id', 'is', null)
-
-        if (adminsError) {
-          console.error(
-            `org-billing-jobs: failed to load admins for org ${orgId} (cancel-at-period-end notice):`,
-            adminsError.message,
-          )
-          continue
-        }
-
         const managementUrl = `${managementUrlBase}?organizationId=${encodeURIComponent(String(orgId))}`
-        const dedupeEmails = new Set<string>()
 
-        for (const row of adminRows || []) {
-          const userId = row.user_id as string
-          if (!userId) continue
-
-          const { data: profile } = await publicClient
-            .from('users')
-            .select('language')
-            .eq('user_id', userId)
-            .maybeSingle()
-
-          const locale = detectLocale(profile?.language ?? null)
-
-          const { data: authUserData, error: authUserError } = await publicClient.auth.admin.getUserById(userId)
-          if (authUserError) {
-            console.error(
-              `org-billing-jobs: auth lookup failed for admin ${userId} (org ${orgId}):`,
-              authUserError.message,
-            )
-            continue
-          }
-
-          const email = authUserData.user?.email?.trim()
-          if (!email || !email.includes('@') || dedupeEmails.has(email.toLowerCase())) continue
-          dedupeEmails.add(email.toLowerCase())
-
-          const tpl = buildOrgCanceledAtPeriodEndNoticeTemplate(locale, orgName, managementUrl)
-          try {
-            await sendEmailWithResend(resendApiKey, fromEmail, email, tpl)
-            orgCancelPeriodEndEmailsSent += 1
-          } catch (error) {
-            orgCancelPeriodEndEmailsFailed += 1
-            console.error(
-              `org-billing-jobs cancel-at-period-end email failed for org ${orgId} → ${email}:`,
-              error instanceof Error ? error.message : error,
-            )
-          }
-        }
+        const send = await sendTransactionalToOrgAdmins({
+          resendApiKey,
+          fromEmail,
+          recipients: orgAdmins,
+          logContext: `org-billing-jobs cancel-at-period-end (org ${orgId})`,
+          buildTemplate: (locale) => buildOrgCanceledAtPeriodEndNoticeTemplate(locale, orgName, managementUrl),
+        })
+        orgCancelPeriodEndEmailsSent += send.sent
+        orgCancelPeriodEndEmailsFailed += send.failed
       }
     } else if (canceledPeriodEndOrgIds.length > 0) {
       console.warn(

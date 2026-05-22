@@ -91,7 +91,7 @@ Set `NEXT_PUBLIC_LICENSE_SELF_SERVICE_ENABLED=false` in the web app env to hide 
 | Step | What happens |
 |------|----------------|
 | **Renewal payment link** | Scheduled **org-billing-jobs** (see [jobs.md](./jobs.md)): for **auto-renew** org subscriptions due at period end, can create Payrexx renewal checkout when no blocking open invoice; **Resend** sends the checkout link only when that link exists (no pre-renewal “empty” reminders). |
-| **Overdue payment notices** | `billing.run_org_renewal_reminder_sweep` queues e-mails on latest open invoice **due date** (deadline reached) and **due + 45 days** (final notice before deactivation), same recipient rules as in [jobs.md](./jobs.md). |
+| **Overdue payment notices** | `billing.run_org_renewal_reminder_sweep` queues e-mails on latest open invoice **due date** (deadline reached) and **due + 45 days** (final notice before deactivation); every org admin receives mail (see [jobs.md](./jobs.md)). |
 | **Auto-renew off** | Org admin cancels at period end → remains active until `current_period_end`; then cancellation finalization sweep applies. |
 
 ### 4. Delinquency and “org runs out”

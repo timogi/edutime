@@ -140,6 +140,7 @@ export default function RecordForm() {
     setValue,
     formState: { errors },
   } = useForm<RecordFormData>({
+    shouldUnregister: false,
     defaultValues: {
       date:
         stopwatchSessionId && dateParam

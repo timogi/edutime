@@ -550,7 +550,6 @@ export default function CheckoutPage() {
           plan={plan}
           qty={qty ?? undefined}
           billingCycle={billingCycle}
-          organizationId={plan === 'org' ? organizationId : undefined}
           onAllAccepted={handleLegalAccepted}
           onAuthError={handleAuthError}
         />

@@ -23,7 +23,7 @@ export const DOCUMENT_ROUTES: Record<string, string> = {
 export const DOCUMENT_LABELS: Record<string, string> = {
   privacy_policy: 'Datenschutzbestimmungen',
   terms_of_use: 'Nutzungsbedingungen',
-  saas_agb: 'SaaS AGB',
+  saas_agb: 'AGB',
   avv: 'Auftragsverarbeitungsvereinbarung (AVV)',
 }
 
@@ -48,9 +48,11 @@ export async function getMissingUserDocuments(
   context: LegalContext,
 ): Promise<MissingDocument[]> {
   const docs = await getMissingDocuments(supabase, context)
-  return docs.filter((doc) => doc.scope === 'user')
+  // RPC only returns user-scoped docs for app/checkout; keep rows even if scope is omitted in API JSON.
+  return docs.filter((doc) => !doc.scope || doc.scope === 'user')
 }
 
+/** @deprecated Organization-scoped legal acceptance is no longer used. */
 export async function getMissingOrganizationDocuments(
   supabase: SupabaseClient,
   context: LegalContext,

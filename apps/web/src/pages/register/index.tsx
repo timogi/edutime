@@ -328,17 +328,6 @@ export default function RegistrationForm() {
                       {termsError}
                     </Text>
                   ) : null}
-                  <Text size='sm' c='dimmed' ml={0}>
-                    {t('register-privacy-notice-prefix')}{' '}
-                    <Link
-                      href='/docs/privacy'
-                      target='_blank'
-                      style={{ textDecoration: 'underline' }}
-                    >
-                      {t('privacy')}
-                    </Link>
-                    {t('register-privacy-notice-suffix')}
-                  </Text>
                 </Stack>
                 <Button
                   fullWidth
@@ -349,6 +338,17 @@ export default function RegistrationForm() {
                 >
                   {t('register')}
                 </Button>
+                <Text size='sm' c='dimmed'>
+                  {t('register-privacy-notice-prefix')}{' '}
+                  <Link
+                    href='/docs/privacy'
+                    target='_blank'
+                    style={{ textDecoration: 'underline' }}
+                  >
+                    {t('privacyPolicy')}
+                  </Link>
+                  {t('register-privacy-notice-suffix')}
+                </Text>
               </Stack>
             )}
           </Paper>

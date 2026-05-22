@@ -1,7 +1,7 @@
 {
   "name": "@edutime/mobile",
   "main": "expo-router/entry",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -126,7 +126,7 @@
     "eslint": "^9.39.1",
     "eas-cli": "^18.6.0",
     "eslint-config-expo": "~55.0.0",
-    "supabase": "^2.89.0",
+    "supabase": "^2.101.0",
     "@types/jest": "^29.5.14",
     "@types/react": "~19.2.0",
     "@types/react-test-renderer": "^19.1.0",

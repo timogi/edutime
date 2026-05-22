@@ -93,6 +93,26 @@
   margin-bottom: 0.25rem;
 }
 
+.legalTableScroll {
+  margin-top: var(--mantine-spacing-md);
+  margin-bottom: var(--mantine-spacing-md);
+}
+
+.legalTable {
+  font-size: var(--mantine-font-size-xs);
+  color: var(--mantine-color-text);
+}
+
+.legalTable :global(thead th) {
+  color: var(--mantine-color-text);
+  background-color: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+  white-space: nowrap;
+}
+
+.legalTable :global(tbody td) {
+  vertical-align: top;
+}
+
 /* Translation disclaimer banner */
 .disclaimerBanner {
   width: 100%;

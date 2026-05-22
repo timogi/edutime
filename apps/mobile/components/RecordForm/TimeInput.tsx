@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Platform, StyleSheet } from "react-native";
-import { Control, Controller, useWatch } from "react-hook-form";
+import { Control, useWatch } from "react-hook-form";
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
@@ -147,29 +147,28 @@ export function TimeInput({
             },
           ]}
         >
-          <Controller
-            name={activeTimePicker === "start" ? "startTime" : "endTime"}
-            control={control}
-            render={({ field: { value } }) => (
-              <DateTimePicker
-                value={value instanceof Date ? value : new Date()}
-                mode="time"
-                display={Platform.OS === "ios" ? "spinner" : "default"}
-                onChange={(event, selectedTime) => {
-                  if (!selectedTime) return;
-                  if (activeTimePicker === "start") {
-                    onStartTimeChange(event, selectedTime);
-                  } else {
-                    onEndTimeChange(event, selectedTime);
-                  }
-                  if (Platform.OS === "android") {
-                    onToggleTimePicker(activeTimePicker);
-                  }
-                }}
-                accentColor={theme.primary[6]}
-                locale="de-DE"
-              />
-            )}
+          <DateTimePicker
+            key={activeTimePicker}
+            value={
+              activeTimePicker === "start"
+                ? startTime ?? new Date()
+                : endTime ?? new Date()
+            }
+            mode="time"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={(event, selectedTime) => {
+              if (!selectedTime) return;
+              if (activeTimePicker === "start") {
+                onStartTimeChange(event, selectedTime);
+              } else {
+                onEndTimeChange(event, selectedTime);
+              }
+              if (Platform.OS === "android") {
+                onToggleTimePicker(activeTimePicker);
+              }
+            }}
+            accentColor={theme.primary[6]}
+            locale="de-DE"
           />
         </View>
       )}

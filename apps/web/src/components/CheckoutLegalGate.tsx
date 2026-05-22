@@ -38,7 +38,6 @@ interface CheckoutLegalGateProps {
   plan: CheckoutPlan
   qty?: number
   billingCycle?: BillingCycle
-  organizationId?: number
   onAllAccepted: () => void
   onAuthError?: () => void
 }
@@ -49,7 +48,6 @@ export function CheckoutLegalGate({
   plan,
   qty = 1,
   billingCycle = 'annual',
-  organizationId,
   onAllAccepted,
   onAuthError,
 }: CheckoutLegalGateProps) {
@@ -59,7 +57,6 @@ export function CheckoutLegalGate({
   const [accepting, setAccepting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [acceptedDocs, setAcceptedDocs] = useState<Set<string>>(new Set())
-  const [contractAcknowledged, setContractAcknowledged] = useState(false)
 
   const isDailyTest = plan === 'annual' && billingCycle === 'daily_test'
 
@@ -102,10 +99,7 @@ export function CheckoutLegalGate({
         method: 'POST',
         headers,
         credentials: 'include',
-        body: JSON.stringify({
-          context: legalContext,
-          organizationId: legalContext === 'checkout_org' ? organizationId : undefined,
-        }),
+        body: JSON.stringify({ context: legalContext }),
       })
 
       if (!response.ok) {
@@ -132,7 +126,7 @@ export function CheckoutLegalGate({
     } finally {
       setIsLoading(false)
     }
-  }, [accessToken, legalContext, onAllAccepted, onAuthError, organizationId, t])
+  }, [accessToken, legalContext, onAllAccepted, onAuthError, t])
 
   useEffect(() => {
     checkMissingDocuments()
@@ -150,7 +144,7 @@ export function CheckoutLegalGate({
 
   const handleContinue = async () => {
     const toAccept = missingDocs.filter((doc) => acceptedDocs.has(doc.document_code) && doc.can_accept)
-    if (toAccept.length === 0 || !contractAcknowledged) return
+    if (toAccept.length === 0) return
 
     setAccepting(true)
     setError(null)
@@ -170,7 +164,6 @@ export function CheckoutLegalGate({
           body: JSON.stringify({
             documentCode: doc.document_code,
             source: 'checkout',
-            organizationId: legalContext === 'checkout_org' ? organizationId : undefined,
           }),
         })
 
@@ -197,13 +190,7 @@ export function CheckoutLegalGate({
   const allDocsAccepted = missingDocs.every(
     (doc) => acceptedDocs.has(doc.document_code) || !doc.can_accept,
   )
-  const canContinue = allDocsAccepted && contractAcknowledged && !accepting
-
-  const contractCheckboxKey = isDailyTest
-    ? 'contractCheckboxDailyTest'
-    : plan === 'org'
-      ? 'contractCheckboxOrg'
-      : 'contractCheckboxAnnual'
+  const canContinue = allDocsAccepted && !accepting
 
   if (isLoading) {
     return (
@@ -283,17 +270,6 @@ export function CheckoutLegalGate({
             <Text size='sm'>
               {plan === 'org' ? t('autoRenewOrg') : t('autoRenewIndividual')}
             </Text>
-            <Anchor
-              component={Link}
-              href='/docs/agb'
-              target='_blank'
-              size='sm'
-              mt='xs'
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
-            >
-              <IconExternalLink size='0.875rem' />
-              {t('agbLink')}
-            </Anchor>
           </Alert>
 
           <Divider />
@@ -343,26 +319,15 @@ export function CheckoutLegalGate({
             ))}
           </Stack>
 
-          <Checkbox
-            checked={contractAcknowledged}
-            onChange={(event) => setContractAcknowledged(event.currentTarget.checked)}
-            disabled={accepting}
-            label={
-              <Text size='sm'>
-                {t(`${contractCheckboxKey}Prefix`)}{' '}
-                <Anchor
-                  component={Link}
-                  href='/docs/agb'
-                  target='_blank'
-                  underline='always'
-                  size='sm'
-                >
-                  {t('agbLink')}
-                </Anchor>
-                {t(`${contractCheckboxKey}Suffix`)}
-              </Text>
-            }
-          />
+          {plan === 'org' ? (
+            <Text size='sm' c='dimmed'>
+              {t('avvHintPrefix')}{' '}
+              <Anchor component={Link} href='/docs/avv' target='_blank' size='sm' underline='always'>
+                {t('avvHintLink')}
+              </Anchor>
+              {t('avvHintSuffix')}
+            </Text>
+          ) : null}
 
           {missingDocs.some((doc) => !doc.can_accept) ? (
             <Alert icon={<IconAlertCircle size='1rem' />} color='yellow' title={t('cannotAcceptNoteTitle')}>

@@ -216,38 +216,6 @@ const mapRpcError = (error: { message?: string }, fallback: string) => {
   return { status: 500, error: fallback }
 }
 
-const ensureOrganizationLegalAccepted = async (params: {
-  organizationId: number
-  userSupabase: ReturnType<typeof getAuthenticatedUser> extends Promise<infer R>
-    ? R extends { supabase: infer S }
-      ? S
-      : never
-    : never
-}) => {
-  const { organizationId, userSupabase } = params
-  const { data: missingDocs, error: missingDocsError } = await userSupabase.rpc(
-    'legal_missing_documents',
-    {
-      p_context: 'checkout_org',
-      p_organization_id: organizationId,
-    },
-  )
-
-  if (missingDocsError) {
-    return { status: 500, error: 'Failed to verify required organization legal documents' as const }
-  }
-
-  if ((missingDocs?.length ?? 0) > 0) {
-    return {
-      status: 409,
-      error:
-        'Organization legal documents must be accepted before managing this organization.' as const,
-    }
-  }
-
-  return null
-}
-
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<OrgManagementGetResponse | OrgManagementMutationResponse>,
@@ -264,14 +232,6 @@ export default async function handler(
       const organizationId = Number(req.query.organizationId)
       if (!Number.isInteger(organizationId) || organizationId <= 0) {
         return res.status(400).json({ error: 'Missing or invalid organizationId' })
-      }
-
-      const legalCheck = await ensureOrganizationLegalAccepted({
-        organizationId,
-        userSupabase: auth.supabase,
-      })
-      if (legalCheck) {
-        return res.status(legalCheck.status).json({ error: legalCheck.error })
       }
 
       const { data: snapRaw, error: snapError } = await supabase.rpc('api_get_organization_management_snapshot', {
@@ -423,13 +383,6 @@ export default async function handler(
       if (!Number.isInteger(organizationId) || organizationId <= 0) {
         return res.status(400).json({ error: 'Missing or invalid organizationId' })
       }
-      const legalCheck = await ensureOrganizationLegalAccepted({
-        organizationId,
-        userSupabase: auth.supabase,
-      })
-      if (legalCheck) {
-        return res.status(legalCheck.status).json({ error: legalCheck.error })
-      }
       if (!name) {
         return res.status(400).json({ error: 'Missing organization name' })
       }
@@ -473,14 +426,6 @@ export default async function handler(
       if (!Number.isInteger(organizationId) || organizationId <= 0) {
         return res.status(400).json({ error: 'Missing or invalid organizationId' })
       }
-      const legalCheck = await ensureOrganizationLegalAccepted({
-        organizationId,
-        userSupabase: auth.supabase,
-      })
-      if (legalCheck) {
-        return res.status(legalCheck.status).json({ error: legalCheck.error })
-      }
-
       const { data: postGuardRaw, error: postGuardErr } = await supabase.rpc('api_get_organization_admin_row', {
         p_organization_id: organizationId,
       })

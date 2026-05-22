@@ -206,7 +206,7 @@ export function AGBDe() {
           Soweit der Kunde den SaaS-Service oder die SaaS-Software als Testversion einsetzt, gewährt
           EduTime dem Kunden dafür eine Lizenz zum ausschliesslichen Zweck des Testens und
           Evaluieren und ausschliesslich für interne, nicht-produktive Zwecke und, sofern nicht
-          ausdrücklich anders angegeben, für eine begrenzte Zeitspanne von 30 Tagen («Testversion»).
+          ausdrücklich anders angegeben, für eine begrenzte Zeitspanne von 14 Tagen («Testversion»).
         </p>
         <p>
           Die Testversion sowie die vom Kunden gewählte SaaS-Software mit einem kostenlosen

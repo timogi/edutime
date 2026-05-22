@@ -2,7 +2,6 @@ import { Footer } from '@/components/Footer/Footer'
 import { ContactHero } from '@/components/Main/Contact'
 import { CookieDialog } from '@/components/Main/CookieDialog'
 import { AppPlatforms } from '@/components/Main/AppPlatforms'
-import { PartnerOrganizations } from '@/components/Main/PartnerOrganizations'
 import { Pricing } from '@/components/Main/Pricing'
 import { ShareWithSchool } from '@/components/Main/ShareWithSchool'
 import { HeaderSimple } from '@/components/Main/Header'
@@ -71,11 +70,10 @@ export default function Home() {
         <title>EduTime</title>
       </Head>
       <AppShell.Header>
-        <HeaderSimple showThemeToggle={false} />
+        <HeaderSimple />
       </AppShell.Header>
       <TimeRecordingHero />
       <AppPlatforms />
-      <PartnerOrganizations />
       {isLicenseSelfServiceEnabled() ? (
         <div id='pricing'>
           <Pricing />

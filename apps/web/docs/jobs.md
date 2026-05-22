@@ -37,10 +37,13 @@ Sweeps use the **latest** invoice per subscription with status `open`, `draft`, 
 
 Only organizations with a **Payrexx org plan** subscription linked via `billing.accounts.organization_id` are in scope. **Legacy org rows without this billing link do not receive these automated emails** (and are not processed by these sweeps).
 
-For each email, **one recipient per org** (not every row in `organization_administrators`):
+For each message type, **every organization administrator** receives mail (auth e-mail per admin, **deduped by address**):
 
-1. **Auto-renew checkout link** (after Payrexx gateway + `create_org_checkout`): `subscription.metadata.responsible_email` if set; otherwise the **first** org admin by `organization_administrators.created_at` (auth email).
-2. **Payment notices** (invoice **due date** and **due + 45 days**, rows in `billing.org_renewal_reminders`): same recipient rule in SQL — `responsible_email` / `responsible_user_id` from subscription metadata, else first-admin fallback. One row per milestone, one `recipient_email` per send.
+1. **Auto-renew checkout link** (after Payrexx gateway + `create_org_checkout`): all org admins via `org-billing-jobs`.
+2. **Payment notices** (invoice **due date** and **due + 45 days**): `run_org_renewal_reminder_sweep` inserts one pending row per admin per milestone (`billing.org_renewal_reminders`); `org-billing-jobs` sends each row.
+3. **Cancel at period end**: all org admins when the subscription period ends without auto-renew.
+
+`subscription.metadata.responsible_user_id` / `responsible_email` are still set at checkout (Payrexx actor / audit) but are **not** used to pick e-mail recipients.
 
 **Resend:** If `RESEND_API_KEY` is missing, checkout-link and payment-notice e-mails are skipped (warnings in logs); Payrexx checkout creation still runs when Payrexx env is configured. Delinquency sweeps only update DB/org state; they do not send mail.
 
