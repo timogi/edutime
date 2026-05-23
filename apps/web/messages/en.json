@@ -1093,7 +1093,6 @@
     "purchase-description": "Get an annual license for EduTime",
     "purchase-now": "Purchase now",
     "self-service-disabled-hint": "License purchase is not available in this environment. If you received an organization invitation, you can accept it above.",
-    "self-service-disabled-demo-only-hint": "License purchase is disabled in this environment. You can still try EduTime with the demo.",
     "start-test-renew": "Start daily test subscription",
     "org-calculator-title": "Multiple Licenses",
     "org-calculator-subtitle": "For Schools & Organizations",

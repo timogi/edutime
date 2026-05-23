@@ -585,12 +585,6 @@ export function NoLicenseView() {
             </Text>
           ) : null}
 
-          {!showPurchasePricing && canStartDemo && !isAdministrator ? (
-            <Text size='sm' c='dimmed' ta='center' maw={560}>
-              {t_noLicense('self-service-disabled-demo-only-hint')}
-            </Text>
-          ) : null}
-
           <Divider
             w='100%'
             my='lg'
