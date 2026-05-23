@@ -4,8 +4,9 @@
  * `NEXT_PUBLIC_SHOW_LICENSE_TEST_OPTIONS=true` — show billing test UI
  * (e.g. daily auto-renew test card on /app/no-license).
  *
- * `NEXT_PUBLIC_LICENSE_SELF_SERVICE_ENABLED=false` — hide purchase, demo,
- * org price calculator, and checkout entry points (default: enabled when unset).
+ * `NEXT_PUBLIC_LICENSE_SELF_SERVICE_ENABLED=false` — hide purchase, checkout,
+ * and org price calculator (default: enabled when unset). Demo on /app/no-license
+ * stays available when the user has not used a trial yet.
  */
 export function showLicenseTestOptions(): boolean {
   return process.env.NEXT_PUBLIC_SHOW_LICENSE_TEST_OPTIONS === 'true'

@@ -1092,7 +1092,8 @@
     "purchase-title": "Purchase license",
     "purchase-description": "Get an annual license for EduTime",
     "purchase-now": "Purchase now",
-    "self-service-disabled-hint": "License purchase and demos are not available in this environment. If you received an organization invitation, you can accept it above.",
+    "self-service-disabled-hint": "License purchase is not available in this environment. If you received an organization invitation, you can accept it above.",
+    "self-service-disabled-demo-only-hint": "License purchase is disabled in this environment. You can still try EduTime with the demo.",
     "start-test-renew": "Start daily test subscription",
     "org-calculator-title": "Multiple Licenses",
     "org-calculator-subtitle": "For Schools & Organizations",
@@ -1226,7 +1227,7 @@
     "activationFailedNote": "Payment could not be completed. Please try the purchase again.",
     "refreshStatus": "Refresh status",
     "selfServiceDisabledTitle": "Purchase not available",
-    "selfServiceDisabledDescription": "Buying a license or starting a demo is disabled in this environment. Contact your administrator if you need access."
+    "selfServiceDisabledDescription": "Buying a license is disabled in this environment. Contact your administrator if you need access, or start a demo from the license page."
   },
   "CheckoutLegal": {
     "title": "Before payment",
