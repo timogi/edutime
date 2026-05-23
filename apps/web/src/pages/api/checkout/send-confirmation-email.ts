@@ -21,8 +21,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM_EMAIL) {
-    console.warn('Purchase confirmation email skipped: RESEND_API_KEY or RESEND_FROM_EMAIL missing')
+  if (!process.env.RESEND_API_KEY || !process.env.BILLING_FROM_EMAIL) {
+    console.warn('Purchase confirmation email skipped: RESEND_API_KEY or BILLING_FROM_EMAIL missing')
     return res.status(200).json({ sent: false, reason: 'email_not_configured' })
   }
 

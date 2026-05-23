@@ -5,6 +5,12 @@
 export type PurchaseConfirmationLocale = 'de' | 'en' | 'fr'
 
 const CONTACT_EMAIL = 'info@edutime.ch'
+const EDUTIME_APP_LINK = 'https://edutime.ch/app'
+const EDUTIME_ORG_MEMBERS_LINK = 'https://edutime.ch/app/members'
+
+function getPurchaseConfirmationAppLink(isOrg: boolean): string {
+  return isOrg ? EDUTIME_ORG_MEMBERS_LINK : EDUTIME_APP_LINK
+}
 
 function formatPeriodEnd(iso: string | null | undefined, locale: PurchaseConfirmationLocale): string | null {
   if (!iso) return null
@@ -109,7 +115,6 @@ export interface SendLicensePurchaseConfirmationEmailParams {
   periodEnd?: string | null
   amountCents?: number
   quantity?: number
-  appUrl: string
 }
 
 export async function sendLicensePurchaseConfirmationEmail(
@@ -123,13 +128,12 @@ export async function sendLicensePurchaseConfirmationEmail(
     plan,
     organizationName,
     periodEnd,
-    appUrl,
   } = params
 
   const isOrg = plan === 'org'
   const copy = EMAIL_COPY[locale]
   const periodEndLabel = formatPeriodEnd(periodEnd ?? null, locale)
-  const appLink = isOrg ? `${appUrl}/app/members` : `${appUrl}/app`
+  const appLink = getPurchaseConfirmationAppLink(isOrg)
 
   const subject = copy.subject({ orgName: organizationName })
   const activatedHtml = escapeHtml(copy.bodyActivated({ orgName: organizationName, isOrg }))
@@ -221,10 +225,10 @@ export async function sendPurchaseConfirmationEmailForReference(
   preClaimed?: CheckoutConfirmationClaim | null,
 ): Promise<boolean> {
   const resendApiKey = process.env.RESEND_API_KEY
-  const fromEmail = process.env.RESEND_FROM_EMAIL
+  const fromEmail = process.env.BILLING_FROM_EMAIL
 
   if (!resendApiKey || !fromEmail) {
-    console.warn('Purchase confirmation email skipped: RESEND_API_KEY or RESEND_FROM_EMAIL missing')
+    console.warn('Purchase confirmation email skipped: RESEND_API_KEY or BILLING_FROM_EMAIL missing')
     return false
   }
 
@@ -260,7 +264,6 @@ export async function sendPurchaseConfirmationEmailForReference(
     return false
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'https://edutime.ch'
   const plan = claim.plan === 'org' ? 'org' : 'annual'
 
   await sendLicensePurchaseConfirmationEmail({
@@ -273,7 +276,6 @@ export async function sendPurchaseConfirmationEmailForReference(
     periodEnd: claim.period_end,
     amountCents: claim.amount_cents,
     quantity: claim.quantity,
-    appUrl,
   })
 
   return true

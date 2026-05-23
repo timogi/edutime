@@ -372,7 +372,7 @@ function formatPeriodEndForEmail(iso: unknown, locale: PurchaseConfirmationLocal
 
 async function sendPurchaseConfirmationEmailFromClaim(claim: Record<string, unknown>): Promise<void> {
   const resendApiKey = Deno.env.get('RESEND_API_KEY')
-  const fromEmail = Deno.env.get('RESEND_FROM_EMAIL')
+  const fromEmail = Deno.env.get('BILLING_FROM_EMAIL')
   if (!resendApiKey || !fromEmail) {
     console.warn('Purchase confirmation email skipped: RESEND env not configured')
     return
@@ -386,8 +386,7 @@ async function sendPurchaseConfirmationEmailFromClaim(claim: Record<string, unkn
   const isOrg = plan === 'org'
   const orgName = typeof claim.organization_name === 'string' ? claim.organization_name : null
   const periodEnd = formatPeriodEndForEmail(claim.period_end, locale)
-  const appUrl = Deno.env.get('NEXT_PUBLIC_APP_URL') || Deno.env.get('APP_URL') || 'https://edutime.ch'
-  const appLink = isOrg ? `${appUrl}/app/members` : `${appUrl}/app`
+  const appLink = plan === 'org' ? 'https://edutime.ch/app/members' : 'https://edutime.ch/app'
 
   const copy =
     locale === 'fr'
