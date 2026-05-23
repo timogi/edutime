@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { GetStaticPropsContext } from 'next/types'
 import { Container, Paper, Stack, Text, Title, Button, ThemeIcon, Loader } from '@mantine/core'
 import { useTranslations } from 'next-intl'
@@ -24,6 +24,7 @@ export default function CheckoutSuccessPage() {
   const [status, setStatus] = useState<CheckoutStatus>('pending')
   const [hasActiveEntitlement, setHasActiveEntitlement] = useState(false)
   const [isPolling, setIsPolling] = useState(true)
+  const confirmationEmailRequestedRef = useRef(false)
 
   const referenceId = useMemo(
     () => (typeof router.query.ref === 'string' ? router.query.ref : null),
@@ -135,6 +136,35 @@ export default function CheckoutSuccessPage() {
       }
     }
   }, [router.isReady, referenceId, fetchStatus])
+
+  useEffect(() => {
+    if (!hasActiveEntitlement || !referenceId || confirmationEmailRequestedRef.current) return
+    confirmationEmailRequestedRef.current = true
+
+    const sendConfirmationEmail = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+
+        const headers: HeadersInit = { 'Content-Type': 'application/json' }
+        if (session?.access_token) {
+          headers.Authorization = `Bearer ${session.access_token}`
+        }
+
+        await fetch('/api/checkout/send-confirmation-email', {
+          method: 'POST',
+          credentials: 'include',
+          headers,
+          body: JSON.stringify({ ref: referenceId }),
+        })
+      } catch (error) {
+        console.error('Failed to send purchase confirmation email:', error)
+      }
+    }
+
+    void sendConfirmationEmail()
+  }, [hasActiveEntitlement, referenceId])
 
   useEffect(() => {
     if (!hasActiveEntitlement) return

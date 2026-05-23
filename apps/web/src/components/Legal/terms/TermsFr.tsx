@@ -5,8 +5,8 @@ export const termsMetaFr = {
   title: "Conditions d'utilisation d'EduTime",
   tocLabel: 'Table des matières',
   meta: {
-    version: 'Version 1.0',
-    lastUpdated: '3 mars 2025',
+    version: 'Version 1.1',
+    lastUpdated: '22 mai 2026',
   },
 }
 
@@ -178,7 +178,7 @@ export function TermsFr() {
         <p>
           Dans la mesure où vous utilisez les Services en version d'essai, EduTime vous accorde une
           licence exclusivement aux fins de test et d'évaluation et exclusivement à des fins
-          internes et, sauf indication expresse contraire, pour une durée limitée de 30 jours («
+          internes et, sauf indication expresse contraire, pour une durée limitée de 14 jours («
           Version d'essai »).
         </p>
         <p>
@@ -191,8 +191,9 @@ export function TermsFr() {
         </p>
         <p>
           Si la Version d'essai n'est pas convertie en une étendue payante des prestations pendant
-          la durée d'essai accordée, toutes vos données seront supprimées conformément aux cycles de
-          suppression d'EduTime après l'expiration de la licence de la Version d'essai.
+          la durée d'essai accordée, votre accès prend fin à l'expiration de la version d'essai. Vos
+          données enregistrées demeurent en principe conservées. Pour supprimer vos données, vous
+          pouvez supprimer votre compte utilisateur dans les paramètres du compte.
         </p>
       </LegalDocumentSection>
 

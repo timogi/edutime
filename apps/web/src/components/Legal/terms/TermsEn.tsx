@@ -5,8 +5,8 @@ export const termsMetaEn = {
   title: 'Terms of Use of EduTime',
   tocLabel: 'Table of Contents',
   meta: {
-    version: 'Version 1.0',
-    lastUpdated: 'March 3, 2025',
+    version: 'Version 1.1',
+    lastUpdated: 'May 22, 2026',
   },
 }
 
@@ -170,7 +170,7 @@ export function TermsEn() {
         <p>
           To the extent that you use the Services as a trial version, EduTime grants you a license
           for the sole purpose of testing and evaluation and exclusively for internal purposes and,
-          unless expressly stated otherwise, for a limited period of 30 days (&quot;Trial
+          unless expressly stated otherwise, for a limited period of 14 days (&quot;Trial
           Version&quot;).
         </p>
         <p>
@@ -182,8 +182,8 @@ export function TermsEn() {
         </p>
         <p>
           If the Trial Version is not changed to a paid scope of services during the granted trial
-          period, all your data will be deleted in accordance with EduTime&apos;s deletion cycles
-          after the trial license expires.
+          period, your access ends when the trial expires. Your recorded data generally remains
+          stored. To delete your data, you may delete your user account in the account settings.
         </p>
       </LegalDocumentSection>
 

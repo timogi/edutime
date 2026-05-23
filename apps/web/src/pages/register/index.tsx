@@ -24,7 +24,7 @@ import { GetStaticPropsContext } from 'next/types'
 import { supabase } from '@/utils/supabase/client'
 import { useMediaQuery } from '@mantine/hooks'
 import { buildEmailRedirectTo, parseIntentFromQuery } from '@/utils/auth/intent'
-import { IconMail } from '@tabler/icons-react'
+import { IconMail, IconShield } from '@tabler/icons-react'
 
 export default function RegistrationForm() {
   const [email, setEmail] = useState('')
@@ -338,17 +338,23 @@ export default function RegistrationForm() {
                 >
                   {t('register')}
                 </Button>
-                <Text size='sm' c='dimmed'>
-                  {t('register-privacy-notice-prefix')}{' '}
-                  <Link
-                    href='/docs/privacy'
-                    target='_blank'
-                    style={{ textDecoration: 'underline' }}
-                  >
-                    {t('privacyPolicy')}
-                  </Link>
-                  {t('register-privacy-notice-suffix')}
-                </Text>
+                <Group gap='xs' wrap='nowrap' justify='center' align='flex-start'>
+                  <IconShield
+                    size={16}
+                    style={{ color: 'var(--mantine-color-dimmed)', flexShrink: 0, marginTop: 2 }}
+                  />
+                  <Text size='sm' c='dimmed'>
+                    {t('register-privacy-notice-prefix')}{' '}
+                    <Link
+                      href='/docs/privacy'
+                      target='_blank'
+                      style={{ textDecoration: 'underline' }}
+                    >
+                      {t('privacyPolicy')}
+                    </Link>
+                    {t('register-privacy-notice-suffix')}
+                  </Text>
+                </Group>
               </Stack>
             )}
           </Paper>

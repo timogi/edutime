@@ -5,8 +5,8 @@ export const termsMetaDe = {
   title: 'Nutzungsbedingungen von EduTime',
   tocLabel: 'Inhaltsverzeichnis',
   meta: {
-    version: 'Version 1.0',
-    lastUpdated: '3. März 2025',
+    version: 'Version 1.1',
+    lastUpdated: '22. Mai 2026',
   },
 }
 
@@ -182,7 +182,7 @@ export function TermsDe() {
           Soweit Sie die Services als Testversion einsetzen, gewährt EduTime Ihnen dafür eine Lizenz
           zum ausschliesslichen Zweck des Testens und Evaluieren und ausschliesslich für interne
           Zwecke und, sofern nicht ausdrücklich anders angegeben, für eine begrenzte Zeitspanne von
-          30 Tagen («Testversion»).
+          14 Tagen («Testversion»).
         </p>
         <p>
           Die Testversion sowie die von Ihnen gewählten Services mit einem kostenlosen
@@ -194,8 +194,9 @@ export function TermsDe() {
         </p>
         <p>
           Wird die Testversion während der gewährten Testdauer auf keinen kostenpflichtigen
-          Leistungsumfang geändert, werden nach Ablauf der Lizenz für die Testversion alle Daten von
-          Ihnen entsprechend den Löschzyklen von EduTime gelöscht.
+          Leistungsumfang geändert, endet Ihr Zugang mit Ablauf der Testversion. Ihre erfassten
+          Daten bleiben grundsätzlich bestehen. Möchten Sie Ihre Daten löschen, können Sie Ihr
+          Benutzerkonto in den Kontoeinstellungen löschen.
         </p>
       </LegalDocumentSection>
 

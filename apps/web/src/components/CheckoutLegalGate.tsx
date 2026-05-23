@@ -263,6 +263,12 @@ export function CheckoutLegalGate({
               <Text size='xs' c='dimmed'>
                 {t('noVatNote')}
               </Text>
+              <Text size='xs' c='dimmed' mt={4}>
+                {t('sellerInfo')}
+              </Text>
+              <Text size='xs' c='dimmed'>
+                {t('cancellationInfo')}
+              </Text>
             </Stack>
           </Paper>
 

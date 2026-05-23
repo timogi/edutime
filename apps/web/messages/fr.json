@@ -1163,7 +1163,7 @@
     },
     "subject": {
       "title": "Objet",
-      "text": "Dans le cadre du présent contrat pour la fourniture de services Software-as-a-Service (ci-après dénommé «Contrat individuel SaaS» ou «Contrat»), EduTime met à la disposition du Client les possibilités d'utilisation de logiciels standard (ci-après également dénommé «Logiciel») pour l'accès via une connexion de télécommunication ainsi que l'espace de stockage pour les données d'application du Client (ci-après collectivement également dénommé «Service SaaS», «Prestations» ou «Web-App») conformément aux conditions du présent contrat (y compris ses annexes) et aux Conditions générales d'EduTime pour les services SaaS, Version 1.0 (ci-après dénommé «CGV»)."
+      "text": "Dans le cadre du présent contrat pour la fourniture de services Software-as-a-Service (ci-après dénommé «Contrat individuel SaaS» ou «Contrat»), EduTime met à la disposition du Client les possibilités d'utilisation de logiciels standard (ci-après également dénommé «Logiciel») pour l'accès via une connexion de télécommunication ainsi que l'espace de stockage pour les données d'application du Client (ci-après collectivement également dénommé «Service SaaS», «Prestations» ou «Web-App») conformément aux conditions du présent contrat (y compris ses annexes) et aux Conditions générales d'EduTime pour les services SaaS, Version 1.1 (ci-après dénommé «CGV»)."
     },
     "service": {
       "title": "Service SaaS, Rémunération",
@@ -1194,8 +1194,8 @@
     "components": {
       "title": "Composants du contrat",
       "text1": "Les annexes suivantes font partie intégrante du présent contrat et s'appliquent à celui-ci, sauf disposition contraire expresse dans le présent contrat:",
-      "agb": "Conditions générales d'EduTime pour le Service SaaS, Version 1.0 du 20 décembre 2024 (ci-après dénommé «CGV»)",
-      "avv": "[uniquement si contrat avec une organisation: Accord de traitement des données d'EduTime, Version 1.0 du 20 décembre 2024 (dénommé «ATD»)]",
+      "agb": "Conditions générales d'EduTime pour le Service SaaS, Version 1.1 du 22 mai 2026 (ci-après dénommé «CGV»)",
+      "avv": "[uniquement si contrat avec une organisation: Accord de traitement des données d'EduTime, Version 1.1 du 22 mai 2026 (dénommé «ATD»)]",
       "text2": "Le Client confirme par la signature du présent contrat qu'il est en possession des composants susmentionnés et en a pris connaissance.",
       "text3": "En cas de contradictions entre les composants individuels, ceux-ci s'appliquent dans l'ordre de priorité susmentionné."
     },
@@ -1263,9 +1263,11 @@
     "autoRenewIndividual": "En payant, tu conclus un abonnement annuel. Il se renouvelle automatiquement d'une année supplémentaire, sauf résiliation avant la fin de la période en cours. Voir les CGV pour les détails.",
     "autoRenewOrg": "En payant, tu conclus un abonnement annuel pour ton organisation. Il se renouvelle automatiquement d'une année supplémentaire, sauf résiliation avant la fin de la période en cours. Voir les CGV pour les détails.",
     "agbLink": "CGV",
-    "avvHintPrefix": "Vous trouvez l'ATD",
+    "avvHintPrefix": "Pour les organisations avec sous-traitance, l'ATD est disponible",
     "avvHintLink": "ici",
-    "avvHintSuffix": ".",
+    "avvHintSuffix": " (aucune acceptation séparée au checkout requise).",
+    "sellerInfo": "Fournisseur : EduTime GmbH, Bienenstrasse 8, 3018 Berne, info@edutime.ch",
+    "cancellationInfo": "Résiliation : à tout moment avant la fin de période dans les paramètres du compte (gestion de licence), effective à la fin de période.",
     "documentsTitle": "Documents requis",
     "acceptDocument": "J'accepte les {title}",
     "openDocument": "Ouvrir le document",

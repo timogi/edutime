@@ -5,8 +5,8 @@ export const agbMetaFr = {
   title: "Conditions générales d'EduTime",
   tocLabel: 'Table des matières',
   meta: {
-    version: 'Version 1.0',
-    lastUpdated: '3 mars 2025',
+    version: 'Version 1.1',
+    lastUpdated: '22 mai 2026',
   },
 }
 
@@ -98,14 +98,13 @@ export function AGBFr() {
       <LegalDocumentSection id='anwendungsbereich' title="1. Champ d'application" order={2}>
         <p>
           EduTime GmbH, c/o Tim Ogi, Bienenstrasse 8, 3018 Berne (ci-après « EduTime »), met à
-          disposition du Client, sur la base d'un contrat individuel (ci-après également « contrat
-          SaaS individuel ») ainsi que des présentes conditions générales (ci-après « CG », y
+          disposition du Client, sur la base des présentes conditions générales (ci-après « CG », y
           compris leurs éléments contractuels intégrants, le tout ci-après « contrat »), pendant la
-          durée du contrat, les droits d'utilisation décrits au contrat relatifs à la solution
-          logicielle EduTime (ci-après « logiciel SaaS ») avec la documentation associée sur
-          l'infrastructure serveur d'EduTime ou du fournisseur de plateforme mandaté par EduTime,
-          pour l'utilisation par le Client par accès à distance via Internet, et fournit les
-          prestations supplémentaires convenues au contrat et liées à cette utilisation du logiciel
+          durée du contrat, les droits d'utilisation décrits dans le checkout ou la commande en
+          ligne relatifs à la solution logicielle EduTime (ci-après « logiciel SaaS ») avec la
+          documentation associée sur l'infrastructure serveur d'EduTime ou du fournisseur de
+          plateforme mandaté par EduTime, pour l'utilisation par le Client par accès à distance via
+          Internet, et fournit les prestations supplémentaires liées à cette utilisation du logiciel
           SaaS (telles que la mise à disposition d'espace de stockage ainsi que le support et la
           maintenance) au sens d'un service cloud (ci-après « service SaaS » dans son ensemble).
         </p>
@@ -120,16 +119,21 @@ export function AGBFr() {
         <p>
           Les présentes CG seules n'instaurent réciproquement aucune obligation de livraison, de
           paiement, de réception ou de conclusion de contrat. Un droit du Client à la livraison ou à
-          la prestation au regard du champ d'application des CG suppose un contrat SaaS individuel
-          conclu. La présentation de produits et de prestations sur les sites web ou dans les listes
-          de prix d'EduTime ne constitue pas une offre contractuelle juridiquement contraignante
-          d'EduTime. Sans indication contraire, les offres d'EduTime sont valables dix (10) jours.
+          la prestation au regard du champ d'application des CG suppose un contrat conclu. Le contrat
+          est conclu lorsque le Client sélectionne une offre dans le checkout en libre-service (ou
+          une fonction de commande électronique équivalente fournie par EduTime), fournit les
+          informations requises, accepte les CG et que le paiement est effectué avec succès ou que la
+          licence est activée par EduTime. EduTime confirme en règle générale la conclusion du
+          contrat par e-mail. La présentation de produits et de prestations sur les sites web ou
+          dans les listes de prix d'EduTime ne constitue pas une offre contractuelle juridiquement
+          contraignante d'EduTime. Sans indication contraire, les offres d'EduTime sont valables dix
+          (10) jours.
         </p>
       </LegalDocumentSection>
 
       <LegalDocumentSection id='umfang-der-nutzung' title="2. Étendue de l'utilisation" order={2}>
         <p>
-          EduTime met à disposition du Client, dans le cadre du contrat SaaS individuel, le logiciel
+          EduTime met à disposition du Client, dans le cadre de la commande en ligne, le logiciel
           SaaS qui y est spécifié dans l'étendue des prestations convenue (p. ex. nombre
           d'utilisateurs) pour une utilisation via Internet. À cette fin, EduTime met le logiciel
           SaaS à disposition sur une plateforme serveur à laquelle le Client peut accéder via
@@ -147,11 +151,10 @@ export function AGBFr() {
           telle utilisation.
         </p>
         <p>
-          Dans le cadre des présentes CG en liaison avec le contrat SaaS individuel correspondant,
-          EduTime concède au Client le droit non exclusif, incessible, non sous-licenciable et
-          payant d'utiliser le logiciel SaaS conformément aux dispositions des présentes CG et du
-          contrat SaaS individuel correspondant, après paiement intégral des redevances
-          d'utilisation dues, pour ses propres besoins. Cette concession de droit d'utilisation ne
+          Dans le cadre des présentes CG, EduTime concède au Client le droit non exclusif,
+          incessible, non sous-licenciable et payant d'utiliser le logiciel SaaS conformément aux
+          dispositions des présentes CG et de la commande en ligne, après paiement intégral des
+          redevances d'utilisation dues, pour ses propres besoins. Cette concession de droit d'utilisation ne
           comporte pas l'acquisition de droits supplémentaires sur le logiciel SaaS. Il est
           expressément interdit au Client de louer le service SaaS ou des parties de celui-ci et/ou
           de les transmettre à des tiers.
@@ -162,12 +165,12 @@ export function AGBFr() {
           profit du Client et disposant d'identifiants et de mots de passe uniques pour le service
           SaaS) soient soumis au présent contrat et conformes à celui-ci. Le Client peut autoriser
           ses utilisateurs à accéder au service SaaS et à l'utiliser ou à bénéficier des services
-          acquis dans le cadre d'un contrat SaaS individuel ; ceci à condition que tout accès,
+          acquis dans le cadre de la commande en ligne ; ceci à condition que tout accès,
           utilisation et recours par les utilisateurs soient soumis au contrat et que le Client soit
           à tout moment responsable de l'exécution du présent contrat par ses utilisateurs.
         </p>
         <p>
-          Sauf convention contraire dans le contrat SaaS individuel, EduTime s'engage à fournir les
+          Sauf convention contraire dans la commande en ligne, EduTime s'engage à fournir les
           prestations de support suivantes pour le service SaaS les jours ouvrables, de 08h00 à
           17h00, à l'exclusion des jours fériés officiels et des jours fériés usuels au siège
           d'EduTime (les prestations en dehors de ces horaires sont facturées séparément) :
@@ -192,11 +195,11 @@ export function AGBFr() {
         </p>
         <p>
           Les exigences techniques actuelles pour l'utilisation/la connexion réseau du Client sont
-          fixées dans le contrat SaaS individuel. Les exigences techniques y mentionnées, valables
-          au moment de la conclusion du contrat, peuvent être adaptées unilatéralement par EduTime à
-          tout moment à l'état de la technique, EduTime informant le Client des adaptations
-          importantes dans un délai raisonnable (en règle générale un mois à l'avance), notamment
-          par e-mail ou sur un site web approprié. Le Client s'engage à respecter à tout moment les
+          publiées sur le site web d'EduTime et/ou indiquées dans la commande en ligne. Les
+          exigences techniques y mentionnées, valables au moment de la conclusion du contrat,
+          peuvent être adaptées unilatéralement par EduTime à tout moment à l'état de la technique,
+          EduTime informant le Client des adaptations importantes dans un délai raisonnable (en
+          règle générale un mois à l'avance), notamment par e-mail ou sur un site web approprié. Le Client s'engage à respecter à tout moment les
           exigences techniques et à veiller à ce que les utilisateurs connaissent l'utilisation
           correcte du logiciel SaaS.
         </p>
@@ -235,8 +238,12 @@ export function AGBFr() {
         </p>
         <p>
           Si la version d'essai n'est pas convertie en étendue payante pendant la période d'essai
-          accordée, toutes les données du Client sont supprimées à l'expiration de la licence de la
-          version d'essai conformément aux cycles de suppression d'EduTime.
+          accordée, l'accès au service SaaS prend fin à l'expiration de la version d'essai. Les
+          données saisies par le Client demeurent en principe conservées. Si le Client souhaite
+          supprimer ses données, il peut supprimer son compte utilisateur dans les paramètres du
+          compte ; les données associées seront alors supprimées. EduTime est en droit d'initier la
+          suppression de comptes restés inactifs pendant une longue période ; le Client en sera
+          informé au moins trente (30) jours à l'avance.
         </p>
       </LegalDocumentSection>
 
@@ -247,8 +254,8 @@ export function AGBFr() {
       >
         <p>
           EduTime met à disposition du Client une capacité de stockage sur l'infrastructure serveur
-          d'EduTime pour le stockage des données liées à l'utilisation du logiciel SaaS, selon le
-          contrat SaaS individuel.
+          d'EduTime pour le stockage des données liées à l'utilisation du logiciel SaaS, selon la
+          commande en ligne.
         </p>
         <p>
           Les données appartiennent à la sphère juridique du Client qui utilise le service SaaS,
@@ -383,14 +390,15 @@ export function AGBFr() {
         order={2}
       >
         <p>
-          La rémunération due par le Client pour le service SaaS résulte du contrat SaaS individuel.
+          La rémunération due par le Client pour le service SaaS résulte de la commande en ligne ou
+          du checkout.
         </p>
         <p>
-          EduTime est en droit d'ajuster unilatéralement la rémunération convenue dans le contrat
-          SaaS individuel avec un délai de préavis de deux (2) mois au début d'une nouvelle période
-          contractuelle. Si le Client n'est pas d'accord avec l'ajustement des prix, il peut
-          résilier le service SaaS en respectant un délai de résiliation de 20 jours à la fin de la
-          période contractuelle par notification en forme écrite (cf. chiffre 17.3).
+          EduTime est en droit d'ajuster unilatéralement la rémunération convenue avec un délai de
+          préavis de deux (2) mois au début d'une nouvelle période contractuelle. Si le Client n'est
+          pas d'accord avec l'ajustement des prix, il peut résilier le service SaaS en respectant un
+          délai de résiliation de 20 jours à la fin de la période contractuelle par notification en
+          forme écrite (cf. chiffre 17.3).
         </p>
         <p>
           Tous les prix s'entendent hors taxe sur la valeur ajoutée en vigueur. EduTime facture en
@@ -422,8 +430,8 @@ export function AGBFr() {
       >
         <p>
           EduTime a le droit de vérifier mensuellement et annuellement l'étendue effective de
-          l'utilisation de l'étendue des prestations du service SaaS convenue dans le contrat SaaS
-          individuel et de réclamer la rémunération pour une utilisation excédentaire par rapport à
+          l'utilisation de l'étendue des prestations du service SaaS convenue dans la commande en
+          ligne et de réclamer la rémunération pour une utilisation excédentaire par rapport à
           l'étendue des prestations sous licence.
         </p>
         <p>
@@ -563,20 +571,22 @@ export function AGBFr() {
         order={2}
       >
         <p>
-          Le contrat entre en vigueur à la confirmation de commande par EduTime (contrat SaaS
-          individuel) et est conclu pour une durée contractuelle initiale d'un an, sauf convention
-          contraire dans le contrat SaaS individuel. Le contrat entre toutefois en vigueur au plus
-          tard à la fourniture de la prestation par EduTime au Client. Le contrat se renouvelle
-          ensuite automatiquement d'une année supplémentaire à chaque fois, sauf résiliation par
-          l'une des parties contractantes dans le respect d'un délai de trois (3) mois avant
-          l'expiration de la durée du contrat par écrit ou via une fonction électronique
-          éventuellement explicitement mise à disposition du Client par EduTime.
+          Le contrat est conclu lors de l'activation de la licence après une commande en ligne
+          réussie et est conclu pour une durée contractuelle initiale d'un an, sauf convention
+          contraire dans la commande en ligne. Le contrat entre en vigueur au plus tard à la
+          fourniture de la prestation par EduTime au Client. Le contrat se renouvelle ensuite
+          automatiquement d'une année supplémentaire à chaque fois, sauf résiliation avant la fin de
+          la période contractuelle en cours par le Client via les fonctions électroniques mises à
+          disposition par EduTime (p. ex. gestion de licence dans les paramètres du compte) ou par
+          EduTime par écrit. La résiliation prend effet à la fin de la période contractuelle en
+          cours ; aucun délai de résiliation de plusieurs mois n'est requis, sauf convention
+          expresse contraire par écrit.
         </p>
         <p>
           Les prestations étendues de support, maintenance et entretien du service SaaS commencent à
-          la confirmation de commande par EduTime (contrat individuel), la durée du contrat étant
-          alignée sur celle du service SaaS. Pour le renouvellement automatique et la résiliation,
-          il est fait application de ce qui est prévu au chiffre 14.1.
+          la conclusion du contrat, la durée du contrat étant alignée sur celle du service SaaS. Pour
+          le renouvellement automatique et la résiliation, il est fait application de ce qui est
+          prévu au chiffre 14.1.
         </p>
         <p>
           Les déclarations d'acceptation du Client qui contiennent des extensions, restrictions ou
@@ -652,8 +662,9 @@ export function AGBFr() {
         </p>
         <p>
           Dans la mesure où EduTime traite en qualité de sous-traitant les données personnelles du
-          Client, la version actuelle de l'ATD, remise à la conclusion du contrat, fait partie
-          intégrante des présentes CG.
+          Client, la version actuelle de l'ATD publiée sur https://edutime.ch/docs/avv fait partie
+          intégrante des présentes CG. Une acceptation séparée de l'ATD au checkout n'est pas
+          requise ; le Client peut consulter et télécharger l'ATD à tout moment.
         </p>
         <p>
           EduTime est en droit d'inscrire le Client sur sa liste officielle de clients et de faire
@@ -709,16 +720,16 @@ export function AGBFr() {
           d'EduTime https://edutime.ch/docs/agb.
         </p>
         <p>
-          En cas de divergence ou de contradiction, les dispositions d'éventuels contrats
-          individuels priment sur les présentes CG. La version actuelle de l'accord de traitement
-          des données prime également sur les présentes CG lorsqu'il s'agit d'une disposition
-          divergente ou contradictoire concernant le traitement des données personnelles.
+          En cas de divergence ou de contradiction, les conventions individuelles écrites expressément
+          conclues entre les parties priment sur les présentes CG. La version actuelle de l'accord
+          de traitement des données prime également sur les présentes CG lorsqu'il s'agit d'une
+          disposition divergente ou contradictoire concernant le traitement des données personnelles.
         </p>
         <p>
           Toutes les communications doivent, sauf si le présent contrat ou la loi n'impose pas une
           forme plus stricte, être adressées par écrit, par voie électronique ou par e-mail aux
-          adresses (e-mail) indiquées par le Client dans le contrat SaaS individuel ou sur le site
-          web d'EduTime. Le Client est tenu d'informer EduTime sans délai de tout changement
+          adresses (e-mail) indiquées dans le profil utilisateur du Client et/ou sur le site web
+          d'EduTime. Le Client est tenu d'informer EduTime sans délai de tout changement
           d'adresse (y compris e-mail), respectivement d'adapter le profil client dans le service
           SaaS, faute de quoi les communications envoyées à la dernière adresse communiquée sont
           réputées avoir été valablement reçues.

@@ -1121,7 +1121,7 @@
     },
     "subject": {
       "title": "Gegenstand",
-      "text": "Unter dem vorliegenden Vertrag zur Erbringung von Software-as-a-Service Leistungen (nachfolgend \"SaaS-Einzelvertrag\" oder \"Vertrag\" genannt) stellt EduTime dem Kunden gemäss den Bedingungen dieses Vertrages (inkl. seiner Anhänge) und den Allgemeinen Geschäftsbedingungen von EduTime für SaaS-Services, Version 1.0 (nachfolgend \"AGB\" genannt) die Nutzungsmöglichkeiten für Standardsoftware (nachfolgend auch \"Software\" genannt) zum Zugriff über eine Telekommunikationsverbindung sowie Speicherplatz für die Anwendungsdaten des Kunden (nachfolgend insgesamt auch \"SaaS-Service\", \"Leistungen\" oder \"Web-App\" genannt) zur Verfügung."
+      "text": "Unter dem vorliegenden Vertrag zur Erbringung von Software-as-a-Service Leistungen (nachfolgend \"SaaS-Einzelvertrag\" oder \"Vertrag\" genannt) stellt EduTime dem Kunden gemäss den Bedingungen dieses Vertrages (inkl. seiner Anhänge) und den Allgemeinen Geschäftsbedingungen von EduTime für SaaS-Services, Version 1.1 (nachfolgend \"AGB\" genannt) die Nutzungsmöglichkeiten für Standardsoftware (nachfolgend auch \"Software\" genannt) zum Zugriff über eine Telekommunikationsverbindung sowie Speicherplatz für die Anwendungsdaten des Kunden (nachfolgend insgesamt auch \"SaaS-Service\", \"Leistungen\" oder \"Web-App\" genannt) zur Verfügung."
     },
     "service": {
       "title": "SaaS-Service, Vergütung",
@@ -1152,8 +1152,8 @@
     "components": {
       "title": "Vertragsbestandteile",
       "text1": "Folgende Anhänge bilden integrierenden Bestandteil dieses Vertrages und finden auf diesen Anwendung, soweit es in diesem Vertrag nicht ausdrücklich anders geregelt wird:",
-      "agb": "Allgemeine Geschäftsbedingungen von EduTime für SaaS-Service, Version 1.0 vom 20. Dezember 2024 (hierin \"AGB\" genannt)",
-      "avv": "[nur sofern Vertrag mit einer Organisation: Auftragsverarbeitungsvereinbarung von EduTime, Version 1.0 vom 20. Dezember 2024 (\"AVV\" genannt)]",
+      "agb": "Allgemeine Geschäftsbedingungen von EduTime für SaaS-Service, Version 1.1 vom 22. Mai 2026 (hierin \"AGB\" genannt)",
+      "avv": "[nur sofern Vertrag mit einer Organisation: Auftragsverarbeitungsvereinbarung von EduTime, Version 1.1 vom 22. Mai 2026 (\"AVV\" genannt)]",
       "text2": "Der Kunde bestätigt mit Unterzeichnung dieses Vertrages ausdrücklich, dass er im Besitze der vorgenannten Bestandteile ist und von diesen Kenntnis genommen hat.",
       "text3": "Im Falle von Widersprüchen zwischen einzelnen Bestandteilen gelten diese in vorgenannter Rangfolge."
     },
@@ -1221,9 +1221,11 @@
     "autoRenewIndividual": "Mit der Zahlung schliesst du ein Jahresabonnement ab. Es verlängert sich automatisch um jeweils ein weiteres Jahr, sofern du es nicht vor Ablauf der laufenden Periode kündigst. Details in den AGB.",
     "autoRenewOrg": "Mit der Zahlung schliesst du ein Jahresabonnement für deine Organisation ab. Es verlängert sich automatisch um jeweils ein weiteres Jahr, sofern es nicht vor Ablauf der laufenden Periode gekündigt wird. Details in den AGB.",
     "agbLink": "AGB",
-    "avvHintPrefix": "Die AVV finden Sie",
+    "avvHintPrefix": "Für Organisationen mit Auftragsverarbeitung steht die AVV",
     "avvHintLink": "hier",
-    "avvHintSuffix": ".",
+    "avvHintSuffix": " zur Verfügung (keine separate Annahme im Checkout erforderlich).",
+    "sellerInfo": "Anbieter: EduTime GmbH, Bienenstrasse 8, 3018 Bern, info@edutime.ch",
+    "cancellationInfo": "Kündigung: jederzeit vor Periodenende in den Kontoeinstellungen (Lizenzverwaltung), wirksam zum Periodenende.",
     "documentsTitle": "Erforderliche Dokumente",
     "acceptDocument": "Ich akzeptiere die {title}",
     "openDocument": "Dokument öffnen",
