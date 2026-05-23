@@ -392,6 +392,10 @@ export type Database = {
         Args: { p_actor_user_id: string; p_organization_id: number }
         Returns: string
       }
+      claim_checkout_purchase_confirmation_email: {
+        Args: { p_reference_id: string }
+        Returns: Json
+      }
       create_org_checkout: {
         Args: {
           p_actor_user_id: string
@@ -1563,6 +1567,10 @@ export type Database = {
         Args: { p_organization_id: number }
         Returns: string
       }
+      api_claim_checkout_purchase_confirmation_email: {
+        Args: { p_reference_id: string }
+        Returns: Json
+      }
       api_create_org_checkout: {
         Args: {
           p_amount_cents: number
@@ -1618,6 +1626,7 @@ export type Database = {
         Args: { p_reference_id: string }
         Returns: Json
       }
+      api_get_my_entitlements: { Args: never; Returns: Json }
       api_get_org_billing_status: {
         Args: { p_organization_id: number }
         Returns: {
@@ -1648,6 +1657,7 @@ export type Database = {
         Returns: Json
       }
       api_get_personal_subscription_summary: { Args: never; Returns: Json }
+      api_has_ever_had_trial: { Args: never; Returns: boolean }
       api_leave_organization_as_member: {
         Args: { p_organization_id: number }
         Returns: undefined
@@ -1699,8 +1709,6 @@ export type Database = {
         Args: { p_name: string; p_organization_id: number }
         Returns: string
       }
-      api_get_my_entitlements: { Args: never; Returns: Json }
-      api_has_ever_had_trial: { Args: never; Returns: boolean }
       api_user_has_active_entitlement: { Args: never; Returns: boolean }
       api_user_has_active_personal_license: { Args: never; Returns: boolean }
       check_organization_seats:
@@ -1727,7 +1735,7 @@ export type Database = {
           code: string
           document_version_id: number
           organization_id: number
-          scope: string
+          scope: Database["legal"]["Enums"]["scope"]
           title: string
           version_label: string
         }[]
