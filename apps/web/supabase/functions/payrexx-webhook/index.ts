@@ -353,6 +353,109 @@ async function fetchTransactionFromPayrexx(
   return json.data[0]
 }
 
+type PurchaseConfirmationLocale = 'de' | 'en' | 'fr'
+
+function resolvePurchaseConfirmationLocale(raw: unknown): PurchaseConfirmationLocale {
+  const value = typeof raw === 'string' ? raw.toLowerCase() : 'de'
+  if (value.startsWith('de')) return 'de'
+  if (value.startsWith('fr')) return 'fr'
+  return 'en'
+}
+
+function formatPeriodEndForEmail(iso: unknown, locale: PurchaseConfirmationLocale): string | null {
+  if (typeof iso !== 'string' || !iso) return null
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return null
+  const localeTag = locale === 'de' ? 'de-CH' : locale === 'fr' ? 'fr-CH' : 'en-CH'
+  return new Intl.DateTimeFormat(localeTag, { dateStyle: 'long' }).format(date)
+}
+
+async function sendPurchaseConfirmationEmailFromClaim(claim: Record<string, unknown>): Promise<void> {
+  const resendApiKey = Deno.env.get('RESEND_API_KEY')
+  const fromEmail = Deno.env.get('RESEND_FROM_EMAIL')
+  if (!resendApiKey || !fromEmail) {
+    console.warn('Purchase confirmation email skipped: RESEND env not configured')
+    return
+  }
+
+  const email = typeof claim.email === 'string' ? claim.email : null
+  if (!email) return
+
+  const locale = resolvePurchaseConfirmationLocale(claim.locale)
+  const plan = claim.plan === 'org' ? 'org' : 'annual'
+  const isOrg = plan === 'org'
+  const orgName = typeof claim.organization_name === 'string' ? claim.organization_name : null
+  const periodEnd = formatPeriodEndForEmail(claim.period_end, locale)
+  const appUrl = Deno.env.get('NEXT_PUBLIC_APP_URL') || Deno.env.get('APP_URL') || 'https://edutime.ch'
+  const appLink = isOrg ? `${appUrl}/app/members` : `${appUrl}/app`
+
+  const copy =
+    locale === 'fr'
+      ? {
+          subject: orgName ? `EduTime : licence pour « ${orgName} » activée` : 'EduTime : ta licence est active',
+          greeting: 'Bonjour',
+          activated:
+            isOrg && orgName
+              ? `Ton paiement a réussi. La licence d'organisation pour « ${orgName} » est maintenant active.`
+              : 'Ton paiement a réussi. Ta licence annuelle EduTime est maintenant active.',
+          renewal: periodEnd
+            ? `L'abonnement se renouvelle automatiquement d'une année supplémentaire, sauf résiliation avant le ${periodEnd} dans les paramètres du compte.`
+            : "L'abonnement se renouvelle automatiquement chaque année, sauf résiliation avant la fin de la période en cours.",
+          cancel:
+            'Tu peux désactiver le renouvellement automatique à tout moment avant la fin de période.',
+          cta: "Ouvrir l'app",
+        }
+      : locale === 'en'
+        ? {
+            subject: orgName ? `EduTime: License for «${orgName}» activated` : 'EduTime: Your license is active',
+            greeting: 'Hello',
+            activated:
+              isOrg && orgName
+                ? `Your payment was successful. The organization license for «${orgName}» is now active.`
+                : 'Your payment was successful. Your EduTime annual license is now active.',
+            renewal: periodEnd
+              ? `The subscription renews automatically for another year unless you cancel before ${periodEnd}.`
+              : 'The subscription renews automatically each year unless you cancel before the end of the current period.',
+            cancel: 'You can turn off auto-renewal at any time before the period ends in license management.',
+            cta: 'Open app',
+          }
+        : {
+            subject: orgName ? `EduTime: Lizenz für «${orgName}» aktiviert` : 'EduTime: Deine Lizenz ist aktiv',
+            greeting: 'Hallo',
+            activated:
+              isOrg && orgName
+                ? `Deine Zahlung war erfolgreich. Die Organisationslizenz für «${orgName}» ist jetzt aktiv.`
+                : 'Deine Zahlung war erfolgreich. Deine EduTime-Jahreslizenz ist jetzt aktiv.',
+            renewal: periodEnd
+              ? `Das Abonnement verlängert sich automatisch um ein weiteres Jahr, sofern du es nicht vor dem ${periodEnd} kündigst.`
+              : 'Das Abonnement verlängert sich automatisch um jeweils ein weiteres Jahr, sofern du es vor Ablauf der laufenden Periode kündigst.',
+            cancel:
+              'Du kannst die automatische Verlängerung jederzeit vor Periodenende in der Lizenzverwaltung deaktivieren.',
+            cta: 'Zur App',
+          }
+
+  const html = `<p>${copy.greeting},</p><p>${copy.activated}</p><p>${copy.renewal}</p><p>${copy.cancel}</p><p><a href="${appLink}">${copy.cta}</a></p>`
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${resendApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: fromEmail,
+      to: [email],
+      subject: copy.subject,
+      html,
+    }),
+  })
+
+  if (!response.ok) {
+    const body = await response.text()
+    throw new Error(`Resend API error (${response.status}): ${body}`)
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 })
@@ -523,6 +626,24 @@ Deno.serve(async (req) => {
 
       if (rpcError) {
         throw new Error(`${rpcName} failed: ${rpcError.message}`)
+      }
+
+      try {
+        const { data: emailClaim, error: emailClaimError } = await admin.rpc(
+          'claim_checkout_purchase_confirmation_email',
+          { p_reference_id: referenceId },
+        )
+        if (emailClaimError) {
+          console.error('Purchase confirmation email claim failed:', emailClaimError)
+        } else if (
+          emailClaim &&
+          typeof emailClaim === 'object' &&
+          (emailClaim as Record<string, unknown>).claimed === true
+        ) {
+          await sendPurchaseConfirmationEmailFromClaim(emailClaim as Record<string, unknown>)
+        }
+      } catch (emailError) {
+        console.error('Purchase confirmation email failed:', emailError)
       }
     } else if (FAILURE_STATUSES.has(normalizedStatus)) {
       if (!checkoutSession?.id) {

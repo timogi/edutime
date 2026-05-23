@@ -5,8 +5,8 @@ export const agbMetaEn = {
   title: 'General Terms and Conditions of EduTime',
   tocLabel: 'Table of Contents',
   meta: {
-    version: 'Version 1.0',
-    lastUpdated: 'March 3, 2025',
+    version: 'Version 1.1',
+    lastUpdated: 'May 22, 2026',
   },
 }
 
@@ -74,16 +74,15 @@ export function AGBEn() {
       <LegalDocumentSection id='anwendungsbereich' title='1. Scope of Application' order={2}>
         <p>
           EduTime GmbH, c/o Tim Ogi, Bienenstrasse 8, 3018 Bern (hereinafter «EduTime»), makes
-          available to the customer on the basis of an individual contract (hereinafter also «SaaS
-          individual contract») and these General Terms and Conditions (hereinafter «GTC», including
-          their integral contract components, collectively hereinafter «Contract») for the duration
-          of the contract the usage rights described in the contract to the EduTime software
-          solution (hereinafter «SaaS software») together with the associated documentation on the
-          server infrastructure of EduTime or of the platform provider engaged by EduTime for use by
-          the customer by remote access via the Internet, and provides the further services agreed
-          in the contract in connection with this use of the SaaS software (such as the provision of
-          storage space and support and maintenance) in the sense of a cloud service (hereinafter
-          collectively «SaaS service»).
+          available to the customer on the basis of these General Terms and Conditions (hereinafter
+          «GTC», including their integral contract components, collectively hereinafter «Contract»)
+          for the duration of the contract the usage rights described in the checkout or online
+          order to the EduTime software solution (hereinafter «SaaS software») together with the
+          associated documentation on the server infrastructure of EduTime or of the platform
+          provider engaged by EduTime for use by the customer by remote access via the Internet,
+          and provides the further services in connection with this use of the SaaS software (such as
+          the provision of storage space and support and maintenance) in the sense of a cloud service
+          (hereinafter collectively «SaaS service»).
         </p>
         <p>
           The customer's purchasing and business terms and conditions do not apply, even if EduTime
@@ -96,7 +95,11 @@ export function AGBEn() {
         <p>
           These GTC alone do not create any mutual obligations to supply, pay, accept, or contract.
           Any claim of the customer to delivery or performance in relation to the scope of
-          application of the GTC requires a concluded SaaS individual contract. The presentation of
+          application of the GTC requires a concluded contract. The contract is formed when the
+          customer selects a service offering in the self-service checkout (or an equivalent
+          electronic ordering function provided by EduTime), provides the required information,
+          accepts the GTC, and payment is successfully completed or the licence is activated by
+          EduTime. EduTime usually confirms conclusion of the contract by email. The presentation of
           products and services on EduTime's websites or in price lists does not constitute a
           legally binding contractual offer by EduTime. Unless otherwise stated, offers from EduTime
           are valid for ten (10) days.
@@ -105,7 +108,7 @@ export function AGBEn() {
 
       <LegalDocumentSection id='umfang-der-nutzung' title='2. Scope of Use' order={2}>
         <p>
-          EduTime grants the customer, to the extent of the SaaS individual contract, the use of the
+          EduTime grants the customer, to the extent of the online order, the use of the
           SaaS software specified therein in the agreed scope of services (e.g. number of users) via
           the Internet. For this purpose, EduTime makes the SaaS software available on a server
           platform to which the customer can access via the Internet and thus use the SaaS software.
@@ -122,11 +125,10 @@ export function AGBEn() {
           such use.
         </p>
         <p>
-          Under these GTC in conjunction with the corresponding SaaS individual contract, EduTime
-          grants the customer the non-exclusive, non-transferable, non-sublicensable, and paid right
-          to use the SaaS software in accordance with the provisions of these GTC and the
-          corresponding SaaS individual contract after full payment of the applicable usage fees for
-          the customer's own purposes. No acquisition of rights in the SaaS software beyond this is
+          Under these GTC, EduTime grants the customer the non-exclusive, non-transferable,
+          non-sublicensable, and paid right to use the SaaS software in accordance with the provisions
+          of these GTC and the online order after full payment of the applicable usage fees for the
+          customer's own purposes. No acquisition of rights in the SaaS software beyond this is
           associated with this grant of usage rights. The customer is expressly not permitted to
           rent and/or transfer the SaaS service or parts thereof to third parties.
         </p>
@@ -135,13 +137,13 @@ export function AGBEn() {
           natural persons authorised to use the SaaS service for the benefit of the customer and who
           have unique user identifiers and passwords for the SaaS service) are subject to and in
           compliance with this contract. The customer may grant its users the right to access and
-          use the SaaS service or to obtain the services acquired under a SaaS individual contract;
+          use the SaaS service or to obtain the services acquired under the online order;
           this is subject to the condition that all such access, use, and consumption by users are
           subject to the contract and that the customer is at all times liable for the performance
           of this contract by its users.
         </p>
         <p>
-          Unless otherwise agreed in the SaaS individual contract, EduTime undertakes to provide the
+          Unless otherwise agreed in the online order, EduTime undertakes to provide the
           following support services for the SaaS service on business days, from 08:00 to 17:00,
           excluding official and local public holidays at EduTime's seat (services outside these
           hours are charged separately):
@@ -165,10 +167,10 @@ export function AGBEn() {
           then-current rates.
         </p>
         <p>
-          The current technical requirements for the customer's use/network connection are set out
-          in the SaaS individual contract. The technical requirements valid at the time of contract
-          conclusion mentioned therein may be unilaterally adapted by EduTime at any time to the
-          state of the art, whereby EduTime informs the customer of material changes in compliance
+          The current technical requirements for the customer's use/network connection are published
+          on EduTime's website and/or shown in the online order. The technical requirements valid at
+          the time of contract conclusion mentioned therein may be unilaterally adapted by EduTime at
+          any time to the state of the art, whereby EduTime informs the customer of material changes in compliance
           with a reasonable period (as a rule one month in advance), in particular by email or on a
           suitable website. The customer undertakes to comply with the technical requirements at all
           times and to ensure that users are familiar with the proper operation of the SaaS
@@ -208,8 +210,11 @@ export function AGBEn() {
         </p>
         <p>
           If the trial version is not changed to any paid scope of services during the granted trial
-          period, all of the customer's data will be deleted upon expiry of the trial version
-          licence in accordance with EduTime's deletion cycles.
+          period, access to the SaaS service ends upon expiry of the trial version. Data entered by
+          the customer generally remains stored. If the customer wishes to delete their data, they
+          may delete their user account in the account settings; this deletes the associated data.
+          EduTime is entitled to initiate deletion of accounts that have been inactive for an
+          extended period; the customer will be notified at least thirty (30) days in advance.
         </p>
       </LegalDocumentSection>
 
@@ -221,7 +226,7 @@ export function AGBEn() {
         <p>
           EduTime makes storage capacity on EduTime's server infrastructure available to the
           customer for the storage of data in connection with the use of the SaaS software in
-          accordance with the SaaS individual contract.
+          accordance with the online order.
         </p>
         <p>
           The data belong to the legal sphere of the customer using the SaaS service, even if they
@@ -351,15 +356,14 @@ export function AGBEn() {
         order={2}
       >
         <p>
-          The remuneration payable by the customer for the SaaS service is set out in the SaaS
-          individual contract.
+          The remuneration payable by the customer for the SaaS service results from the online
+          order or checkout.
         </p>
         <p>
-          EduTime is entitled to unilaterally adjust the remuneration agreed in the SaaS individual
-          contract with a notice period of two (2) months to the start of a new contract period. If
-          the customer does not agree with the price adjustment, the customer may terminate the SaaS
-          service subject to a notice period of 20 days to the end of the contract period by notice
-          in writing (cf. Clause 17.3).
+          EduTime is entitled to unilaterally adjust the agreed remuneration with a notice period of
+          two (2) months to the start of a new contract period. If the customer does not agree with
+          the price adjustment, the customer may terminate the SaaS service subject to a notice
+          period of 20 days to the end of the contract period by notice in writing (cf. Clause 17.3).
         </p>
         <p>
           All prices are exclusive of the applicable value added tax. EduTime generally invoices the
@@ -388,7 +392,7 @@ export function AGBEn() {
       >
         <p>
           EduTime has the right to verify on a monthly and annual basis the actual extent of use of
-          the scope of services of the SaaS service agreed in the SaaS individual contract and to
+          the scope of services of the SaaS service agreed in the online order and to
           claim remuneration for any excess use beyond the licensed scope of services.
         </p>
         <p>
@@ -520,20 +524,20 @@ export function AGBEn() {
         order={2}
       >
         <p>
-          The contract enters into force upon order confirmation by EduTime (SaaS individual
-          contract) and applies for an initial contract term of one year, unless otherwise agreed in
-          the SaaS individual contract. The contract enters into force at the latest, however, upon
-          EduTime's provision of services to the customer. The contract subsequently renews
-          automatically by one further year each time, unless it is terminated by either party in
-          compliance with a notice period of three (3) months before the end of the contract term in
-          writing or via an electronic function that EduTime may explicitly make available to the
-          customer.
+          The contract is formed upon activation of the licence after a successful online order and
+          applies for an initial contract term of one year, unless otherwise agreed in the online
+          order. The contract enters into force at the latest upon EduTime's provision of services to
+          the customer. The contract subsequently renews automatically by one further year each
+          time, unless it is terminated before the end of the current contract period by the
+          customer via the electronic functions provided by EduTime (e.g. licence management in
+          account settings) or by EduTime in writing. Termination takes effect at the end of the
+          current contract period; no separate notice period of several months is required unless
+          expressly agreed otherwise in writing.
         </p>
         <p>
-          Extended support, maintenance, and care services for the SaaS service commence upon order
-          confirmation by EduTime (individual contract), whereby the contract term is aligned with
-          that for the SaaS service. The provisions in Clause 14.1 apply to automatic renewal and
-          termination.
+          Extended support, maintenance, and care services for the SaaS service commence upon
+          contract formation, whereby the contract term is aligned with that for the SaaS service.
+          The provisions in Clause 14.1 apply to automatic renewal and termination.
         </p>
         <p>
           Acceptances by the customer that contain extensions, restrictions, or other changes to
@@ -605,7 +609,9 @@ export function AGBEn() {
         </p>
         <p>
           To the extent EduTime processes the customer's personal data as a processor, the current
-          version of the DPA, which is provided upon contract conclusion, forms part of these GTC.
+          version of the DPA published at https://edutime.ch/docs/avv forms part of these GTC.
+          Separate acceptance of the DPA at checkout is not required; the customer may view and
+          download the DPA at any time.
         </p>
         <p>
           EduTime is entitled to include the customer in its official customer list and thereby in
@@ -659,15 +665,15 @@ export function AGBEn() {
           https://edutime.ch/docs/agb.
         </p>
         <p>
-          In the event of discrepancies or contradictions, the provisions of any individual
-          contracts take precedence over these GTC. The current version of the data processing
-          agreement also takes precedence over these GTC where it contains a deviating or
-          contradictory provision regarding the processing of personal data.
+          In the event of discrepancies or contradictions, express written individual agreements
+          between the parties take precedence over these GTC. The current version of the data
+          processing agreement also takes precedence over these GTC where it contains a deviating
+          or contradictory provision regarding the processing of personal data.
         </p>
         <p>
           All notices must, unless this contract or the law requires a stricter form, be sent in
-          writing, electronically, or by email to the (email) addresses specified by the customer in
-          the SaaS individual contract or specified on EduTime's website. The customer is obliged to
+          writing, electronically, or by email to the (email) addresses specified in the customer's
+          user profile and/or on EduTime's website. The customer is obliged to
           inform EduTime of address changes (including email) without delay, or to update the
           customer profile in the SaaS service, failing which notices are deemed to have been
           effectively received at the last notified address.

@@ -1149,7 +1149,7 @@
     },
     "subject": {
       "title": "Subject",
-      "text": "Under this contract for the provision of Software-as-a-Service services (hereinafter referred to as \"SaaS Individual Contract\" or \"Contract\"), EduTime provides the Customer with the usage rights for standard software (hereinafter also referred to as \"Software\") for access via a telecommunications connection as well as storage space for the Customer's application data (hereinafter collectively also referred to as \"SaaS Service\", \"Services\" or \"Web-App\") in accordance with the terms of this contract (including its appendices) and the General Terms and Conditions of EduTime for SaaS Services, Version 1.0 (hereinafter referred to as \"GTC\")."
+      "text": "Under this contract for the provision of Software-as-a-Service services (hereinafter referred to as \"SaaS Individual Contract\" or \"Contract\"), EduTime provides the Customer with the usage rights for standard software (hereinafter also referred to as \"Software\") for access via a telecommunications connection as well as storage space for the Customer's application data (hereinafter collectively also referred to as \"SaaS Service\", \"Services\" or \"Web-App\") in accordance with the terms of this contract (including its appendices) and the General Terms and Conditions of EduTime for SaaS Services, Version 1.1 (hereinafter referred to as \"GTC\")."
     },
     "service": {
       "title": "SaaS Service, Remuneration",
@@ -1180,8 +1180,8 @@
     "components": {
       "title": "Contract Components",
       "text1": "The following appendices form an integral part of this contract and apply to it, unless expressly regulated otherwise in this contract:",
-      "agb": "General Terms and Conditions of EduTime for SaaS Service, Version 1.0 of December 20, 2024 (herein referred to as \"GTC\")",
-      "avv": "[only if contract with an organization: Data Processing Agreement of EduTime, Version 1.0 of December 20, 2024 (referred to as \"DPA\")]",
+      "agb": "General Terms and Conditions of EduTime for SaaS Service, Version 1.1 of May 22, 2026 (herein referred to as \"GTC\")",
+      "avv": "[only if contract with an organization: Data Processing Agreement of EduTime, Version 1.1 of May 22, 2026 (referred to as \"DPA\")]",
       "text2": "The Customer confirms by signing this contract that they are in possession of the aforementioned components and have taken note of them.",
       "text3": "In case of contradictions between individual components, these apply in the aforementioned order of precedence."
     },
@@ -1249,9 +1249,11 @@
     "autoRenewIndividual": "By paying, you enter into an annual subscription. It renews automatically for another year unless you cancel before the end of the current period. See the GTC for details.",
     "autoRenewOrg": "By paying, you enter into an annual subscription for your organization. It renews automatically for another year unless cancelled before the end of the current period. See the GTC for details.",
     "agbLink": "GTC",
-    "avvHintPrefix": "You can find the Data Processing Agreement",
+    "avvHintPrefix": "For organizations with data processing, the DPA is available",
     "avvHintLink": "here",
-    "avvHintSuffix": ".",
+    "avvHintSuffix": " (no separate acceptance at checkout required).",
+    "sellerInfo": "Provider: EduTime GmbH, Bienenstrasse 8, 3018 Bern, Switzerland, info@edutime.ch",
+    "cancellationInfo": "Cancellation: anytime before period end in account settings (license management); effective at period end.",
     "documentsTitle": "Required documents",
     "acceptDocument": "I accept the {title}",
     "openDocument": "Open document",

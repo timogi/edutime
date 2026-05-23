@@ -13,7 +13,7 @@ description: "Legal document acceptance system. Users accept terms in-app; AGB a
 
 - Documents are identified by a stable **code**: `terms_of_use`, `privacy_policy`, `saas_agb`, `saas_single_contract`, `avv`
 - **Tracked**: `terms_of_use` (context `app`), `saas_agb` (contexts `checkout_individual` / `checkout_org`)
-- **Not tracked**: `privacy_policy` (notice at registration), `avv` (link at checkout only)
+- **Not tracked**: `privacy_policy` (notice at registration), `avv` (published at `/docs/avv`; no separate checkout acceptance — part of contract by reference per AGB §15)
 - Each tracked document has **versions** via `legal.current_versions`
 - **Acceptances** in `legal.acceptances`, linked to `document_version_id`
 - Idempotent accept via `on conflict do nothing`

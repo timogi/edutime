@@ -5,8 +5,8 @@ export const agbMetaDe = {
   title: 'Allgemeine Geschäftsbedingungen von EduTime',
   tocLabel: 'Inhaltsverzeichnis',
   meta: {
-    version: 'Version 1.0',
-    lastUpdated: '3. März 2025',
+    version: 'Version 1.1',
+    lastUpdated: '22. Mai 2026',
   },
 }
 
@@ -78,16 +78,15 @@ export function AGBDe() {
       <LegalDocumentSection id='anwendungsbereich' title='1. Anwendungsbereich' order={2}>
         <p>
           EduTime GmbH, c/o Tim Ogi, Bienenstrasse 8, 3018 Bern (nachfolgend «EduTime»), stellt dem
-          Kunden auf Basis eines Einzelvertrags (nachfolgend auch «SaaS-Einzelvertrag») sowie der
-          vorliegenden Allgemeinen Geschäftsbedingungen (nachfolgend «AGB», inkl. deren
-          integrierende Vertragsbestandteile, insgesamt nachfolgend «Vertrag») während der
-          Vertragsdauer die im Vertrag beschriebenen Nutzungsrechte an der EduTime-Softwarelösung
-          (nachfolgend «SaaS-Software») mit der zugehörigen Dokumentation auf der
-          Serverinfrastruktur von EduTime oder des von EduTime eingesetzten Plattform-Providers zur
-          Nutzung durch den Kunden mittels Fernzugriff über das Internet zur Verfügung und erbringt
-          die im Vertrag vereinbarten, mit dieser Nutzung der SaaS-Software verbundenen weiteren
-          Leistungen (wie z.B. die Zurverfügungstellung von Speicherplatz sowie Support und Wartung)
-          im Sinne eines Cloud-Services (nachfolgend insgesamt «SaaS-Service»).
+          Kunden auf Basis der vorliegenden Allgemeinen Geschäftsbedingungen (nachfolgend «AGB»,
+          inkl. deren integrierende Vertragsbestandteile, insgesamt nachfolgend «Vertrag») während
+          der Vertragsdauer die im Checkout bzw. in der Online-Bestellung beschriebenen
+          Nutzungsrechte an der EduTime-Softwarelösung (nachfolgend «SaaS-Software») mit der
+          zugehörigen Dokumentation auf der Serverinfrastruktur von EduTime oder des von EduTime
+          eingesetzten Plattform-Providers zur Nutzung durch den Kunden mittels Fernzugriff über das
+          Internet zur Verfügung und erbringt die mit dieser Nutzung der SaaS-Software verbundenen
+          weiteren Leistungen (wie z.B. die Zurverfügungstellung von Speicherplatz sowie Support und
+          Wartung) im Sinne eines Cloud-Services (nachfolgend insgesamt «SaaS-Service»).
         </p>
         <p>
           Einkaufs- und Geschäftsbedingungen des Kunden finden keine Anwendung, auch wenn EduTime
@@ -101,15 +100,20 @@ export function AGBDe() {
           Durch die vorliegenden AGB allein werden wechselseitig keinerlei Belieferungs-, Zahlungs-,
           Abnahme- oder Kontrahierungspflichten begründet. Ein Anspruch des Kunden auf Lieferung
           oder Leistung in Bezug auf den Anwendungsbereich der AGB setzt einen abgeschlossenen
-          SaaS-Einzelvertrag voraus. Die Präsentation von Produkten und Leistungen auf den Websites
-          oder in Preislisten von EduTime stellt noch kein rechtlich bindendes Vertragsangebot von
-          EduTime dar. Ohne anderslautende Angaben sind Offerten von EduTime zehn (10) Tage gültig.
+          Vertrag voraus. Der Vertrag kommt zustande, wenn der Kunde im Self-Service-Checkout (oder
+          in einer von EduTime bereitgestellten gleichwertigen elektronischen Bestellfunktion) ein
+          Leistungsangebot auswählt, die erforderlichen Angaben macht, die AGB akzeptiert und die
+          Zahlung erfolgreich abgeschlossen bzw. die Lizenz von EduTime aktiviert wurde. EduTime
+          bestätigt den Vertragsschluss in der Regel per E-Mail. Die Präsentation von Produkten und
+          Leistungen auf den Websites oder in Preislisten von EduTime stellt noch kein rechtlich
+          bindendes Vertragsangebot von EduTime dar. Ohne anderslautende Angaben sind Offerten von
+          EduTime zehn (10) Tage gültig.
         </p>
       </LegalDocumentSection>
 
       <LegalDocumentSection id='umfang-der-nutzung' title='2. Umfang der Nutzung' order={2}>
         <p>
-          EduTime überlässt dem Kunden im Umfang des SaaS-Einzelvertrages die dort spezifizierte
+          EduTime überlässt dem Kunden im Umfang der Online-Bestellung die dort spezifizierte
           SaaS-Software im vereinbarten Leistungsumfang (z.B. Anzahl User) zur Nutzung über das
           Internet. Zu diesem Zweck stellt EduTime die SaaS-Software auf einer Serverplattform zur
           Verfügung, auf welche der Kunde über das Internet zugreifen und so die SaaS-Software
@@ -127,11 +131,10 @@ export function AGBDe() {
           Zusammenhang mit einer solchen Nutzung entstehen.
         </p>
         <p>
-          Unter diesen AGB in Verbindung mit dem entsprechenden SaaS-Einzelvertrag räumt EduTime dem
-          Kunden das nicht exklusive, unübertragbare, nicht unterlizenzierbare und entgeltliche
-          Recht ein, die SaaS-Software gemäss den Bestimmungen dieser AGB und des entsprechenden
-          SaaS-Einzelvertrages nach vollständiger Bezahlung der anfallenden Nutzungsgebühren für
-          eigene Zwecke zu nutzen. Ein darüberhinausgehender Erwerb von Rechten an der SaaS-Software
+          Unter diesen AGB räumt EduTime dem Kunden das nicht exklusive, unübertragbare, nicht
+          unterlizenzierbare und entgeltliche Recht ein, die SaaS-Software gemäss den Bestimmungen
+          dieser AGB und der Online-Bestellung nach vollständiger Bezahlung der anfallenden
+          Nutzungsgebühren für eigene Zwecke zu nutzen. Ein darüberhinausgehender Erwerb von Rechten an der SaaS-Software
           ist mit dieser Nutzungsrechtseinräumung nicht verbunden. Dem Kunden ist es ausdrücklich
           nicht gestattet, den SaaS-Service oder Teile davon zu vermieten und/oder an Dritte
           weiterzugeben.
@@ -142,13 +145,12 @@ export function AGBDe() {
           Vorteil des Kunden berechtigt sind und die über einzigartige Benutzerkennungen und
           Passwörter für den SaaS-Service verfügen) diesem Vertrag unterliegen und damit im Einklang
           stehen. Der Kunde kann seinen Nutzern das Recht erteilen, auf den SaaS-Service zuzugreifen
-          und ihn zu nutzen oder die Dienste, die im Rahmen eines SaaS-Einzelvertrages erworben
-          wurden, zu beziehen; dies gilt unter der Voraussetzung, dass jegliche solche Zugriffe,
+          und ihn zu nutzen oder die im Rahmen der Online-Bestellung erworbenen Dienste zu beziehen; dies gilt unter der Voraussetzung, dass jegliche solche Zugriffe,
           Verwendungen und Bezüge durch die Nutzer dem Vertrag unterliegen und dass der Kunde zu
           jedem Zeitpunkt für die Erfüllung des vorliegenden Vertrags durch seine Nutzer haftet.
         </p>
         <p>
-          Sofern im SaaS-Einzelvertrag nichts anderes vereinbart ist, verpflichtet sich EduTime, die
+          Sofern in der Online-Bestellung nichts anderes vereinbart ist, verpflichtet sich EduTime, die
           folgenden Supportleistungen für den SaaS-Service an Werktagen, in der Zeit von 08:00 bis
           17:00 Uhr, unter Ausschluss offizieller sowie ortsüblicher Feiertage am Sitz von EduTime
           (Leistungen ausserhalb dieser Zeiten werden gesondert verrechnet) zu erbringen:
@@ -173,8 +175,8 @@ export function AGBDe() {
         </p>
         <p>
           Die aktuellen, technischen Voraussetzungen für die Nutzung/Netzwerkanbindung des Kunden
-          werden im SaaS-Einzelvertrag festgelegt. Die darin genannten, zur Zeit des
-          Vertragsschlusses gültigen technischen Voraussetzungen können von EduTime jederzeit
+          werden auf der Website von EduTime bzw. in der Online-Bestellung ausgewiesen. Die darin
+          genannten, zur Zeit des Vertragsschlusses gültigen technischen Voraussetzungen können von
           einseitig dem Stand der Technik angepasst werden, wobei EduTime den Kunden über
           wesentliche Anpassungen unter Einhaltung einer angemessenen Frist (in der Regel einen
           Monat im Voraus) insbesondere per E-Mail oder auf einer geeigneten Website informiert. Der
@@ -218,8 +220,12 @@ export function AGBDe() {
         </p>
         <p>
           Wird die Testversion während der gewährten Testdauer auf keinen kostenpflichtigen
-          Leistungsumfang geändert, werden nach Ablauf der Lizenz für die Testversion alle Daten des
-          Kunden entsprechend den Löschzyklen von EduTime gelöscht.
+          Leistungsumfang geändert, endet der Zugang zum SaaS-Service mit Ablauf der Testversion.
+          Die vom Kunden erfassten Daten bleiben grundsätzlich bestehen. Möchte der Kunde seine
+          Daten löschen, kann er sein Benutzerkonto in den Kontoeinstellungen löschen; damit werden
+          die zugehörigen Daten gelöscht. EduTime ist berechtigt, bei Konten, die über einen
+          längeren Zeitraum inaktiv sind, die Löschung einzuleiten; der Kunde wird hierüber
+          vorgängig innert dreissig (30) Tagen benachrichtigt.
         </p>
       </LegalDocumentSection>
 
@@ -231,7 +237,7 @@ export function AGBDe() {
         <p>
           EduTime stellt dem Kunden zur Speicherung der Daten im Zusammenhang mit der Nutzung der
           SaaS-Software Speicherkapazität auf der Serverinfrastruktur von EduTime nach Massgabe des
-          SaaS-Einzelvertrages zur Verfügung.
+          SaaS-Software nach Massgabe der Online-Bestellung zur Verfügung.
         </p>
         <p>
           Die Daten gehören zum Rechtsbereich des Kunden, der den SaaS-Service nutzt, auch wenn
@@ -369,13 +375,12 @@ export function AGBDe() {
         order={2}
       >
         <p>
-          Die vom Kunden zu entrichtende Vergütung für den SaaS-Service ergibt sich aus dem
-          SaaS-Einzelvertrag.
+          Die vom Kunden zu entrichtende Vergütung für den SaaS-Service ergibt sich aus der
+          Online-Bestellung bzw. dem Checkout.
         </p>
         <p>
-          EduTime ist berechtigt, die im SaaS-Einzelvertrag vereinbarte Vergütung unter einer
-          Vorankündigungsfrist von zwei (2) Monaten auf den Beginn einer neuen Vertragsperiode hin
-          einseitig anzupassen. Falls der Kunde mit der Preisanpassung nicht einverstanden ist, kann
+          EduTime ist berechtigt, die vereinbarte Vergütung unter einer Vorankündigungsfrist von
+          zwei (2) Monaten auf den Beginn einer neuen Vertragsperiode hin einseitig anzupassen. Falls der Kunde mit der Preisanpassung nicht einverstanden ist, kann
           der Kunde den SaaS-Service unter Berücksichtigung einer Kündigungsfrist von 20 Tagen auf
           das Ende der Vertragsperiode hin durch Mitteilung in Schriftform (vgl. Ziffer 17.3)
           kündigen.
@@ -411,7 +416,7 @@ export function AGBDe() {
       >
         <p>
           EduTime hat das Recht, monatlich und jährlich den effektiven Umfang der Nutzung des im
-          SaaS-Einzelvertrag vereinbarten Leistungsumfangs des SaaS-Services zu prüfen und die
+          im Rahmen der Online-Bestellung vereinbarten Leistungsumfangs des SaaS-Services zu prüfen und die
           Vergütung für eine festgestellte Mehrnutzung gegenüber dem lizenzierten Leistungsumfang
           nachzufordern.
         </p>
@@ -550,20 +555,21 @@ export function AGBDe() {
         order={2}
       >
         <p>
-          Der Vertrag tritt mit Bestellbestätigung durch EduTime (SaaS-Einzelvertrag) in Kraft und
-          gilt für eine initiale Vertragsdauer von einem Jahr, sofern im SaaS-Einzelvertrag nichts
-          Abweichendes vereinbart wurde. Der Vertrag tritt jedoch spätestens mit der
+          Der Vertrag kommt mit Aktivierung der Lizenz nach erfolgreicher Online-Bestellung zustande
+          und gilt für eine initiale Vertragsdauer von einem Jahr, sofern in der Online-Bestellung
+          nichts Abweichendes vereinbart wurde. Der Vertrag tritt spätestens mit der
           Leistungserbringung von EduTime für den Kunden in Kraft. Der Vertrag verlängert sich
-          anschliessend automatisch um jeweils ein weiteres Jahr, sofern er nicht durch eine der
-          Vertragsparteien unter Einhaltung einer Frist von drei (3) Monaten vor Ablauf der
-          Vertragsdauer schriftlich oder über eine von EduTime allenfalls explizit dem Kunden zur
-          Verfügung gestellten elektronischen Funktion gekündigt wird.
+          anschliessend automatisch um jeweils ein weiteres Jahr, sofern er nicht vor Ablauf der
+          laufenden Vertragsperiode durch den Kunden über die in EduTime bereitgestellten
+          elektronischen Funktionen (z.B. Lizenzverwaltung in den Kontoeinstellungen) oder durch
+          EduTime schriftlich gekündigt wird. Die Kündigung wird jeweils zum Ende der laufenden
+          Vertragsperiode wirksam; es ist keine gesonderte Kündigungsfrist von mehreren Monaten
+          erforderlich, sofern nicht ausdrücklich schriftlich etwas anderes vereinbart wurde.
         </p>
         <p>
           Erweiterte Support-, Wartungs- und Pflegeleistungen des SaaS-Services beginnen mit
-          Bestellbestätigung durch EduTime (Einzelvertrag), wobei die Vertragsdauer derjenigen für
-          den SaaS-Service angeglichen wird. Für die automatische Verlängerung und Kündigung gilt
-          das in der Ziffer 14.1 ausgeführte.
+          Vertragsschluss, wobei die Vertragsdauer derjenigen für den SaaS-Service angeglichen wird.
+          Für die automatische Verlängerung und Kündigung gilt das in der Ziffer 14.1 Ausgeführte.
         </p>
         <p>
           Annahmeerklärungen des Kunden, die Erweiterungen, Einschränkungen oder sonstige Änderungen
@@ -636,8 +642,10 @@ export function AGBDe() {
         </p>
         <p>
           Soweit EduTime als Auftragsbearbeiter Personendaten des Kunden bearbeitet, bildet die
-          jeweils aktuelle Fassung der AVV, die bei Vertragsschluss zugestellt wird, Bestandteil
-          dieser AGB.
+          jeweils auf https://edutime.ch/docs/avv veröffentlichte Fassung der
+          Auftragsverarbeitungsvereinbarung («AVV») Bestandteil dieser AGB. Eine separate Annahme
+          der AVV im Checkout ist nicht erforderlich; der Kunde kann die AVV jederzeit einsehen und
+          herunterladen.
         </p>
         <p>
           EduTime ist berechtigt, den Kunden in ihre offizielle Kundenliste aufzunehmen und damit
@@ -695,16 +703,17 @@ export function AGBDe() {
           veröffentlicht.
         </p>
         <p>
-          Im Falle von Abweichungen oder Widersprüchen gehen die Bestimmungen allfälliger
-          Einzelverträge diesen AGB vor. Ebenfalls geht die aktuelle Fassung der
-          Auftragsverarbeitungsvereinbarung diesen AGB vor, sofern es eine abweichende oder
-          widersprüchliche Regelung betreffend die Bearbeitung von Personendaten betrifft.
+          Im Falle von Abweichungen oder Widersprüchen gehen ausdrückliche schriftliche
+          Individualvereinbarungen zwischen den Vertragsparteien diesen AGB vor. Ebenfalls geht die
+          aktuelle Fassung der Auftragsverarbeitungsvereinbarung diesen AGB vor, sofern es eine
+          abweichende oder widersprüchliche Regelung betreffend die Bearbeitung von Personendaten
+          betrifft.
         </p>
         <p>
           Sämtliche Mitteilungen sind, sofern in diesem Vertrag oder von Gesetzes wegen nicht
           zwingend eine strengere Form vorgesehen ist, schriftlich, elektronisch oder per E-Mail an
-          die vom Kunden im SaaS-Einzelvertrag angegebenen bzw. auf der Website von EduTime
-          angegebenen (E-Mail-)Adressen zu richten. Der Kunde ist verpflichtet, EduTime
+          die vom Kunden im Benutzerprofil bzw. auf der Website von EduTime angegebenen
+          (E-Mail-)Adressen zu richten. Der Kunde ist verpflichtet, EduTime
           Adressänderungen (inkl. E-Mail) unverzüglich bekannt zu geben, respektive das Kundenprofil
           im SaaS-Service anzupassen, widrigenfalls Mitteilungen an der zuletzt bekannt gegebenen
           Adresse als rechtswirksam zugegangen gelten.
