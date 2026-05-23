@@ -153,9 +153,17 @@ export function PricingCards({
   const handleStandardClick = onStandardClick ?? handleStandardClickDefault
   const handleOrganizationClick = onOrganizationClick ?? (() => setOrgModalOpened(true))
 
-  const mdPricingCols = showOnlyOrganizationOption ? 1 : hideDemoCard ? 2 : 3
+  const purchaseSelfServiceEnabled = isLicenseSelfServiceEnabled()
+  const showDemoCard = !hideDemoCard && !showOnlyOrganizationOption
+  const mdPricingCols = showOnlyOrganizationOption
+    ? 1
+    : !purchaseSelfServiceEnabled
+      ? 1
+      : hideDemoCard
+        ? 2
+        : 3
 
-  if (!isLicenseSelfServiceEnabled()) {
+  if (!purchaseSelfServiceEnabled && !showDemoCard) {
     return null
   }
 
@@ -238,6 +246,8 @@ export function PricingCards({
               </Card>
             ) : null}
 
+            {purchaseSelfServiceEnabled ? (
+            <>
             {/* Standard Pricing Card - Most Popular */}
             <Card
               className={`${classes.pricingCard} ${classes.popularCard}`}
@@ -309,11 +319,9 @@ export function PricingCards({
                 </Button>
               </Stack>
             </Card>
-          </>
-        ) : null}
 
-        {/* Multiple Licenses Card */}
-        <Card
+            {/* Multiple Licenses Card */}
+            <Card
           className={classes.pricingCard}
           padding='xl'
           radius='md'
@@ -379,6 +387,10 @@ export function PricingCards({
             </Button>
           </Stack>
         </Card>
+            </>
+            ) : null}
+          </>
+        ) : null}
       </SimpleGrid>
     </Stack>
   )

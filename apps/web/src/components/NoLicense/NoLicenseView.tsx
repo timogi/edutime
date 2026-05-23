@@ -395,7 +395,9 @@ export function NoLicenseView() {
   const showIndividualCheckoutPendingAlert =
     router.query.checkout === 'pending' && !showOrgCheckoutPendingAlert
 
-  const showSelfServicePricing = isLicenseSelfServiceEnabled() && !isAdministrator
+  const canStartDemo = !isAdministrator && hasUsedDemo === false
+  const showPurchasePricing = isLicenseSelfServiceEnabled() && !isAdministrator
+  const showPricingCards = canStartDemo || showPurchasePricing
 
   return (
     <>
@@ -566,7 +568,7 @@ export function NoLicenseView() {
             </Card>
           )}
 
-          {showSelfServicePricing ? (
+          {showPricingCards ? (
             <PricingCards
               embedded
               hideDemoCard={hasUsedDemo !== false}
@@ -577,16 +579,22 @@ export function NoLicenseView() {
             />
           ) : null}
 
-          {!isLicenseSelfServiceEnabled() && !isAdministrator && pendingInvitations.length === 0 ? (
+          {!showPurchasePricing && !canStartDemo && !isAdministrator && pendingInvitations.length === 0 ? (
             <Text size='sm' c='dimmed' ta='center' maw={560}>
               {t_noLicense('self-service-disabled-hint')}
+            </Text>
+          ) : null}
+
+          {!showPurchasePricing && canStartDemo && !isAdministrator ? (
+            <Text size='sm' c='dimmed' ta='center' maw={560}>
+              {t_noLicense('self-service-disabled-demo-only-hint')}
             </Text>
           ) : null}
 
           <Divider
             w='100%'
             my='lg'
-            label={showSelfServicePricing ? t_noLicense('personal-license-section-label') : undefined}
+            label={showPurchasePricing ? t_noLicense('personal-license-section-label') : undefined}
             labelPosition='center'
           />
 

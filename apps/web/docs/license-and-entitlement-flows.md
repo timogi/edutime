@@ -37,7 +37,7 @@ Shared helper: `hasActiveEntitlement` / active entitlement queries in `@edutime/
 
 ### Web: hide self-service purchase UI
 
-Set `NEXT_PUBLIC_LICENSE_SELF_SERVICE_ENABLED=false` in the web app env to hide demo, checkout, pricing, and org price calculator UI (default: enabled when unset). See `apps/web/src/utils/licenseUiFlags.ts`.
+Set `NEXT_PUBLIC_LICENSE_SELF_SERVICE_ENABLED=false` in the web app env to hide purchase, checkout, and org price calculator UI (demo on `/app/no-license` remains when eligible). See `apps/web/src/utils/licenseUiFlags.ts`.
 
 ---
 
