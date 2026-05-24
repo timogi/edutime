@@ -169,44 +169,44 @@ export type Database = {
       org_legacy_migration_plan: {
         Row: {
           actor_user_id: string | null
+          annual_amount_cents: number | null
           created_at: string
           currency: string
-          custom_annual_amount_cents: number | null
-          custom_seat_count: number | null
-          due_date: string | null
+          is_free: boolean
           metadata: Json
           migrate: boolean
-          migrate_invites: boolean
           note: string | null
           organization_id: number
+          renewal_at: string | null
+          seat_count: number | null
           updated_at: string
         }
         Insert: {
           actor_user_id?: string | null
+          annual_amount_cents?: number | null
           created_at?: string
           currency?: string
-          custom_annual_amount_cents?: number | null
-          custom_seat_count?: number | null
-          due_date?: string | null
+          is_free?: boolean
           metadata?: Json
           migrate?: boolean
-          migrate_invites?: boolean
           note?: string | null
           organization_id: number
+          renewal_at?: string | null
+          seat_count?: number | null
           updated_at?: string
         }
         Update: {
           actor_user_id?: string | null
+          annual_amount_cents?: number | null
           created_at?: string
           currency?: string
-          custom_annual_amount_cents?: number | null
-          custom_seat_count?: number | null
-          due_date?: string | null
+          is_free?: boolean
           metadata?: Json
           migrate?: boolean
-          migrate_invites?: boolean
           note?: string | null
           organization_id?: number
+          renewal_at?: string | null
+          seat_count?: number | null
           updated_at?: string
         }
         Relationships: []
@@ -578,7 +578,7 @@ export type Database = {
         Returns: Json
       }
       run_org_legacy_migration: {
-        Args: { p_organization_ids?: number[] }
+        Args: { p_organization_ids?: number[] | bigint[] }
         Returns: Json
       }
       run_org_renewal_reminder_sweep: {
@@ -591,6 +591,7 @@ export type Database = {
           p_amount_cents: number
           p_currency?: string
           p_organization_id: number
+          p_renewal_at?: string
           p_seat_count: number
         }
         Returns: string

@@ -1,0 +1,2 @@
+-- Deprecated: use select jsonb_pretty(billing.run_org_legacy_migration());
+-- Reset, backfill, and migrate are built into run_org_legacy_migration.

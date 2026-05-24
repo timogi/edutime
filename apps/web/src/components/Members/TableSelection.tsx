@@ -205,6 +205,13 @@ const TableSelection = ({
       onMembersChanged()
       setSelection([])
     },
+    onError: (err: Error) => {
+      showNotification({
+        title: t('delete-member-error-title'),
+        message: err.message || t('delete-member-error-message'),
+        color: 'red',
+      })
+    },
   })
 
   // React Query: Remove multiple members mutation
@@ -217,6 +224,13 @@ const TableSelection = ({
       queryClient.invalidateQueries({ queryKey: ['organizationMembers', currentOrg?.id] })
       onMembersChanged()
       setSelection([])
+    },
+    onError: (err: Error) => {
+      showNotification({
+        title: t('delete-member-error-title'),
+        message: err.message || t('delete-member-error-message'),
+        color: 'red',
+      })
     },
   })
 

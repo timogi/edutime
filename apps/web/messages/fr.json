@@ -281,6 +281,8 @@
     "invite-notification-no-email-message": "Nous n’avons pas pu envoyer l’e-mail (vérifie la configuration du serveur). La personne peut quand même se connecter à EduTime et accepter l’invitation sous Compte.",
     "invite-notification-error-title": "Invitation impossible",
     "invite-notification-error-message": "Une erreur s’est produite. Réessaie.",
+    "delete-member-error-title": "Impossible de retirer le membre",
+    "delete-member-error-message": "Une erreur s’est produite. Réessaie.",
     "Enter email": "Entrer l'email",
     "guides": "Guides",
     "introduction": "Introduction",
