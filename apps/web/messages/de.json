@@ -281,6 +281,8 @@
     "invite-notification-no-email-message": "Die E-Mail konnte nicht gesendet werden (Server-Konfiguration prüfen). Die Person kann sich trotzdem bei EduTime anmelden und die Einladung unter Konto annehmen.",
     "invite-notification-error-title": "Einladung fehlgeschlagen",
     "invite-notification-error-message": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
+    "delete-member-error-title": "Mitglied konnte nicht entfernt werden",
+    "delete-member-error-message": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
     "Enter email": "E-Mail eingeben",
     "guides": "Anleitungen",
     "introduction": "Einführung",

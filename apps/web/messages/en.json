@@ -281,6 +281,8 @@
     "invite-notification-no-email-message": "We couldn’t send the email (check server configuration). The person can still sign in to EduTime and accept the invite under Account.",
     "invite-notification-error-title": "Invite failed",
     "invite-notification-error-message": "Something went wrong. Please try again.",
+    "delete-member-error-title": "Could not remove member",
+    "delete-member-error-message": "Something went wrong. Please try again.",
     "Enter email": "Enter email",
     "guides": "Guides",
     "introduction": "Introduction",
