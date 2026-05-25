@@ -17,7 +17,7 @@ export function ImprintContent() {
         <br />
         3018 Bern
         <br />
-        UID: CHE-459.271.466
+        Handelsregister-Nr.: CH-036.4.107.284-7
       </Text>
       <Text c='dimmed'>
         E-Mail: info@edutime.ch

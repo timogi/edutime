@@ -37,7 +37,7 @@ const EDU_TIME_IMPRINT = {
   careOf: 'c/o Tim Ogi',
   street: 'Bienenstrasse 8',
   city: '3018 Bern',
-  uid: 'CHE-459.271.466',
+  commercialRegisterNo: 'CH-036.4.107.284-7',
   email: 'info@edutime.ch',
   website: 'https://edutime.ch',
 } as const
@@ -209,7 +209,9 @@ export function PaymentReceiptDocument({ invoice, locale, translations }: Paymen
             <PdfText style={receiptStyles.issuerLine}>{EDU_TIME_IMPRINT.careOf}</PdfText>
             <PdfText style={receiptStyles.issuerLine}>{EDU_TIME_IMPRINT.street}</PdfText>
             <PdfText style={receiptStyles.issuerLine}>{EDU_TIME_IMPRINT.city}</PdfText>
-            <PdfText style={receiptStyles.issuerLine}>UID: {EDU_TIME_IMPRINT.uid}</PdfText>
+            <PdfText style={receiptStyles.issuerLine}>
+              Handelsregister-Nr.: {EDU_TIME_IMPRINT.commercialRegisterNo}
+            </PdfText>
             <PdfText style={receiptStyles.issuerLine}>{EDU_TIME_IMPRINT.email}</PdfText>
             <PdfText style={receiptStyles.issuerLine}>{EDU_TIME_IMPRINT.website}</PdfText>
           </View>
