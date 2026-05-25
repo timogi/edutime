@@ -1,6 +1,6 @@
 import '@/styles/globals.css'
 import type { AppProps } from 'next/app'
-import { MantineProvider } from '@mantine/core'
+import { MantineProvider, useMantineColorScheme } from '@mantine/core'
 import { useRouter } from 'next/router'
 import { NextIntlClientProvider } from 'next-intl'
 import { Notifications } from '@mantine/notifications'
@@ -35,6 +35,14 @@ const queryClient = new QueryClient({
 })
 
 const emptySubscribe = () => () => {}
+
+function SystemColorSchemeOnly() {
+  const { clearColorScheme } = useMantineColorScheme()
+  useEffect(() => {
+    clearColorScheme()
+  }, [clearColorScheme])
+  return null
+}
 
 export default function App(props: AppProps) {
   const router = useRouter()
@@ -96,8 +104,9 @@ export default function App(props: AppProps) {
             theme={{
               primaryColor: 'violet',
             }}
-            defaultColorScheme='light'
+            defaultColorScheme='auto'
           >
+            <SystemColorSchemeOnly />
             <DatesProvider settings={{ locale: 'de' }}>
               <UserProvider>
                 <Notifications position='top-right' zIndex={1000} />

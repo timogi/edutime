@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { Button, Text, Stack, useMantineColorScheme, useMantineTheme } from '@mantine/core'
+import { Button, Text, Stack, useComputedColorScheme, useMantineTheme } from '@mantine/core'
 import { DailyDuration } from '@/types/globals'
 import { getIsoDate } from '@/functions/helpers'
 import { minutesToTimeString } from '@/functions/helpers'
@@ -22,7 +22,7 @@ const DayButton: React.FC<DayButtonProps> = ({
   colors,
 }) => {
   const theme = useMantineTheme()
-  const { colorScheme } = useMantineColorScheme()
+  const colorScheme = useComputedColorScheme()
   const formattedDate = new Date(getIsoDate(date)).toISOString().split('T')[0]
   const duration = dailyDuration[formattedDate]
 
