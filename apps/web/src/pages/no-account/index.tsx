@@ -26,7 +26,7 @@ const NoAccountPage = () => {
         }}
       >
         <Box component='header' style={{ flexShrink: 0, height: 60 }}>
-          <HeaderSimple showThemeToggle={false} />
+          <HeaderSimple />
         </Box>
 
         <Box

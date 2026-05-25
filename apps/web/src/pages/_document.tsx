@@ -10,7 +10,7 @@ export default function Document() {
   return (
     <Html lang='en'>
       <Head>
-        <ColorSchemeScript />
+        <ColorSchemeScript defaultColorScheme='auto' />
         <link rel='icon' href='/favicon.ico' sizes='1024x1024' type='image/png' />
         <link rel='apple-touch-icon' href='/icon.png' sizes='1024x1024' />
         {process.env.NODE_ENV === 'production' ? (

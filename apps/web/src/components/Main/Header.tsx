@@ -4,14 +4,9 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/utils/supabase/client'
-import { ActionToggle } from '@/components/Header/ActionToggle'
 import classes from './Header.module.css'
 
-interface HeaderSimpleProps {
-  showThemeToggle?: boolean
-}
-
-export function HeaderSimple({ showThemeToggle = true }: HeaderSimpleProps) {
+export function HeaderSimple() {
   const t = useTranslations('Index')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
 
@@ -34,7 +29,6 @@ export function HeaderSimple({ showThemeToggle = true }: HeaderSimpleProps) {
         </Group>
       </Link>
       <Group gap='sm'>
-        {showThemeToggle && <ActionToggle />}
         {isLoggedIn ? (
           <Link href={'/app'}>
             <Button variant='default'>{t('go_back_to_app')}</Button>

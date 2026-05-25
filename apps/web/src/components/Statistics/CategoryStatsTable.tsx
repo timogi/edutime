@@ -6,7 +6,7 @@ import {
   Stack,
   ScrollArea,
   useMantineTheme,
-  useMantineColorScheme,
+  useComputedColorScheme,
   rem,
 } from '@mantine/core'
 import { IconFolder } from '@tabler/icons-react'
@@ -108,7 +108,7 @@ const CategoryStatsTable: React.FC<CombinedCategoryStatsTableProps> = ({
 }) => {
   const t = useTranslations('Index')
   const theme = useMantineTheme()
-  const { colorScheme } = useMantineColorScheme()
+  const colorScheme = useComputedColorScheme()
   const isSmallScreen = useMediaQuery('(max-width: 40em)') // Adjust breakpoint as needed
 
   // Type guard to distinguish between CategoryStatistics and RemainingCategoryStatistics
@@ -157,10 +157,7 @@ const CategoryStatsTable: React.FC<CombinedCategoryStatsTableProps> = ({
                     <IconFolder
                       style={{
                         ...styles.titleIndicator,
-                        color: adjustColorBrightness(
-                          row.color,
-                          colorScheme === 'auto' ? 'light' : colorScheme,
-                        ),
+                        color: adjustColorBrightness(row.color, colorScheme),
                       }}
                     />
                     <Text style={styles.categoryText} size={isSmallScreen ? 'xs' : 'sm'}>

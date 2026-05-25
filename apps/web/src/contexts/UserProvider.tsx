@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { User } from '@supabase/supabase-js'
 import { useRouter } from 'next/router'
-import { useMantineColorScheme } from '@mantine/core'
 import { supabase } from '@/utils/supabase/client'
 import { getPostAuthRedirect, parseIntentFromQuery } from '@/utils/auth/intent'
 import { getUserData } from '@/utils/supabase/user'
@@ -71,7 +70,6 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
 
   const [currentSession, setCurrentSession] = useState<{ user: User; event: string } | null>(null)
   const router = useRouter()
-  const { setColorScheme } = useMantineColorScheme()
   /** Coalesce concurrent fetchUserData for the same user (Strict Mode / overlapping effects). */
   const fetchUserDataInFlightRef = useRef<Map<string, Promise<boolean>>>(new Map())
 
@@ -153,10 +151,6 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
       }
 
       setUser(userData)
-
-      // Apply DB preference once per fetch. Do not sync theme in a useEffect that also
-      // depends on colorScheme — that fights Mantine’s cross-tab localStorage sync and causes flicker.
-      setColorScheme(userData.is_mode_dark ? 'dark' : 'light')
 
       const mode = getConfigMode(userData as unknown as { active_config_profile_id: string | null })
       setConfigMode(mode)
@@ -243,7 +237,7 @@ const Provider = ({ children }: { children: React.ReactNode }) => {
     })
     fetchUserDataInFlightRef.current.set(userId, promise)
     return promise
-  }, [router, setColorScheme])
+  }, [router])
 
   // Initialize session and set up auth listener
   useEffect(() => {

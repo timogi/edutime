@@ -7,7 +7,7 @@ import {
   SegmentedControl,
   Skeleton,
   useMantineTheme,
-  useMantineColorScheme,
+  useComputedColorScheme,
 } from '@mantine/core'
 import { useTranslations } from 'next-intl'
 import { GetStaticPropsContext } from 'next/types'
@@ -112,7 +112,7 @@ const getMonthAbbr = (month: Date): string => {
 export function Calendar({ openTimeTrackerDate, user_id }: CalendarProps) {
   const t = useTranslations('Index')
   const theme = useMantineTheme()
-  const { colorScheme } = useMantineColorScheme()
+  const colorScheme = useComputedColorScheme()
 
   const [startYear, setStartYear] = useState(getInitialStartYear())
   const [dailyDuration, setDailyDuration] = useState<DailyDuration>({})
@@ -160,10 +160,7 @@ export function Calendar({ openTimeTrackerDate, user_id }: CalendarProps) {
   }, [schoolYearMonths, semester, isMobile])
 
   // Get color function
-  const getColor = (date: Date) => {
-    const scheme = colorScheme === 'auto' ? 'light' : colorScheme
-    return getCellColor(date, scheme as 'light' | 'dark', theme)
-  }
+  const getColor = (date: Date) => getCellColor(date, colorScheme, theme)
 
   // Render desktop view: months as rows, days as columns
   const renderDesktopView = () => {
