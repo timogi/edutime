@@ -3,9 +3,24 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from '@sentry/nextjs'
+import { isBenignNavigatorLockError } from '@/utils/auth/navigatorLockErrors'
 
 Sentry.init({
   dsn: 'https://e8004295d908c58cfcd3ac64d6ea00d4@o4508315694727168.ingest.de.sentry.io/4508315696431184',
+
+  ignoreErrors: [
+    'AbortError: The lock request is aborted',
+    'The lock request is aborted',
+    /^Lock ".*" was (not released within|released because another request stole it)/,
+    /NavigatorLockAcquireTimeoutError/,
+  ],
+
+  beforeSend(event, hint) {
+    if (isBenignNavigatorLockError(hint.originalException)) {
+      return null
+    }
+    return event
+  },
 
   // Add optional integrations for additional features
   integrations: [Sentry.replayIntegration()],

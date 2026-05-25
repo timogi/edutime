@@ -11,13 +11,13 @@ import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat'
 import UserProvider from '@/contexts/UserProvider'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { supabase } from '@/utils/supabase/client'
 import { AppLayout } from '@/components/AppLayout'
 
 dayjs.extend(customParseFormat)
 import { useSyncExternalStore, useEffect } from 'react'
 import { GetStaticPropsContext } from 'next'
 import Head from 'next/head'
+import { isBenignNavigatorLockError } from '@/utils/auth/navigatorLockErrors'
 
 // Create a client for React Query with sensible defaults
 // Removed networkMode: 'online' as it prevents queries when browser reports offline during tab switches
@@ -47,51 +47,29 @@ export default function App(props: AppProps) {
   const isAppRoute = router.pathname.startsWith('/app')
 
   useEffect(() => {
-    // Global error handler for unhandled promise rejections
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      if (isBenignNavigatorLockError(event.reason)) {
+        event.preventDefault()
+        return
+      }
       console.error('Unhandled promise rejection:', event.reason)
-      // Prevent the default behavior which logs to console
       event.preventDefault()
     }
 
     const handleError = (event: ErrorEvent) => {
-      console.error('Global error:', event.error)
-    }
-
-    // Handle visibility changes to refresh Supabase session when tab becomes visible
-    // Use setTimeout to avoid async calls directly in event handler
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        // Use setTimeout to defer async operations and avoid potential deadlocks
-        setTimeout(async () => {
-          try {
-            const {
-              data: { session },
-              error,
-            } = await supabase.auth.getSession()
-            if (error) {
-              // Session check error - silently handle
-              return
-            }
-            if (session) {
-              // Refresh session to ensure it's still valid
-              await supabase.auth.refreshSession()
-            }
-          } catch (error) {
-            // Silently handle visibility change errors
-          }
-        }, 0)
+      if (isBenignNavigatorLockError(event.error)) {
+        event.preventDefault()
+        return
       }
+      console.error('Global error:', event.error)
     }
 
     window.addEventListener('unhandledrejection', handleUnhandledRejection)
     window.addEventListener('error', handleError)
-    document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
       window.removeEventListener('unhandledrejection', handleUnhandledRejection)
       window.removeEventListener('error', handleError)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [])
 
