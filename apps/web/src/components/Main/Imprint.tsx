@@ -4,8 +4,6 @@ import { GetStaticPropsContext } from 'next/types'
 import classes from './Imprint.module.css'
 
 export function ImprintContent() {
-  const t = useTranslations('Index')
-
   return (
     <Stack gap='sm'>
       <Text c='dimmed'>
@@ -24,7 +22,6 @@ export function ImprintContent() {
         <br />
         Website: https://edutime.ch/
       </Text>
-      <Text c='dimmed'>{t('responsible')}</Text>
     </Stack>
   )
 }
