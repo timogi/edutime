@@ -1,19 +1,36 @@
-import React, { useState, useEffect } from 'react'
-import { Stack, Group, Text, Checkbox, SegmentedControl } from '@mantine/core'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { Stack, Group, Text, Checkbox, SegmentedControl, Alert } from '@mantine/core'
 import { useTranslations } from 'next-intl'
 import { DateInput, DatePicker } from '@mantine/dates'
-import { eachDayOfInterval, format } from 'date-fns'
-import { Vacation } from '@/types/globals'
+import { format, isBefore, startOfDay } from 'date-fns'
+import { IconAlertTriangle } from '@tabler/icons-react'
+import {
+  buildRepeatDates,
+  capRepeatDatesPicker,
+  clampRepeatEndDate,
+  getDefaultBernSemesterApproxEnd,
+  getRepeatMaxEndDate,
+  MAX_REPEAT_CALENDAR_DAYS,
+  MAX_REPEAT_ENTRY_COUNT,
+} from '@/functions/repeatDates'
 import { GetStaticPropsContext } from 'next/types'
 
 interface IntervalFormProps {
-  date: Date
   dates: Date[]
   setDates: (dates: Date[]) => void
 }
 
-export const IntervalForm = ({ date, dates, setDates }: IntervalFormProps) => {
+export const IntervalForm = ({ dates, setDates }: IntervalFormProps) => {
   const t = useTranslations('Index')
+
+  const seedToday = () => startOfDay(new Date())
+
+  const [intervalStart, setIntervalStart] = useState<Date>(() => seedToday())
+  const [intervalEnd, setIntervalEnd] = useState<Date>(() => {
+    const from = seedToday()
+    return clampRepeatEndDate(from, getDefaultBernSemesterApproxEnd(from))
+  })
+
   const [selectedDays, setSelectedDays] = useState({
     Monday: false,
     Tuesday: false,
@@ -25,31 +42,63 @@ export const IntervalForm = ({ date, dates, setDates }: IntervalFormProps) => {
   })
 
   const [deselectedDays, setDeselectedDays] = useState<string[]>([])
-  const [intervalEnd, setIntervalEnd] = useState<Date>(new Date())
   const [type, setType] = useState<'interval' | 'pickDays'>('interval')
-  const [excludeVacationDays, setExcludeVacationDays] = useState(true)
+  const [repeatWarning, setRepeatWarning] = useState<'interval' | 'truncated' | 'pickDays' | null>(
+    null,
+  )
 
-  // Select the current day of the week when date or deselectedDays change
-  const [prevDate, setPrevDate] = useState(date)
-  const [prevDeselected, setPrevDeselected] = useState(deselectedDays)
-  if (prevDate !== date || prevDeselected !== deselectedDays) {
-    setPrevDate(date)
-    setPrevDeselected(deselectedDays)
-    const day = format(date, 'eeee')
-    if (!deselectedDays.includes(day)) {
+  const maxEndDate = useMemo(() => getRepeatMaxEndDate(intervalStart), [intervalStart])
+
+  const deselectedDaysRef = useRef(deselectedDays)
+  deselectedDaysRef.current = deselectedDays
+
+  // When "von" changes: enable that weekday, clamp "bis" if needed, default semester if bis was before von.
+  useEffect(() => {
+    const day = format(intervalStart, 'eeee') as keyof typeof selectedDays
+    setIntervalEnd((prev) => {
+      const nextEnd = isBefore(prev, intervalStart)
+        ? getDefaultBernSemesterApproxEnd(intervalStart)
+        : prev
+      return clampRepeatEndDate(intervalStart, nextEnd)
+    })
+    if (!deselectedDaysRef.current.includes(day)) {
       setSelectedDays((prevSelectedDays) => ({ ...prevSelectedDays, [day]: true }))
     }
-  }
+  }, [intervalStart])
 
   useEffect(() => {
-    const days = Object.keys(selectedDays).filter(
+    if (type !== 'interval') {
+      setRepeatWarning(null)
+      return
+    }
+
+    const weekdays = Object.keys(selectedDays).filter(
       (key) => selectedDays[key as keyof typeof selectedDays],
     )
-    const start = date
-    const end = intervalEnd
-    let newDates = eachDayOfInterval({ start, end }).filter((d) => days.includes(format(d, 'eeee')))
+
+    if (weekdays.length === 0) {
+      setDates([])
+      setRepeatWarning(null)
+      return
+    }
+
+    const { dates: newDates, truncated, intervalTooLarge } = buildRepeatDates(
+      intervalStart,
+      intervalEnd,
+      weekdays,
+    )
     setDates(newDates)
-  }, [selectedDays, intervalEnd, type, excludeVacationDays, date, setDates])
+
+    if (intervalTooLarge && truncated) {
+      setRepeatWarning('truncated')
+    } else if (intervalTooLarge) {
+      setRepeatWarning('interval')
+    } else if (truncated) {
+      setRepeatWarning('truncated')
+    } else {
+      setRepeatWarning(null)
+    }
+  }, [selectedDays, intervalEnd, type, intervalStart, setDates])
 
   const handleCheckboxChange = (key: string, checked: boolean) => {
     if (!checked) {
@@ -59,6 +108,40 @@ export const IntervalForm = ({ date, dates, setDates }: IntervalFormProps) => {
     }
     setSelectedDays((prevSelectedDays) => ({ ...prevSelectedDays, [key]: checked }))
   }
+
+  const handleIntervalStartChange = (value: Date | string | null) => {
+    const parsed = value ? (typeof value === 'string' ? new Date(value) : value) : seedToday()
+    setIntervalStart(startOfDay(parsed))
+  }
+
+  const handleIntervalEndChange = (value: Date | string | null) => {
+    const parsed = value ? (typeof value === 'string' ? new Date(value) : value) : intervalStart
+    setIntervalEnd(clampRepeatEndDate(intervalStart, startOfDay(parsed)))
+  }
+
+  const handlePickDaysChange = (value: string[] | null) => {
+    const parsed = (value || []).map((dateStr) => new Date(dateStr))
+    const { dates: capped, truncated } = capRepeatDatesPicker(parsed)
+    setDates(capped)
+    setRepeatWarning(truncated ? 'pickDays' : null)
+  }
+
+  const warningMessage = (() => {
+    if (!repeatWarning) return null
+    if (repeatWarning === 'interval') {
+      return t('repeatIntervalTooLarge', {
+        maxDays: MAX_REPEAT_CALENDAR_DAYS,
+      })
+    }
+    if (repeatWarning === 'truncated') {
+      return t('repeatEntriesTruncated', {
+        maxEntries: MAX_REPEAT_ENTRY_COUNT,
+      })
+    }
+    return t('repeatPickDaysTruncated', {
+      maxEntries: MAX_REPEAT_ENTRY_COUNT,
+    })
+  })()
 
   const Checkboxes = Object.keys(selectedDays || {}).map((key) => {
     return (
@@ -91,33 +174,50 @@ export const IntervalForm = ({ date, dates, setDates }: IntervalFormProps) => {
           },
         ]}
       />
+      {warningMessage ? (
+        <Alert
+          variant='light'
+          color='yellow'
+          icon={<IconAlertTriangle size={16} />}
+          title={t('repeatIntervalWarningTitle')}
+        >
+          {warningMessage}
+        </Alert>
+      ) : null}
       {type === 'interval' ? (
-        <Stack>
+        <Stack gap='md'>
+          <Group grow align='flex-start'>
+            <DateInput
+              value={intervalStart}
+              popoverProps={{ withinPortal: true }}
+              onChange={handleIntervalStartChange}
+              label={t('repeatFrom')}
+              placeholder={t('repeatFrom')}
+              valueFormat='DD.MM.YYYY'
+              size='md'
+            />
+            <DateInput
+              value={intervalEnd}
+              minDate={intervalStart}
+              maxDate={maxEndDate}
+              popoverProps={{ withinPortal: true }}
+              onChange={handleIntervalEndChange}
+              label={t('until')}
+              placeholder={t('until')}
+              valueFormat='DD.MM.YYYY'
+              size='md'
+            />
+          </Group>
           <Group justify='center' gap='sm'>
             {Checkboxes}
           </Group>
-          <DateInput
-            value={intervalEnd || new Date()}
-            popoverProps={{ withinPortal: true }}
-            onChange={(value) =>
-              setIntervalEnd(
-                value ? (typeof value === 'string' ? new Date(value) : value) : new Date(),
-              )
-            }
-            label={t('until')}
-            placeholder={t('until')}
-            valueFormat='DD.MM.YYYY'
-            size='md'
-          />
         </Stack>
       ) : (
         <Group justify='center' gap='sm'>
           <DatePicker
             value={dates}
             type='multiple'
-            onChange={(value) => {
-              setDates((value || []).map((dateStr) => new Date(dateStr)))
-            }}
+            onChange={handlePickDaysChange}
             size='md'
           />
         </Group>

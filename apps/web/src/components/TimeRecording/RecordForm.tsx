@@ -26,6 +26,7 @@ import {
   useDeleteRecord,
 } from '@/utils/supabase/queries'
 import { getIsoDate } from '@/functions/helpers'
+import { areRepeatDatesEqual } from '@/functions/repeatDates'
 import { findCategory } from '@/utils/supabase/categories'
 import { useMediaQuery } from '@mantine/hooks'
 import { useCantonData } from '@/utils/supabase/queries'
@@ -142,7 +143,7 @@ export const RecordForm = ({
       currentState.startTime !== initialFormState.startTime ||
       currentState.endTime !== initialFormState.endTime ||
       currentState.isRepeating !== initialFormState.isRepeating ||
-      JSON.stringify(currentState.dates) !== JSON.stringify(initialFormState.dates)
+      !areRepeatDatesEqual(currentState.dates, initialFormState.dates)
     )
   }, [duration, category, description, startTime, endTime, isRepeating, dates, initialFormState])
 
@@ -436,22 +437,24 @@ export const RecordForm = ({
                 }}
               />
             )}
-            <DateInput
-              value={date}
-              popoverProps={{ withinPortal: true }}
-              onChange={(value) =>
-                setDate(value ? (typeof value === 'string' ? new Date(value) : value) : new Date())
-              }
-              label={isRepeating ? t('startDate') : t('date')}
-              placeholder={isRepeating ? t('startDate') : t('date')}
-              valueFormat='DD.MM.YYYY'
-              size='md'
-              styles={{
-                label: {
-                  color: 'var(--mantine-color-text)',
-                },
-              }}
-            />
+            {!isRepeating && (
+              <DateInput
+                value={date}
+                popoverProps={{ withinPortal: true }}
+                onChange={(value) =>
+                  setDate(value ? (typeof value === 'string' ? new Date(value) : value) : new Date())
+                }
+                label={t('date')}
+                placeholder={t('date')}
+                valueFormat='DD.MM.YYYY'
+                size='md'
+                styles={{
+                  label: {
+                    color: 'var(--mantine-color-text)',
+                  },
+                }}
+              />
+            )}
             <DurationInput
               startTime={startTime}
               setStartTime={setStartTime}
@@ -492,7 +495,7 @@ export const RecordForm = ({
           </Stack>
           {isRepeating && (
             <Stack>
-              <IntervalForm date={date} dates={dates} setDates={setDates} />
+              <IntervalForm dates={dates} setDates={setDates} />
             </Stack>
           )}
         </>
@@ -527,22 +530,24 @@ export const RecordForm = ({
                 }}
               />
             )}
-            <DateInput
-              value={date}
-              popoverProps={{ withinPortal: true }}
-              onChange={(value) =>
-                setDate(value ? (typeof value === 'string' ? new Date(value) : value) : new Date())
-              }
-              label={isRepeating ? t('startDate') : t('date')}
-              placeholder={isRepeating ? t('startDate') : t('date')}
-              valueFormat='DD.MM.YYYY'
-              size='md'
-              styles={{
-                label: {
-                  color: 'var(--mantine-color-text)',
-                },
-              }}
-            />
+            {!isRepeating && (
+              <DateInput
+                value={date}
+                popoverProps={{ withinPortal: true }}
+                onChange={(value) =>
+                  setDate(value ? (typeof value === 'string' ? new Date(value) : value) : new Date())
+                }
+                label={t('date')}
+                placeholder={t('date')}
+                valueFormat='DD.MM.YYYY'
+                size='md'
+                styles={{
+                  label: {
+                    color: 'var(--mantine-color-text)',
+                  },
+                }}
+              />
+            )}
             <DurationInput
               startTime={startTime}
               setStartTime={setStartTime}
@@ -583,7 +588,7 @@ export const RecordForm = ({
           </Stack>
           {isRepeating && (
             <Stack>
-              <IntervalForm date={date} dates={dates} setDates={setDates} />
+              <IntervalForm dates={dates} setDates={setDates} />
             </Stack>
           )}
         </Group>
