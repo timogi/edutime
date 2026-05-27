@@ -2,6 +2,10 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { getAuthenticatedUser } from '@/utils/supabase/api-auth'
 import { paymentProvider } from '@/utils/payments'
 import {
+  parseOrgBillingAddressFromBody,
+  validateOrgBillingAddressRequired,
+} from '@/utils/payments/orgBillingAddress'
+import {
   calculateCheckoutAmount,
   MAX_AUTO_PRICING_LICENSES,
   MIN_ORG_LICENSES,
@@ -88,9 +92,15 @@ export default async function handler(
     if (req.method === 'POST') {
       const organizationId = Number(req.body.organizationId)
       const quantity = Number(req.body.quantity)
+      const orgBillingAddress = parseOrgBillingAddressFromBody(req.body)
 
       if (!Number.isInteger(organizationId) || organizationId <= 0) {
         return res.status(400).json({ error: 'Missing or invalid organizationId' })
+      }
+      if (!validateOrgBillingAddressRequired(orgBillingAddress)) {
+        return res.status(400).json({
+          error: 'A valid billing address is required for organization checkout',
+        })
       }
       if (!Number.isInteger(quantity) || quantity < MIN_ORG_LICENSES) {
         return res.status(400).json({
@@ -123,6 +133,7 @@ export default async function handler(
         userEmail: auth.user.email,
         firstName: profile?.first_name || undefined,
         lastName: profile?.last_name || undefined,
+        orgBillingAddress,
         language,
       })
 
@@ -146,6 +157,7 @@ export default async function handler(
         p_metadata: {
           source: 'org_license_api',
           actor_user_id: auth.user.id,
+          billing_address: orgBillingAddress,
         },
       })
 

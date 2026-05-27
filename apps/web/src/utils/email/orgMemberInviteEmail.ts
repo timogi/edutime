@@ -26,7 +26,7 @@ const EMAIL_COPY: Record<
     bodyIntro: ({ orgName }) =>
       `Du wurdest eingeladen, der Organisation «${orgName}» auf EduTime beizutreten und eine Organisationslizenz zu nutzen.`,
     bodySignIn: (inviteeEmail) =>
-      `Melde dich mit derselben E-Mail-Adresse (${inviteeEmail}) bei EduTime an und nimm die Einladung unter Konto an.`,
+      `Melde dich mit derselben E-Mail-Adresse (${inviteeEmail}) bei EduTime an und nimm die Einladung an.`,
     ctaLabel: 'Zu EduTime',
     loginHint: 'Du hast bereits ein Konto?',
     loginLabel: 'Einloggen',
@@ -40,7 +40,7 @@ const EMAIL_COPY: Record<
     bodyIntro: ({ orgName }) =>
       `You were invited to join «${orgName}» on EduTime and use an organization license.`,
     bodySignIn: (inviteeEmail) =>
-      `Sign in to EduTime with the same email address (${inviteeEmail}) and accept the invitation under Account.`,
+      `Sign in to EduTime with the same email address (${inviteeEmail}) and accept the invitation.`,
     ctaLabel: 'Open EduTime',
     loginHint: 'Already have an account?',
     loginLabel: 'Log in',
@@ -53,7 +53,7 @@ const EMAIL_COPY: Record<
     bodyIntro: ({ orgName }) =>
       `Tu as été invité(e) à rejoindre l’organisation « ${orgName} » sur EduTime et à utiliser une licence d’organisation.`,
     bodySignIn: (inviteeEmail) =>
-      `Connecte-toi à EduTime avec la même adresse e-mail (${inviteeEmail}) et accepte l’invitation sous Compte.`,
+      `Connecte-toi à EduTime avec la même adresse e-mail (${inviteeEmail}) et accepte l’invitation.`,
     ctaLabel: 'Ouvrir EduTime',
     loginHint: 'Tu as déjà un compte ?',
     loginLabel: 'Se connecter',

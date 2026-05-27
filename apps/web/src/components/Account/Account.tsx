@@ -20,7 +20,8 @@ import { GetStaticPropsContext } from 'next/types'
 import { IconDeviceFloppy } from '@tabler/icons-react'
 import LocaleSwitcher from '../Settings/LocaleSwitcher'
 import { getUserEntitlements, visibleUserEntitlements } from '@edutime/shared'
-import { UserData, Entitlement } from '@/types/globals'
+import { Category, UserData, Entitlement } from '@/types/globals'
+import { RecordsDataExport } from '@/components/Settings/RecordsDataExport'
 import { supabase } from '@/utils/supabase/client'
 import { getMemberships, getOrganizations } from '@/utils/supabase/organizations'
 import { LicenseManagementEntry } from '@/components/LicenseManagement/LicenseManagementEntry'
@@ -30,6 +31,8 @@ import { notifications } from '@mantine/notifications'
 interface AccountProps {
   userData: UserData
   reloadUserData: () => void
+  categories?: Category[]
+  showDataExport?: boolean
 }
 
 interface LicenseManagementSubscription {
@@ -43,7 +46,7 @@ interface LicenseManagementData {
   subscription: LicenseManagementSubscription | null
 }
 
-export const Account = ({ userData, reloadUserData }: AccountProps) => {
+export const Account = ({ userData, reloadUserData, categories, showDataExport = false }: AccountProps) => {
   const router = useRouter()
   const [firstName, setFirstName] = useState(userData.first_name)
   const [lastName, setLastName] = useState(userData.last_name)
@@ -474,6 +477,14 @@ export const Account = ({ userData, reloadUserData }: AccountProps) => {
             </Stack>
           </div>
         </Card>
+        {showDataExport && categories ? (
+          <RecordsDataExport
+            userData={userData}
+            categories={categories}
+            hideWhenEmpty
+            variant='tile'
+          />
+        ) : null}
         <Card radius='md' withBorder className={classes.card}>
           <div className={classes.cardContent}>
             <Stack gap='sm' p='lg'>
