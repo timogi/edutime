@@ -15,3 +15,13 @@ export function showLicenseTestOptions(): boolean {
 export function isLicenseSelfServiceEnabled(): boolean {
   return process.env.NEXT_PUBLIC_LICENSE_SELF_SERVICE_ENABLED !== 'false'
 }
+
+/** Internal 1-CHF/day Payrexx test — allowed even when public self-service is off. */
+export function isDailyTestBillingCycle(billingCycle: string | undefined | null): boolean {
+  return billingCycle === 'daily_test'
+}
+
+/** Public purchase/checkout, or billing-lab daily test subscription only. */
+export function isCheckoutAllowed(billingCycle?: string | null): boolean {
+  return isLicenseSelfServiceEnabled() || isDailyTestBillingCycle(billingCycle)
+}
