@@ -113,3 +113,41 @@ export const getRecords = async (start: Date, end: Date, user_id: string) => {
     return []
   }
 }
+
+export const countUserRecords = async (user_id: string): Promise<number> => {
+  try {
+    const { count, error } = await supabase
+      .from('records')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user_id)
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    return count ?? 0
+  } catch (err) {
+    console.error('error', err)
+    return 0
+  }
+}
+
+export const getAllRecords = async (user_id: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('records')
+      .select('*')
+      .eq('user_id', user_id)
+      .order('date', { ascending: true })
+      .order('start_time', { ascending: true })
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    return data as TimeRecord[]
+  } catch (err) {
+    console.error('error', err)
+    return []
+  }
+}

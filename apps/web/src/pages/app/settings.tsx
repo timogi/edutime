@@ -12,7 +12,7 @@ export default function SettingsPage() {
 
   return (
     <Stack gap='xl'>
-      <Settings userData={user} reloadUserData={refreshUserData} categories={categories} />
+      <Settings userData={user} reloadUserData={refreshUserData} categories={categories ?? []} />
       <Divider />
       <Account userData={user} reloadUserData={refreshUserData} />
     </Stack>

@@ -55,6 +55,7 @@ export class PayrexxProvider implements PaymentProvider {
       userEmail,
       firstName,
       lastName,
+      orgBillingAddress,
       language,
       customAmountCents,
       customPurpose,
@@ -94,6 +95,13 @@ export class PayrexxProvider implements PaymentProvider {
     if (userEmail) fields.email = { value: userEmail }
     if (firstName) fields.forename = { value: firstName }
     if (lastName) fields.surname = { value: lastName }
+    if (orgBillingAddress) {
+      fields.company = { value: orgBillingAddress.company }
+      fields.street = { value: orgBillingAddress.street }
+      fields.postcode = { value: orgBillingAddress.postcode }
+      fields.place = { value: orgBillingAddress.place }
+      fields.country = { value: orgBillingAddress.country }
+    }
 
     const gatewayResponse = await this.client.createGateway({
       amount: amountCents,

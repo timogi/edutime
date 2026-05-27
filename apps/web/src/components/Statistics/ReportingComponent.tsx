@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Stack, Text, Button, Group, Badge, Switch } from '@mantine/core'
+import { Card, Stack, Text, Button, Group, Switch, SimpleGrid, Divider } from '@mantine/core'
 import {
   Page,
   Text as PdfText,
@@ -12,15 +12,14 @@ import {
 } from '@react-pdf/renderer'
 import { getRecords } from '../../utils/supabase/records'
 import { TimeRecord, UserData, Category, CantonData } from '../../types/globals'
-import { IconFileTypePdf } from '@tabler/icons-react'
-import { convertMinutesToHoursAndMinutes } from '../../functions/helpers'
+import { IconFileTypeCsv, IconFileTypePdf } from '@tabler/icons-react'
+import { convertMinutesToHoursAndMinutes, getIsoDate } from '../../functions/helpers'
 import { useTranslations } from 'next-intl'
+import { buildRecordsCsv, getRecordCategoryLabel, triggerCsvDownload } from '@/utils/exportRecordsCsv'
 
 // Import the Roboto font files using relative paths
 import { RobotoRegular } from '../../assets/fonts/Roboto-Regular'
 import { RobotoBold } from '../../assets/fonts/Roboto-Bold'
-import { findCategory } from '@/utils/supabase/categories'
-
 // Register the fonts with @react-pdf/renderer
 Font.register({
   family: 'Roboto',
@@ -84,7 +83,8 @@ export const ReportingComponent: React.FC<ReportingComponentProps> = ({
   const [includeCategoryTable, setIncludeCategoryTable] = useState(true)
   const [includeRemainingCategoryTable, setIncludeRemainingCategoryTable] = useState(true)
   const [includeRecordsTable, setIncludeRecordsTable] = useState(true)
-  const [isGenerating, setIsGenerating] = useState(false)
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
+  const [isGeneratingCsv, setIsGeneratingCsv] = useState(false)
 
   useEffect(() => {
     const fetchRecords = async () => {
@@ -108,8 +108,8 @@ export const ReportingComponent: React.FC<ReportingComponentProps> = ({
   const isDownloadDisabled =
     !includeCategoryTable && !includeRemainingCategoryTable && !includeRecordsTable
 
-  const handleDownload = async () => {
-    setIsGenerating(true)
+  const handlePdfDownload = async () => {
+    setIsGeneratingPdf(true)
 
     const reportTranslations = {
       reportTitle: t('workTimeReport'),
@@ -182,20 +182,53 @@ export const ReportingComponent: React.FC<ReportingComponentProps> = ({
     }
     URL.revokeObjectURL(blobUrl)
 
-    setIsGenerating(false)
+    setIsGeneratingPdf(false)
+  }
+
+  const handleCsvDownload = async () => {
+    setIsGeneratingCsv(true)
+    try {
+      const csvLabels = {
+        date: t('date'),
+        from: t('csvFrom'),
+        to: t('csvTo'),
+        category: t('category'),
+        description: t('description'),
+        duration: t('duration'),
+        noCategory: t('noCategory'),
+        otherCanton: t('otherCanton'),
+      }
+      const csvContent = buildRecordsCsv(records, categories, csvLabels, t_cat)
+      const rangeStamp = `${getIsoDate(startDate)}_${getIsoDate(endDate)}`
+      const exportTimestamp =
+        exportDateString.replace(/-/g, '') + '_' + exportTimeString.replace(/-/g, '')
+      triggerCsvDownload(csvContent, `EduTime_Eintraege_${rangeStamp}_${exportTimestamp}.csv`)
+    } catch (error) {
+      console.error('CSV export failed:', error)
+    } finally {
+      setIsGeneratingCsv(false)
+    }
   }
 
   return (
-    <Card radius='md' withBorder m={'lg'}>
-      <Stack gap='sm'>
-        <Group>
-          <Text size='xl'>{t('workTimeReport')}</Text>
-        </Group>
-        <Text>{t('reportDescription')}</Text>
-        <Group justify='center' gap='xl'>
-          <Card radius='md' withBorder m={'lg'}>
-            <Group>
-              <Stack gap='sm'>
+    <Card radius='md' withBorder m='lg'>
+      <Stack gap='md'>
+        <Text size='xl' fw={600}>
+          {t('exportTitle')}
+        </Text>
+
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing='md'>
+          <Card radius='md' withBorder p='md'>
+            <Stack gap='sm' h='100%' justify='space-between'>
+              <Stack gap='xs'>
+                <Group gap='xs'>
+                  <IconFileTypePdf size={20} stroke={1.5} />
+                  <Text fw={600}>{t('pdfReportTitle')}</Text>
+                </Group>
+                <Text size='sm' c='dimmed'>
+                  {t('reportDescription')}
+                </Text>
+                <Divider />
                 <Switch
                   checked={includeCategoryTable}
                   onChange={() => setIncludeCategoryTable(!includeCategoryTable)}
@@ -213,15 +246,40 @@ export const ReportingComponent: React.FC<ReportingComponentProps> = ({
                 />
               </Stack>
               <Button
-                leftSection={<IconFileTypePdf />}
-                disabled={isDownloadDisabled || isGenerating}
-                onClick={handleDownload}
+                leftSection={<IconFileTypePdf size={18} />}
+                disabled={isDownloadDisabled || isGeneratingPdf}
+                loading={isGeneratingPdf}
+                onClick={handlePdfDownload}
+                mt='xs'
               >
-                {isGenerating ? t('generating') : t('download')}
+                {isGeneratingPdf ? t('generating') : t('downloadPdf')}
               </Button>
-            </Group>
+            </Stack>
           </Card>
-        </Group>
+
+          <Card radius='md' withBorder p='md'>
+            <Stack gap='sm' h='100%' justify='space-between'>
+              <Stack gap='xs'>
+                <Group gap='xs'>
+                  <IconFileTypeCsv size={20} stroke={1.5} />
+                  <Text fw={600}>{t('csvExportTitle')}</Text>
+                </Group>
+                <Text size='sm' c='dimmed'>
+                  {t('csvDescription')}
+                </Text>
+              </Stack>
+              <Button
+                variant='light'
+                leftSection={<IconFileTypeCsv size={18} />}
+                loading={isGeneratingCsv}
+                onClick={handleCsvDownload}
+                mt='xs'
+              >
+                {isGeneratingCsv ? t('generating') : t('downloadCsv')}
+              </Button>
+            </Stack>
+          </Card>
+        </SimpleGrid>
       </Stack>
     </Card>
   )
@@ -703,20 +761,16 @@ const RecordsTable = ({
         ]}
       />
       {records.map((record, index) => {
-        const category = findCategory(record, categories)
         return (
           <View style={styles.tableRow} key={index} wrap={false}>
             <PdfText style={styles.recordsTableCellDate}>
               {new Date(record.date).toLocaleDateString()}
             </PdfText>
             <PdfText style={styles.recordsTableCellCategory}>
-              {category
-                ? category.category_set_title === 'furtherEmployment' || category.category_set_title === 'custom'
-                  ? category.title
-                  : t_cat(category.title)
-                : record.category_id
-                  ? reportTranslations.tableHeaders.otherCanton
-                  : reportTranslations.tableHeaders.noCategory}
+              {getRecordCategoryLabel(record, categories, t_cat, {
+                noCategory: reportTranslations.tableHeaders.noCategory,
+                otherCanton: reportTranslations.tableHeaders.otherCanton,
+              })}
             </PdfText>
             <PdfText style={styles.recordsTableCellDescription}>{record.description}</PdfText>
             <PdfText style={styles.recordsTableCellDuration}>

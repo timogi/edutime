@@ -1,5 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { paymentProvider } from '@/utils/payments'
+import {
+  parseOrgBillingAddressFromBody,
+  validateOrgBillingAddressRequired,
+} from '@/utils/payments/orgBillingAddress'
 import { calculateCheckoutAmount, MAX_AUTO_PRICING_LICENSES, MIN_ORG_LICENSES } from '@/utils/payments/pricing'
 import { getAuthenticatedUser } from '@/utils/supabase/api-auth'
 
@@ -34,6 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       qty?: number
       organizationId?: number
     }
+    const orgBillingAddress = parseOrgBillingAddressFromBody(req.body)
     console.log('[checkout] incoming request', {
       plan,
       hasAuthorizationHeader: Boolean(req.headers.authorization),
@@ -90,6 +95,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           .json({ error: 'Only organization admins can create org license checkouts' })
       }
 
+      if (!validateOrgBillingAddressRequired(orgBillingAddress)) {
+        return res.status(400).json({
+          error: 'A valid billing address is required for organization checkout',
+        })
+      }
     }
 
     const checkoutLegalContext = plan === 'org' ? 'checkout_org' : 'checkout_individual'
@@ -139,6 +149,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       userEmail: user.email,
       firstName: userData?.first_name || undefined,
       lastName: userData?.last_name || undefined,
+      orgBillingAddress: plan === 'org' ? orgBillingAddress ?? undefined : undefined,
       language,
       customAmountCents: isDailyTestCheckout ? DAILY_TEST_PRICE_CENTS : undefined,
       customPurpose: isDailyTestCheckout
@@ -191,6 +202,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           plan: 'org',
           actor_user_id: user.id,
           organization_id: Number(organizationId),
+          billing_address: orgBillingAddress,
         },
       })
 

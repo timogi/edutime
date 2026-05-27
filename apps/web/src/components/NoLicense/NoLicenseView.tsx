@@ -368,11 +368,16 @@ export function NoLicenseView() {
       <Container size={1200} py='xl'>
         <Stack gap='xl'>
           <Group>
-            <Button variant='subtle' onClick={() => void router.push('/app/settings')}>
+            <Button variant='subtle' onClick={() => setActiveSection(null)}>
               ← {t_noLicense('back')}
             </Button>
           </Group>
-          <Account userData={user} reloadUserData={refreshUserData} />
+          <Account
+            userData={user}
+            reloadUserData={refreshUserData}
+            categories={categories ?? []}
+            showDataExport
+          />
         </Stack>
       </Container>
     )

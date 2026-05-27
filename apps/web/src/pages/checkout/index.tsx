@@ -16,9 +16,11 @@ import {
 import { useTranslations } from 'next-intl'
 import { supabase } from '@/utils/supabase/client'
 import { LoadingScreen } from '@/components/LoadingScreen'
+import { OrgCheckoutBillingAddressForm } from '@/components/Checkout/OrgCheckoutBillingAddressForm'
 import { CheckoutLegalGate } from '@/components/CheckoutLegalGate'
 import { IconAlertCircle } from '@tabler/icons-react'
 import { isLicenseSelfServiceEnabled } from '@/utils/licenseUiFlags'
+import type { OrgBillingAddress } from '@/utils/payments/orgBillingAddress'
 
 type CheckoutApiResponse = {
   checkoutUrl?: string
@@ -58,6 +60,8 @@ export default function CheckoutPage() {
   const [firstUnlicensedOrg, setFirstUnlicensedOrg] = useState<OrganizationCheckoutOption | null>(null)
   const [isCreatingOrganization, setIsCreatingOrganization] = useState(false)
   const [legalAccepted, setLegalAccepted] = useState(false)
+  const [orgBillingAddress, setOrgBillingAddress] = useState<OrgBillingAddress | null>(null)
+  const [orgBillingCompanyDefault, setOrgBillingCompanyDefault] = useState('')
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const isCheckoutRequestInFlightRef = useRef(false)
   const hasCheckoutBeenStartedRef = useRef(false)
@@ -247,6 +251,31 @@ export default function CheckoutPage() {
     }
   }, [router.isReady, router.query, router, redirectToRegister, t])
 
+  useEffect(() => {
+    if (plan !== 'org' || !organizationId) return
+
+    const defaultFromSelection =
+      autoSelectedOrganization?.name?.trim() || organizationName.trim() || ''
+    if (defaultFromSelection) {
+      setOrgBillingCompanyDefault(defaultFromSelection)
+      return
+    }
+
+    const loadOrganizationName = async () => {
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('name')
+        .eq('id', organizationId)
+        .maybeSingle()
+
+      if (!error && data?.name?.trim()) {
+        setOrgBillingCompanyDefault(data.name.trim())
+      }
+    }
+
+    void loadOrganizationName()
+  }, [plan, organizationId, autoSelectedOrganization?.name, organizationName])
+
   const handleAuthError = useCallback(() => {
     redirectToRegister()
   }, [redirectToRegister])
@@ -301,6 +330,7 @@ export default function CheckoutPage() {
 
       setOrganizationId(payload.organizationId)
       setAutoSelectedOrganization(null)
+      setOrgBillingAddress(null)
       setNeedsOrganizationSetup(false)
     } catch (creationError: unknown) {
       console.error('Failed to create organization during checkout:', creationError)
@@ -328,9 +358,11 @@ export default function CheckoutPage() {
             ? t('checkout-personal-license-already-active')
             : normalizedMessage.includes('organization legal documents must be accepted')
               ? t('checkout-org-legal-required')
-              : normalizedMessage.includes('legal documents must be accepted')
-                ? t('checkout-personal-legal-required')
-                : message
+              : normalizedMessage.includes('billing address is required')
+                ? t('checkout-org-billing-required')
+                : normalizedMessage.includes('legal documents must be accepted')
+                  ? t('checkout-personal-legal-required')
+                  : message
 
       // Stop auto-looping through legal acceptance and show a dedicated error state instead.
       setCheckoutUrl(null)
@@ -355,6 +387,7 @@ export default function CheckoutPage() {
           billingCycle,
           qty: qty!,
           organizationId: organizationId,
+          ...(plan === 'org' && orgBillingAddress ? { billingAddress: orgBillingAddress } : {}),
         }),
       })
 
@@ -423,9 +456,17 @@ export default function CheckoutPage() {
     setOrganizationId(undefined)
     setNeedsOrganizationSetup(true)
     setAutoSelectedOrganization(null)
+    setOrgBillingAddress(null)
+    setOrgBillingCompanyDefault('')
     setLegalAccepted(false)
     setError(null)
   }, [])
+
+  const needsOrgBillingAddress =
+    plan === 'org' &&
+    organizationId !== undefined &&
+    !needsOrganizationSetup &&
+    orgBillingAddress === null
 
   if (isLoading) {
     return <LoadingScreen />
@@ -518,6 +559,20 @@ export default function CheckoutPage() {
             </Button>
           </Stack>
         </Paper>
+      </Container>
+    )
+  }
+
+  if (needsOrgBillingAddress) {
+    return (
+      <Container size={520} my={40}>
+        <OrgCheckoutBillingAddressForm
+          defaultCompanyName={orgBillingCompanyDefault}
+          onSubmit={(address) => {
+            setOrgBillingAddress(address)
+            setError(null)
+          }}
+        />
       </Container>
     )
   }

@@ -53,6 +53,7 @@ import {
 } from '@/utils/supabase/config_profiles'
 import { useUser } from '@/contexts/UserProvider'
 import classes from './Settings.module.css'
+import { RecordsDataExport } from './RecordsDataExport'
 
 type EducationLevel = UserData['education_level']
 
@@ -63,7 +64,7 @@ const WORK_HOURS_DATA = [
   { age: '60+', vacationDays: 30, netHours: 1823 },
 ]
 
-export function Settings({ userData, reloadUserData }: AppComponentProps) {
+export function Settings({ userData, reloadUserData, categories }: AppComponentProps) {
   const [canton, setCanton] = useState(userData.canton_code)
   const [workload, setWorkload] = useState(userData.workload || 0)
   const [customWorkHours, setCustomWorkHours] = useState(userData.custom_work_hours || 0)
@@ -744,6 +745,8 @@ export function Settings({ userData, reloadUserData }: AppComponentProps) {
             </Group>
           </Stack>
         </Card>
+
+        <RecordsDataExport userData={userData} categories={categories ?? []} />
       </Stack>
 
       <CategoryModal
