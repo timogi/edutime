@@ -5,6 +5,7 @@ import {
   validateOrgBillingAddressRequired,
 } from '@/utils/payments/orgBillingAddress'
 import { calculateCheckoutAmount, MAX_AUTO_PRICING_LICENSES, MIN_ORG_LICENSES } from '@/utils/payments/pricing'
+import { isCheckoutAllowed } from '@/utils/licenseUiFlags'
 import { getAuthenticatedUser } from '@/utils/supabase/api-auth'
 
 type ResponseData = {
@@ -51,6 +52,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
     const resolvedBillingCycle: BillingCycle =
       billingCycle === 'daily_test' ? 'daily_test' : 'annual'
+    if (!isCheckoutAllowed(resolvedBillingCycle)) {
+      return res.status(403).json({
+        error: 'License self-service is disabled in this environment',
+      })
+    }
     if (plan === 'org' && resolvedBillingCycle !== 'annual') {
       return res.status(400).json({ error: 'Unsupported billing cycle for organization checkout' })
     }

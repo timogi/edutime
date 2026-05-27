@@ -19,7 +19,7 @@ import { LoadingScreen } from '@/components/LoadingScreen'
 import { OrgCheckoutBillingAddressForm } from '@/components/Checkout/OrgCheckoutBillingAddressForm'
 import { CheckoutLegalGate } from '@/components/CheckoutLegalGate'
 import { IconAlertCircle } from '@tabler/icons-react'
-import { isLicenseSelfServiceEnabled } from '@/utils/licenseUiFlags'
+import { isCheckoutAllowed } from '@/utils/licenseUiFlags'
 import type { OrgBillingAddress } from '@/utils/payments/orgBillingAddress'
 
 type CheckoutApiResponse = {
@@ -472,7 +472,7 @@ export default function CheckoutPage() {
     return <LoadingScreen />
   }
 
-  if (!isLicenseSelfServiceEnabled()) {
+  if (!isCheckoutAllowed(billingCycle)) {
     return (
       <Container size={480} my={40}>
         <Paper withBorder p={30} radius='md'>
